@@ -1,0 +1,4 @@
+module CColorEngine {
+    header "ce/ce.h"
+    export *
+}

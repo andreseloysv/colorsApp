@@ -1,0 +1,30 @@
+# build
+build/
+build-*/
+.build/
+*.o
+*.a
+*.wasm
+*.dSYM/
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcshareddata/swiftpm/
+ios/*.xcodeproj/project.xcworkspace/
+ios/*.xcodeproj/xcuserdata/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# harness outputs (regenerable)
+oracle/out/
+oracle/synthetic/
+harness/out/
+
+# OS
+.DS_Store
