@@ -7,8 +7,12 @@
 #   make golden       regenera los golden TSV con el oráculo Python
 #   make diff-oracle  100k colores sRGB8 por 'ce convert' vs oráculo estricto
 #   make swift-test   swift test del paquete engine/
-#   make dict         construye el diccionario (módulo de otro agente)
+#   make dict         regenera dictionary.json, errata.json y ce_dict_data.h
+#   make dict-check   verifica que los artefactos generados están al día
 #   make clean
+#
+# Los targets de cada área viven en mk/*.mk (foundations, harness, ios...) y se
+# incluyen automáticamente al final de este fichero.
 
 ROOT   := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ENGINE := $(ROOT)/engine
@@ -62,3 +66,6 @@ dict-check:
 
 clean:
 	rm -rf $(BUILD) $(BUILD_ASAN) $(BUILD_WASM) $(ENGINE)/.build
+
+# Targets adicionales por área (cada agente/área mantiene su propio .mk).
+-include $(ROOT)/mk/*.mk

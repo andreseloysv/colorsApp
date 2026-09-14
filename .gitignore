@@ -28,3 +28,10 @@ harness/out/
 
 # OS
 .DS_Store
+
+# iOS generado / firma local
+ios/*.xcodeproj/
+ios/Signing.xcconfig
+
+# salidas del harness
+harness/out/
