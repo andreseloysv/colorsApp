@@ -1,0 +1,17 @@
+# sha256 de cada fichero protegido (harness/PROTECTED.txt). Generado por
+# `COLORSAPP_ALLOW_PROTECTED=1 make protected-hash`; verificable también con
+# `shasum -a 256 -c harness/PROTECTED.sha256` desde la raíz del repo.
+960f4455d7d9fb51f546812353b84d64954e3da06f7a483f4511808ce27ce7b1  data/wada/names.es.json
+3658adf68a572b2c5676a08117e957ddbe8f7d0e7a75d3a3ac848ad818d14659  data/wada/overrides.json
+4609449ccba0183743521db542c67a16e112e7f0043ee2d6ed2040c339e5dd72  data/wada/source/LICENSE
+a12880b7abd14d213bbe1ee1487b31c28752050c2ef113d635b474c3660604df  data/wada/source/PROVENANCE.md
+555f11c32eb8133078fd470dd7d5320533aaa8b636f12fa06a8dd3d0ee2703b4  data/wada/source/colors.json
+458183963b60b306376c74208a34b8cc6cd11061a3fb1222c3b1749a0685d712  engine/tests/data/README.md
+44aebb39107128328add54fbef5ac8ee89909e50508f448a1580adea2058a4b8  engine/tests/data/ciede2000testdata.txt
+41e25c8df5b63d57d836c288d21d1a16d9f9db15b34d9c4b11674ba6d5bf05d4  engine/tests/data/golden_bradford.tsv
+e1cf82196fb8121e34b8c16d9885f834d0028f76fe668ebfc34e074bab6bfe87  engine/tests/data/golden_de2000.tsv
+a8c6a4a298ecc4da82130d68b720d613210762c8944977ef6a39529b139926cc  engine/tests/data/golden_lab.tsv
+3b37e419fbff0b1d2d9865c5331fb693917778519036c398a0dda9a62b7b36a3  engine/tests/data/golden_wada_lab.tsv
+9853d43a5026cdc0a62e137b0144b018d908c516f106d39cb7c1984035c13263  harness/label/names.html
+ec696c5bb3d10f98fe166e11b7b2a3164a05b4cd1e9896fd7c35d39fbe2bc70d  harness/thresholds.json
+91a374ecd9da775358b33a74da3adb8c97090b5cd7ecc4edbf4e620ad84f7a93  oracle/oracle/reference.py

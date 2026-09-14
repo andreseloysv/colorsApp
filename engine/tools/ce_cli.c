@@ -8,6 +8,10 @@
  *                                   "L1 a1 b1 L2 a2 b2" y escribe ΔE00 (%.15e)
  *   ce convert                      lee de stdin líneas "R G B" (enteros 0-255)
  *                                   y escribe "L a b" con %.15e por línea
+ *   ce dict --version               dict_version embebido (== dictionary.json)
+ *   ce dict --list                  "id size" por línea, las 348 combinaciones
+ *   ce dict --id N                  combinación N: tamaño y, por color, índice,
+ *                                   hex, Lab (%.12f) y nombre
  *
  * "convert" es la entrada del differential testing masivo contra el oráculo
  * Python (oracle/oracle/diff_oracle.py).
@@ -15,6 +19,7 @@
 #include "ce/ce.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +35,8 @@ static int usage(void)
             "  ce lab R G B\n"
             "  ce de2000 L1 a1 b1 L2 a2 b2\n"
             "  ce de2000    (stdin: lineas \"L1 a1 b1 L2 a2 b2\" -> stdout: dE00)\n"
-            "  ce convert   (stdin: lineas \"R G B\" -> stdout: \"L a b\")\n");
+            "  ce convert   (stdin: lineas \"R G B\" -> stdout: \"L a b\")\n"
+            "  ce dict --version | --list | --id N\n");
     return 2;
 }
 
@@ -135,6 +141,65 @@ static int cmd_convert(void)
     return ferror(stdin) ? 1 : 0;
 }
 
+/* Imprime una combinación: cabecera "id N size S" y una línea por color con
+ * índice, hex, Lab (%.12f) y nombre. */
+static int print_combo(int id)
+{
+    uint8_t size = 0;
+    uint8_t colors[CE_DICT_COMBO_MAX];
+    int k;
+    if (ce_dict_combo(id, &size, colors) != 0) {
+        fprintf(stderr, "la combinacion %d no existe (ids 1..%d)\n", id, ce_dict_num_combos());
+        return 1;
+    }
+    printf("id %d size %u\n", id, (unsigned)size);
+    for (k = 0; k < (int)size && k < CE_DICT_COMBO_MAX; ++k) {
+        uint8_t rgb[3];
+        ce_lab lab;
+        const int index = colors[k];
+        if (ce_dict_color_rgb(index, rgb) != 0) {
+            fprintf(stderr, "indice de color invalido %d en la combinacion %d\n", index, id);
+            return 1;
+        }
+        lab = ce_dict_color_lab(index);
+        printf("%3d #%02x%02x%02x %.12f %.12f %.12f %s\n", index, rgb[0], rgb[1], rgb[2],
+               lab.L, lab.a, lab.b, ce_dict_color_name(index));
+    }
+    return 0;
+}
+
+static int cmd_dict(int argc, char **argv)
+{
+    if (argc == 3 && strcmp(argv[2], "--version") == 0) {
+        printf("%s\n", ce_dict_version());
+        return 0;
+    }
+    if (argc == 3 && strcmp(argv[2], "--list") == 0) {
+        int id;
+        const int n = ce_dict_num_combos();
+        for (id = 1; id <= n; ++id) {
+            uint8_t size = 0;
+            if (ce_dict_combo(id, &size, NULL) != 0) {
+                fprintf(stderr, "hueco en los ids del diccionario: %d\n", id);
+                return 1;
+            }
+            printf("%d %u\n", id, (unsigned)size);
+        }
+        return 0;
+    }
+    if (argc == 4 && strcmp(argv[2], "--id") == 0) {
+        char *end;
+        long id;
+        errno = 0;
+        id = strtol(argv[3], &end, 10);
+        if (errno != 0 || end == argv[3] || *end != '\0' || id > INT_MAX || id < INT_MIN) {
+            return usage();
+        }
+        return print_combo((int)id);
+    }
+    return usage();
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
@@ -152,6 +217,9 @@ int main(int argc, char **argv)
     }
     if (strcmp(argv[1], "convert") == 0) {
         return cmd_convert();
+    }
+    if (strcmp(argv[1], "dict") == 0) {
+        return cmd_dict(argc, argv);
     }
     return usage();
 }

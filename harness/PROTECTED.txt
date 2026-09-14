@@ -1,0 +1,21 @@
+# Rutas protegidas de colorsApp (sección 6 "Anti-Goodhart" del plan).
+# Un glob por línea, relativo a la raíz del repo. `**` cruza directorios,
+# `*` no. Líneas vacías y que empiezan por `#` se ignoran.
+#
+# `make check-protected` falla si el árbol de trabajo (diff contra HEAD,
+# staged o untracked) toca alguna de estas rutas sin COLORSAPP_ALLOW_PROTECTED=1,
+# y compara además el sha256 de cada fichero con harness/PROTECTED.sha256
+# (regenerar con `COLORSAPP_ALLOW_PROTECTED=1 make protected-hash`).
+#
+# Los umbrales solo los promueve el usuario; el agente escribe
+# harness/out/thresholds.proposed.json.
+
+harness/thresholds.json
+harness/golden/**
+engine/tests/data/**
+oracle/oracle/reference.py
+oracle/synth/**
+harness/label/**
+data/wada/names.es.json
+data/wada/overrides.json
+data/wada/source/**

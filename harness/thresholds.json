@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "proposed_by": "agent",
+  "promoted_by": null,
+  "proposed_at": "2026-09-14",
+  "note": "Umbrales iniciales de la sección 6 del plan (F1). Ruta protegida: solo el usuario los promueve (promoted_by) o cambia; el agente propone cambios en harness/out/thresholds.proposed.json. Recall y cuotas en fracción 0..1; tolerancias absolutas.",
+  "L1": {
+    "description": "Matemática de color: golden files, differential testing, Sharma, oráculo laxo y kL=2.",
+    "golden_abs_tol": 1e-09,
+    "diff_oracle_abs_tol": 1e-09,
+    "diff_oracle_colors": 100000,
+    "diff_oracle_colors_fast": 10000,
+    "sharma_abs_tol": 0.0001,
+    "sharma_gated_pairs": 33,
+    "sharma_pair14_accepted": [4.8045, 4.7461],
+    "skimage_lax_de76_max": 0.05,
+    "skimage_lax_colors": 2000,
+    "textiles_kl2_abs_tol": 1e-09,
+    "textiles_kl2_pairs": 200
+  },
+  "L2": {
+    "description": "Extracción de paleta sobre composiciones sintéticas (fase 2).",
+    "compositions": 200,
+    "color_de00_max": 2.0,
+    "weight_abs_error_max": 0.03,
+    "invariance": {
+      "shuffle_uniform": "bit-identical",
+      "shuffle_center_weighted_de00_max": 1.0,
+      "scale_de00_max": 1.0,
+      "mirror_rotate_de00_max": 0.5,
+      "noise_sigma2_de00_max": 1.5,
+      "rerun": "same-hash"
+    },
+    "fuzz_minutes": 10,
+    "fuzz_crashes_max": 0,
+    "eval_fast_seconds_max": 120
+  },
+  "L3": {
+    "description": "Match contra el diccionario sobre sintéticos por combinación (fase 3-4); umbrales por degradación.",
+    "variants_per_combo": 10,
+    "by_degradation": {
+      "clean": {"recall_at_1_min": 0.95, "recall_at_3_min": 0.99},
+      "jpeg_q10": {"recall_at_1_min": 0.85},
+      "illuminant": {"recall_at_3_min": 0.80},
+      "exposure": {"recall_at_1_min": 0.75},
+      "distractor": {"recall_at_3_min": 0.75}
+    },
+    "max_class_share_max": 0.05,
+    "holdout_minus_dev_min": -0.03
+  },
+  "L4": {
+    "description": "Fotos reales del set dorado (fase 9); umbrales por tag y agregados.",
+    "golden_min_photos": 50,
+    "golden_target_photos": 100,
+    "judges": 3,
+    "tags": ["negro", "denim", "gris", "interior", "fondo-sucio", "blanco"],
+    "by_tag": {
+      "negro": {"recall_at_3_min": 0.70},
+      "denim": {"recall_at_3_min": 0.70},
+      "gris": {"recall_at_3_min": 0.70},
+      "interior": {"recall_at_3_min": 0.70},
+      "fondo-sucio": {"recall_at_3_min": 0.70},
+      "blanco": {"recall_at_3_min": 0.70}
+    },
+    "aggregate": {"recall_at_3_min": 0.70, "max_class_share_max": 0.30},
+    "dominant_vs_sam_de00_max": 5.0,
+    "dominant_vs_sam_fraction_min": 0.70,
+    "mask_flag_min_recall_gain": 0.05
+  }
+}

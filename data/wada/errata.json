@@ -103,7 +103,7 @@
     }
   ],
   "generated_by": "oracle.build_dictionary",
-  "policy": "ARCHIVO GENERADO: no editar a mano (--check lo compara con la regeneración). Los valores del fuente no se modifican. Cada entrada documenta una discrepancia frente al libro impreso; su 'status' se cambia en KNOWN_ERRATA de oracle/oracle/build_dictionary.py y luego se regenera con 'make dict'. 'derived_rgb_candidate' (si existe) es el sRGB recalculado a partir del CMYK del libro con un perfil SWOP local; depende del entorno y --check lo ignora al comparar.",
+  "policy": "ARCHIVO GENERADO: no editar a mano (--check lo compara con la regeneración). Los valores del fuente no se modifican. Cada entrada documenta una discrepancia frente al libro impreso. Para aceptar una errata el usuario añade un override en data/wada/overrides.json (mismo index y field) y regenera con 'make dict': la entrada pasa a 'accepted' con 'accepted_at' y 'override_value'. 'derived_rgb_candidate' (si existe) es el sRGB recalculado a partir del CMYK del libro con un perfil SWOP local; depende del entorno y --check lo ignora al comparar.",
   "references": [
     "https://github.com/mattdesl/dictionary-of-colour-combinations/issues/1",
     "https://github.com/mattdesl/dictionary-of-colour-combinations/pull/2"

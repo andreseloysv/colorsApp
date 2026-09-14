@@ -1,0 +1,6 @@
+// Plantilla de firma. Copiar a ios/Signing.xcconfig (gitignored) y poner el
+// Team ID del Personal Team del Apple ID (Xcode > Settings > Apple Accounts >
+// seleccionar la cuenta > "Personal Team" > Team ID, 10 caracteres).
+// `make ios-generate` crea la copia si no existe; con REEMPLAZAR solo funcionan
+// las builds sin firma (simulador y CODE_SIGNING_ALLOWED=NO).
+DEVELOPMENT_TEAM = REEMPLAZAR

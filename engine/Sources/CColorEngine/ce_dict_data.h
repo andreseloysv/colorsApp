@@ -6,7 +6,8 @@
  * Regenerar: uv run --project oracle python -m oracle.build_dictionary --emit-c
  * Fuente: mattdesl/dictionary-of-colour-combinations 1.0.2 (MIT) (ver data/wada/README.md).
  *
- * Todo es `static const` para poder incluir este header desde un unico .c.
+ * Todo es `static const` para poder incluir este header desde un unico .c
+ * (ce_dict.c); la API publica esta en ce/ce.h (ce_dict_*).
  * Solo sRGB8: el motor calcula Lab D65 en C; aqui no hay Lab.
  * Los indices de color de cada combinacion van en orden ascendente; las
  * posiciones mas alla de `size` valen CE_DICT_NONE.
@@ -18,6 +19,7 @@
 #include <stdint.h>
 
 #define CE_DICT_SCHEMA 1
+#define CE_DICT_VERSION "fd95ac692777" /* = dict_version de dictionary.json */
 #define CE_DICT_NUM_COLORS 159
 #define CE_DICT_NUM_COMBOS 348
 #define CE_DICT_MAX_COLORS 7 /* reserva para el Vol. 2 (3..7 colores) */
@@ -31,7 +33,7 @@
 #endif
 
 /* sRGB de 8 bits por canal, indexado por indice de color (0..CE_DICT_NUM_COLORS-1). */
-CE_DICT_UNUSED static const uint8_t ce_dict_color_rgb[CE_DICT_NUM_COLORS][3] = {
+CE_DICT_UNUSED static const uint8_t ce_dict_data_rgb[CE_DICT_NUM_COLORS][3] = {
     {249, 193, 206}, /*   0 Hermosa Pink */
     {248, 182, 186}, /*   1 Corinthian Pink */
     {224, 179, 182}, /*   2 Cameo Pink */
@@ -194,7 +196,7 @@ CE_DICT_UNUSED static const uint8_t ce_dict_color_rgb[CE_DICT_NUM_COLORS][3] = {
 };
 
 /* Nombres en ingles del libro (nomenclatura de Ridgway), tal cual en el fuente. */
-CE_DICT_UNUSED static const char *const ce_dict_color_names[CE_DICT_NUM_COLORS] = {
+CE_DICT_UNUSED static const char *const ce_dict_data_names[CE_DICT_NUM_COLORS] = {
     "Hermosa Pink", /* 0 */
     "Corinthian Pink", /* 1 */
     "Cameo Pink", /* 2 */
@@ -357,7 +359,7 @@ CE_DICT_UNUSED static const char *const ce_dict_color_names[CE_DICT_NUM_COLORS] 
 };
 
 /* Capitulo del libro (0..CE_DICT_NUM_SWATCHES-1) de cada color. */
-CE_DICT_UNUSED static const uint8_t ce_dict_color_swatch[CE_DICT_NUM_COLORS] = {
+CE_DICT_UNUSED static const uint8_t ce_dict_data_swatch[CE_DICT_NUM_COLORS] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0.. */
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 16.. */
     0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /* 32.. */
@@ -374,9 +376,9 @@ typedef struct {
     uint16_t id;                         /* 1..CE_DICT_NUM_COMBOS, numero de lamina */
     uint8_t size;                        /* colores usados: 2..CE_DICT_MAX_COLORS */
     uint8_t colors[CE_DICT_MAX_COLORS];  /* indices ascendentes; CE_DICT_NONE de relleno */
-} ce_dict_combo;
+} ce_dict_data_combo;
 
-CE_DICT_UNUSED static const ce_dict_combo ce_dict_combos[CE_DICT_NUM_COMBOS] = {
+CE_DICT_UNUSED static const ce_dict_data_combo ce_dict_data_combos[CE_DICT_NUM_COMBOS] = {
     {  1, 2, { 65, 117, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},
     {  2, 2, { 61, 129, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},
     {  3, 2, { 13,  39, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},

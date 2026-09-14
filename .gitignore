@@ -33,5 +33,6 @@ harness/out/
 ios/*.xcodeproj/
 ios/Signing.xcconfig
 
-# salidas del harness
-harness/out/
+
+# iOS: DerivedData de xcodebuild (mk/ios.mk usa -derivedDataPath build-ios/)
+*.xcresult

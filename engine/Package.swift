@@ -6,7 +6,7 @@ import PackageDescription
 
 let package = Package(
     name: "ColorEngine",
-    platforms: [.iOS(.v15), .macOS(.v12)],
+    platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(name: "ColorEngine", targets: ["ColorEngine"]),
     ],

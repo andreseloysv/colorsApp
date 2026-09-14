@@ -1,0 +1,74 @@
+# Proyecto Xcode generado con XcodeGen (`make ios-generate`). El .xcodeproj no
+# se versiona. Firma: DEVELOPMENT_TEAM viene de ios/Signing.xcconfig (gitignored;
+# copia de ios/Signing.example.xcconfig que `make ios-generate` crea si falta).
+name: ColorsApp
+options:
+  bundleIdPrefix: com.andreseloy
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  disabledValidations: [missingConfigFiles]
+
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  ColorEngine:
+    path: ../engine
+
+targets:
+  ColorsApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: ColorsApp
+        excludes: [Info.plist]
+    dependencies:
+      - package: ColorEngine
+        product: ColorEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.andreseloy.colorsapp
+        PRODUCT_NAME: ColorsApp
+        INFOPLIST_FILE: ColorsApp/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+
+  ColorsAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [ColorsAppTests]
+    dependencies:
+      - target: ColorsApp
+      - package: ColorEngine
+        product: ColorEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.andreseloy.colorsapp.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  ColorsApp:
+    build:
+      targets:
+        ColorsApp: all
+        ColorsAppTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [ColorsAppTests]
+    archive:
+      config: Release

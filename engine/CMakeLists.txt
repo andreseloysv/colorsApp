@@ -30,7 +30,9 @@ if(CE_SANITIZE)
 endif()
 
 # ---- librería -------------------------------------------------------------
-add_library(colorengine STATIC Sources/CColorEngine/ce_math.c)
+add_library(colorengine STATIC
+  Sources/CColorEngine/ce_math.c
+  Sources/CColorEngine/ce_dict.c)
 target_include_directories(colorengine PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CColorEngine/include>)
 target_compile_options(colorengine PRIVATE ${CE_STRICT_FLAGS})
@@ -76,4 +78,19 @@ if(CE_BUILD_TESTS)
     add_test(NAME test_math COMMAND test_math)
   endif()
   set_tests_properties(test_math PROPERTIES TIMEOUT 900)
+
+  # Diccionario de Wada: invariantes de las tablas y Lab de los 159 colores
+  # contra golden_wada_lab.tsv (oráculo Python).
+  add_executable(test_dict tests/test_dict.c)
+  target_link_libraries(test_dict PRIVATE colorengine unity)
+  target_compile_options(test_dict PRIVATE ${CE_STRICT_FLAGS})
+  target_compile_definitions(test_dict PRIVATE
+    CE_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+  if(EMSCRIPTEN)
+    target_link_options(test_dict PRIVATE -sNODERAWFS=1 -sEXIT_RUNTIME=1)
+    add_test(NAME test_dict COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_dict>)
+  else()
+    add_test(NAME test_dict COMMAND test_dict)
+  endif()
+  set_tests_properties(test_dict PROPERTIES TIMEOUT 120)
 endif()

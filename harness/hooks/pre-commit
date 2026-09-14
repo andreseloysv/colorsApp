@@ -1,0 +1,11 @@
+#!/bin/sh
+# Hook pre-commit de colorsApp. Bloquea el commit si el árbol de trabajo toca
+# rutas protegidas (harness/PROTECTED.txt) o si el manifiesto
+# harness/PROTECTED.sha256 no cuadra, salvo que COLORSAPP_ALLOW_PROTECTED=1.
+# Es detección, no prevención: `COLORSAPP_ALLOW_PROTECTED=1 git commit` o
+# `git commit --no-verify` lo saltan. Instalar con `make hooks`.
+ROOT=$(git rev-parse --show-toplevel) || exit 1
+if command -v uv >/dev/null 2>&1 && [ -f "$ROOT/oracle/pyproject.toml" ]; then
+    exec uv run --project "$ROOT/oracle" python "$ROOT/harness/check_protected.py"
+fi
+exec python3 "$ROOT/harness/check_protected.py"

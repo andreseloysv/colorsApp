@@ -145,6 +145,51 @@ void ce_bradford_matrix(ce_illuminant from, ce_illuminant to, double m[9]);
 /** Aplica una matriz 3x3 (row-major) a XYZ: XYZ' = m · XYZ. */
 ce_xyz ce_xyz_adapt(ce_xyz xyz, const double m[9]);
 
+/* ------------------------------------------------------------------------
+ * Diccionario de Sanzo Wada embebido (ce_dict.c + ce_dict_data.h generado)
+ *
+ * Solo sRGB8 en las tablas; el Lab de cada color se calcula con
+ * ce_srgb8_to_lab, la misma función que procesa la foto. Los índices de color
+ * van de 0 a ce_dict_num_colors()-1 y los ids de combinación (número de
+ * lámina) de 1 a ce_dict_num_combos() sin huecos. Ninguna función hace I/O ni
+ * reserva memoria; las tablas son `static const`.
+ * ---------------------------------------------------------------------- */
+
+/** Capacidad de `colors` en ce_dict_combo (reserva para el Vol. 2: 2..7 colores). */
+#define CE_DICT_COMBO_MAX 7
+
+/** Relleno de las posiciones de `colors` a partir de `size`. */
+#define CE_DICT_NO_COLOR 0xFF
+
+/** Versión del diccionario: sha256 corto (12 hex) del JSON canónico de
+ *  colores + combinaciones de data/wada/dictionary.json tras aplicar
+ *  overrides. La app debe comprobar que coincide con el `dict_version` del
+ *  JSON que lleva en el bundle. Cadena estática, no liberar. */
+const char *ce_dict_version(void);
+
+/** Número de colores del diccionario (159 en el Vol. 1). */
+int ce_dict_num_colors(void);
+
+/** Número de combinaciones (348 en el Vol. 1). */
+int ce_dict_num_combos(void);
+
+/** sRGB8 del color `index`. Devuelve 0 y escribe `rgb` (si no es NULL), o -1
+ *  si `index` está fuera de rango (no escribe nada). */
+int ce_dict_color_rgb(int index, uint8_t rgb[3]);
+
+/** Nombre en inglés del color (nomenclatura de Ridgway, tal cual en el fuente).
+ *  Cadena estática; NULL si `index` está fuera de rango. */
+const char *ce_dict_color_name(int index);
+
+/** CIELAB (D65) del color, calculado con ce_srgb8_to_lab. Fuera de rango
+ *  devuelve NaN en las tres componentes. */
+ce_lab ce_dict_color_lab(int index);
+
+/** Combinación `id` (1..ce_dict_num_combos()). Devuelve 0 y escribe `size`
+ *  (2..CE_DICT_COMBO_MAX) y `colors` (índices ascendentes; posiciones >= size
+ *  a CE_DICT_NO_COLOR) cuando no son NULL; -1 si la combinación no existe. */
+int ce_dict_combo(int id, uint8_t *size, uint8_t colors[CE_DICT_COMBO_MAX]);
+
 #ifdef __cplusplus
 }
 #endif
