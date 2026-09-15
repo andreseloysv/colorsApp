@@ -16,12 +16,16 @@ Ejecuta, en este orden, y escribe ``<out>/scorecard.json`` y ``<out>/scorecard.m
    - casos borde (C = 0, tonos opuestos) sin NaN;
    - cruce de ``dict_version``: ``ce dict --version`` == ``dictionary.json`` ==
      cabecera de ``golden_wada_lab.tsv``, y ``make dict-check``.
-2-4. Capas 2 (paleta), 3 (match) y 4 (fotos reales): ``not implemented`` hasta las fases
-   2, 3 y 9 del plan.
+2. Capa 2 (extracción de paleta, ``oracle.l2``): composiciones sintéticas de
+   ``synth.compose`` por ``ce palette`` (200 composiciones en modo uniforme, 30 de
+   invariancias; con ``--fast`` 40 y 8). ``not implemented`` con motivo si el CLI no tiene
+   el subcomando ``palette``.
+3-4. Capas 3 (match) y 4 (fotos reales): ``not implemented`` hasta las fases 3 y 9 del plan.
 
-Los umbrales salen de ``harness/thresholds.json`` (ruta protegida). Código de salida 0
-solo si todas las capas están implementadas y en verde; 1 si alguna falla o falta.
-Al final imprime una línea resumen del tipo ``L1 OK; L2-L4 not implemented``.
+Los umbrales salen de ``harness/thresholds.json`` (ruta protegida); las claves de L2 que
+falten toman el valor del contrato de F2 y se anotan como defaults no promovidos. Código
+de salida 0 solo si todas las capas están implementadas y en verde; 1 si alguna falla o
+falta. Al final imprime una línea resumen del tipo ``L1 OK; L2 OK; L3-L4 not implemented``.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ from typing import Any
 
 import numpy as np
 
+from oracle import l2
 from oracle import reference as ref
 from oracle.diff_oracle import find_cli, run_cli
 
@@ -64,7 +69,6 @@ LAYERS: tuple[tuple[str, str], ...] = (
     ("L4", "Fotos reales"),
 )
 NOT_IMPLEMENTED_LAYERS: dict[str, str] = {
-    "L2": "not implemented (fase 2: ce_palette.c, oracle/synth/compose.py, test_l2_palette.py)",
     "L3": "not implemented (fase 3: ce_match.c, oracle/synth/wada_gen.py, test_l3_match.py)",
     "L4": "not implemented (fase 9: oracle/l4/, set dorado en $COLORSAPP_GOLDEN_DIR)",
 }
@@ -411,6 +415,51 @@ def run_layer1(cli: Path, thresholds: dict[str, Any], dictionary: dict[str, Any]
 
 
 # --------------------------------------------------------------------------------------
+# Capa 2 (la lógica vive en oracle.l2; aquí solo se envuelve en el scorecard)
+# --------------------------------------------------------------------------------------
+
+
+def run_layer2(cli: Path, thresholds: dict[str, Any], out_dir: Path, fast: bool) -> Layer:
+    layer = Layer("L2", "Extracción de paleta", status="pending")
+    if not l2.has_palette(cli):
+        layer.status = "not implemented"
+        layer.checks.append(Check("ce palette", "skipped", l2.not_implemented_reason(cli)))
+        print(f"L2 Extracción de paleta: not implemented ({l2.not_implemented_reason(cli)})")
+        return layer
+    print(f"L2 extracción de paleta ({'fast: 40 composiciones, 8 invariancias' if fast else '200 composiciones, 30 invariancias'})")
+    try:
+        checks, _detail = l2.run_layer2(cli, thresholds, out_dir, fast)
+    except Exception as exc:  # noqa: BLE001 - el scorecard debe terminar siempre
+        import traceback
+
+        layer.checks.append(Check("oracle.l2.run_layer2", "fail", f"excepción {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1500:]}"))
+        print(f"  [   fail] oracle.l2.run_layer2: {type(exc).__name__}: {exc}")
+        layer.finalize()
+        return layer
+    layer.checks = [Check(**asdict(c)) for c in checks]
+    layer.finalize()
+    return layer
+
+
+def add_eval_fast_budget(layer2: Layer, thresholds: dict[str, Any], elapsed: float) -> None:
+    """Presupuesto de tiempo de ``make eval-fast`` (PLAN §8 F2: < 2 min), leído de
+    ``thresholds.json`` L2.eval_fast_seconds_max; se anota en la capa 2 y se re-evalúa su estado."""
+    limit = (thresholds.get("L2") or {}).get("eval_fast_seconds_max")
+    if limit is None or layer2.status == "not implemented":
+        return
+    elapsed = round(elapsed, 1)
+    check = Check(
+        f"make eval-fast completo < {float(limit):.0f} s (L2.eval_fast_seconds_max)",
+        "pass" if elapsed < float(limit) else "fail",
+        f"{elapsed} s (L0 + L1 fast + L2 fast, incluido make build/test)",
+        value=elapsed, threshold=float(limit), seconds=elapsed,
+    )
+    layer2.checks.append(check)
+    layer2.finalize()
+    print(f"  [{check.status:>7}] {check.name}: {check.detail}")
+
+
+# --------------------------------------------------------------------------------------
 # Scorecard
 # --------------------------------------------------------------------------------------
 
@@ -505,7 +554,7 @@ def build_summary(layers: list[Layer], protected: Check) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--fast", action="store_true", help="solo L1 con diff-oracle de 10k colores")
+    ap.add_argument("--fast", action="store_true", help="L1 con diff-oracle de 10k colores y L2 con 40 composiciones y 8 invariancias")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help="directorio del scorecard (harness/out)")
     ap.add_argument("--cli", type=str, default=None, help="ruta al ejecutable 'ce' (por defecto build/tools/ce)")
     ap.add_argument("--no-make", action="store_true", help="no ejecutar make test/diff-oracle/dict-check (depuración)")
@@ -534,10 +583,13 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     cli = find_cli(args.cli)
     layers.append(run_layer1(cli, thresholds, dictionary, out_dir, args.fast, args.no_make))
-    for layer_id, title in LAYERS[1:]:
+    layers.append(run_layer2(cli, thresholds, out_dir, args.fast))
+    for layer_id, title in LAYERS[2:]:
         layer = Layer(layer_id, title, status="not implemented")
         layers.append(layer)
         print(f"{layer_id} {title}: {NOT_IMPLEMENTED_LAYERS[layer_id]}")
+    if args.fast:
+        add_eval_fast_budget(layers[1], thresholds, time.perf_counter() - started)
 
     all_green = protected.ok and all(layer.status == "pass" for layer in layers)
     exit_code = 0 if all_green else 1

@@ -1,7 +1,7 @@
 # colorsApp — reglas para agentes
 
 App iOS nativa que reconoce en una foto la combinación de colores de Sanzo Wada
-más parecida. Plan completo: `docs/` (DECISIONS.md, RELEASE.md). Idioma: docs y
+más parecida. Plan completo: `docs/` (DECISIONS.md, RELEASE.md, SETUP.md). Idioma: docs y
 comentarios en español; identificadores, ficheros y símbolos en inglés.
 
 ## Decisiones fijas (no se debaten; ver docs/DECISIONS.md)
@@ -34,11 +34,17 @@ comentarios en español; identificadores, ficheros y símbolos en inglés.
 | `make check-protected` | Falla si el árbol toca rutas protegidas o el manifiesto sha256 no cuadra |
 | `make protected-hash` | Regenera `harness/PROTECTED.sha256` (exige `COLORSAPP_ALLOW_PROTECTED=1`) |
 | `make hooks` | Instala `harness/hooks/pre-commit` en `.git/hooks` |
-| `make eval` / `eval-fast` | Scorecard completo de las capas L1–L4 / L1+L2+10 % de L3 (fase 1+) |
+| `make bootstrap` | Reproduce el toolchain sin sudo: `brew install` de lo que falte (cmake, emscripten, uv, xcodegen), `uv sync`, `hooks`, `doctor` (`docs/SETUP.md`) |
+| `make release-week DEVICES="<udid> <udid>"` | Ritual semanal (§3 del plan): `check-protected` + gate `RELEASE_GATE=test|eval-fast|eval` (hoy `test`) + `ios-lint` + `ios-install` por UDID; sin `DEVICES` solo comprueba |
+| `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | `fuzz_palette` (paleta + parser PNM) bajo ASan/UBSan en `build-asan/`; 0 fallos exigidos |
+| `make bench-palette` | `PERF_1024_RGBA_MS` de la extracción en nativo -O2 (anotar en `engine/BENCHLOG.md`) |
+| `make l2` / `l2-fast` | Solo la capa 2 del harness (200 composiciones + invariancias / versión rápida) |
+| `make eval` / `eval-fast` | Scorecard completo de las capas L1–L4 / L1+L2+10 % de L3 (L1 y L2 desde la fase 2) |
 | `make ios-generate` | `xcodegen generate` en `ios/` (crea `ios/Signing.xcconfig` desde la plantilla si falta) |
 | `make ios-build-sim` / `ios-build-device-nosign` | Build sin firma para simulador / dispositivo genérico |
 | `make ios-test-sim` / `ios-run-sim` | XCTest en el primer iPhone simulado / boot+install+launch y captura `harness/out/stub.png` |
 | `make ios-install DEVICE=<udid>` | Build firmada + `devicectl install` + launch en un iPhone (exige identidad Apple Development) |
+| `make ios-lint` | Falla si `ios/` (sin el `.xcodeproj` generado ni `build-ios/`) contiene `URLSession|NWConnection|CFNetwork` |
 
 Python siempre vía uv: `uv run --project oracle python ...` (el venv vive en `oracle/.venv`).
 El Makefile raíz no se edita: cada área añade sus targets en `mk/<area>.mk` usando

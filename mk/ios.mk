@@ -8,6 +8,8 @@
 #   make ios-test-sim             xcodebuild test en el primer iPhone simulado disponible
 #   make ios-run-sim              boot + install + launch en simulador y captura harness/out/stub.png
 #   make ios-install DEVICE=<udid>  build firmada + devicectl install + launch (exige identidad)
+#   make ios-lint                 sin red en la app: 0 referencias a URLSession|NWConnection|CFNetwork
+#                                 en ios/ (sin el .xcodeproj generado ni build-ios/); exit 1 si hay alguna
 #
 # Variables: SIM_UDID (simulador; por defecto el primer iPhone disponible),
 # DEVICE (UDID físico, ver `xcrun devicectl list devices`), IOS_CONFIG (Debug).
@@ -26,7 +28,7 @@ SIM_APP    := $(BUILD_IOS)/Build/Products/$(IOS_CONFIG)-iphonesimulator/ColorsAp
 DEVICE_APP := $(BUILD_IOS)/Build/Products/$(IOS_CONFIG)-iphoneos/ColorsApp.app
 STUB_PNG   := $(ROOT)/harness/out/stub.png
 
-.PHONY: ios-generate ios-build-sim ios-build-device-nosign ios-test-sim ios-run-sim ios-install ios-clean
+.PHONY: ios-generate ios-build-sim ios-build-device-nosign ios-test-sim ios-run-sim ios-install ios-lint ios-clean
 
 ios-generate:
 	@test -f $(IOS_DIR)/Signing.xcconfig || { cp $(IOS_DIR)/Signing.example.xcconfig $(IOS_DIR)/Signing.xcconfig && echo "ios-generate: creado ios/Signing.xcconfig desde la plantilla (DEVELOPMENT_TEAM = REEMPLAZAR)"; }
@@ -78,3 +80,21 @@ ios-install: $(IOS_PROJ)/project.pbxproj
 
 ios-clean:
 	rm -rf $(BUILD_IOS) $(IOS_PROJ)
+
+# Sin red en la app (CLAUDE.md, §7 del plan): ninguna referencia a URLSession,
+# NWConnection ni CFNetwork en ios/. Se excluyen el .xcodeproj generado por
+# xcodegen y cualquier build-ios/ (DerivedData). Forma parte de make release-week
+# desde F0 y de make eval desde F6. grep devuelve 1 cuando no hay coincidencias
+# (eso es el OK) y 0 cuando las hay (eso es el fallo); >1 es un error de grep.
+IOS_LINT_PATTERN := URLSession|NWConnection|CFNetwork
+
+ios-lint:
+	@out=$$(grep -rnE --exclude-dir='*.xcodeproj' --exclude-dir=build-ios '$(IOS_LINT_PATTERN)' $(IOS_DIR)); rc=$$?; \
+	if [ $$rc -eq 0 ]; then \
+	  printf '%s\n' "$$out"; \
+	  echo "ios-lint: FALLO: $$(printf '%s\n' "$$out" | wc -l | tr -d ' ') línea(s) con $(IOS_LINT_PATTERN) en ios/ (la app no usa red)"; exit 1; \
+	elif [ $$rc -eq 1 ]; then \
+	  echo "ios-lint: OK (0 referencias a $(IOS_LINT_PATTERN) en ios/, sin contar *.xcodeproj ni build-ios/)"; \
+	else \
+	  echo "ios-lint: grep falló (rc=$$rc)"; exit $$rc; \
+	fi

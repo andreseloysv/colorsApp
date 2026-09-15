@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "note": "Propuesta del agente (fase 2). Solo el usuario promueve copiando estas claves a harness/thresholds.json y rellenando promoted_by.",
+  "L2": {
+    "compositions_fast": 40,
+    "invariance_compositions": 30,
+    "invariance_compositions_fast": 8,
+    "l2_fast_seconds_max": 60
+  }
+}

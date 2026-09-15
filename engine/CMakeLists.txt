@@ -1,6 +1,7 @@
-# CMake del motor de color (capa 1). Compila en nativo (clang) y con Emscripten
-# (emcmake cmake ...). En WASM los ejecutables salen como .js y ctest los corre
-# con node (CMAKE_CROSSCOMPILING_EMULATOR lo fija el toolchain de Emscripten).
+# CMake del motor de color (capas 1 y 2). Compila en nativo (clang) y con
+# Emscripten (emcmake cmake ...). En WASM los ejecutables salen como .js y ctest
+# los corre con node (CMAKE_CROSSCOMPILING_EMULATOR lo fija el toolchain de
+# Emscripten).
 cmake_minimum_required(VERSION 3.20)
 
 project(colorengine LANGUAGES C)
@@ -32,7 +33,10 @@ endif()
 # ---- librería -------------------------------------------------------------
 add_library(colorengine STATIC
   Sources/CColorEngine/ce_math.c
-  Sources/CColorEngine/ce_dict.c)
+  Sources/CColorEngine/ce_dict.c
+  Sources/CColorEngine/ce_ctx.c
+  Sources/CColorEngine/ce_image.c
+  Sources/CColorEngine/ce_palette.c)
 target_include_directories(colorengine PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CColorEngine/include>)
 target_compile_options(colorengine PRIVATE ${CE_STRICT_FLAGS})
@@ -42,7 +46,10 @@ endif()
 
 # ---- CLI ------------------------------------------------------------------
 if(CE_BUILD_CLI)
-  add_executable(ce tools/ce_cli.c)
+  # ce_pnm.c (parser P6/P5, entrada no confiable) vive en tools/, fuera del
+  # target SPM; lo comparten el CLI y el fuzz loop.
+  add_executable(ce tools/ce_cli.c tools/ce_pnm.c)
+  target_include_directories(ce PRIVATE tools)
   target_link_libraries(ce PRIVATE colorengine)
   target_compile_options(ce PRIVATE ${CE_STRICT_FLAGS})
   set_target_properties(ce PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
@@ -93,4 +100,68 @@ if(CE_BUILD_TESTS)
     add_test(NAME test_dict COMMAND test_dict)
   endif()
   set_tests_properties(test_dict PROPERTIES TIMEOUT 120)
+  # ---- capa 2 -------------------------------------------------------------
+  # Directorio de salida de los fixtures que escribe test_palette (PPM/PGM
+  # sintéticos) y que consumen los tests del CLI.
+  set(CE_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/testout")
+  file(MAKE_DIRECTORY "${CE_TEST_OUT_DIR}")
+
+  # Contexto: presupuesto (<= 2 MiB), alineación, validación de imagen y opciones.
+  add_executable(test_ctx tests/test_ctx.c)
+  target_link_libraries(test_ctx PRIVATE colorengine unity)
+  target_compile_options(test_ctx PRIVATE ${CE_STRICT_FLAGS})
+  if(EMSCRIPTEN)
+    target_link_options(test_ctx PRIVATE -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME test_ctx COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_ctx>)
+  else()
+    add_test(NAME test_ctx COMMAND test_ctx)
+  endif()
+  set_tests_properties(test_ctx PROPERTIES TIMEOUT 120)
+
+  # Paleta: composiciones sintéticas, invariancias, máscara, formatos/stride,
+  # parser PNM y rendimiento (1024x1024 RGBA). Compila también ce_pnm.c.
+  add_executable(test_palette tests/test_palette.c tools/ce_pnm.c)
+  target_include_directories(test_palette PRIVATE tools)
+  target_link_libraries(test_palette PRIVATE colorengine unity)
+  target_compile_options(test_palette PRIVATE ${CE_STRICT_FLAGS})
+  target_compile_definitions(test_palette PRIVATE CE_TEST_OUT_DIR="${CE_TEST_OUT_DIR}")
+  # La cota de 150 ms solo se exige en nativo -O2 sin sanitizers; en ASan y
+  # WASM se mide e imprime.
+  if(NOT EMSCRIPTEN AND NOT CE_SANITIZE)
+    target_compile_definitions(test_palette PRIVATE CE_PERF_GATE_MS=150)
+  endif()
+  if(EMSCRIPTEN)
+    target_link_options(test_palette PRIVATE -sNODERAWFS=1 -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME test_palette COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_palette>)
+  else()
+    add_test(NAME test_palette COMMAND test_palette)
+  endif()
+  set_tests_properties(test_palette PROPERTIES TIMEOUT 600 FIXTURES_SETUP palette_fixtures)
+
+  # Fuzz loop propio (Apple clang no trae libFuzzer): PRNG xorshift64* con
+  # semilla, ce_palette_extract + ce_pnm_parse. `make fuzz` lo ejecuta 600 s
+  # bajo ASan/UBSan; aquí solo un humo de 2 s para que ctest lo compile y lo
+  # ejercite en cada build (nativo, ASan y WASM).
+  add_executable(fuzz_palette tests/fuzz_palette.c tools/ce_pnm.c)
+  target_include_directories(fuzz_palette PRIVATE tools)
+  target_link_libraries(fuzz_palette PRIVATE colorengine)
+  target_compile_options(fuzz_palette PRIVATE ${CE_STRICT_FLAGS})
+  if(EMSCRIPTEN)
+    target_link_options(fuzz_palette PRIVATE -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME fuzz_smoke COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:fuzz_palette> 1 2)
+  else()
+    add_test(NAME fuzz_smoke COMMAND fuzz_palette 1 2)
+  endif()
+  set_tests_properties(fuzz_smoke PROPERTIES TIMEOUT 120)
+
+  # CLI de extremo a extremo sobre los fixtures de test_palette: JSON válido con
+  # "hash" (exit 0) y fichero truncado -> exit 2 exactamente.
+  if(CE_BUILD_CLI)
+    add_test(NAME cli_palette_json
+      COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> palette ${CE_TEST_OUT_DIR}/palette_3blocks.ppm --mask ${CE_TEST_OUT_DIR}/palette_mask.pgm --center-sigma 0 --json | grep -Eq '\"hash\": \"[0-9a-f]{16}\"'")
+    add_test(NAME cli_palette_truncated
+      COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> palette ${CE_TEST_OUT_DIR}/palette_truncated.ppm --json >/dev/null 2>&1; test $? -eq 2")
+    set_tests_properties(cli_palette_json cli_palette_truncated PROPERTIES
+      FIXTURES_REQUIRED palette_fixtures TIMEOUT 60)
+  endif()
 endif()
