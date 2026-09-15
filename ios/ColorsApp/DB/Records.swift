@@ -1,11 +1,12 @@
 // Registros GRDB (Codable + FetchableRecord + PersistableRecord) de las cuatro
-// tablas de la migración v1. Columnas en snake_case (estrategia de GRDB);
+// tablas (migraciones v1 y v2). Columnas en snake_case (estrategia de GRDB);
 // propiedades en camelCase. Todas llevan las columnas sync-ready
 // updated_at / deleted_at / rev / dirty (PLAN §7): los repositorios las
 // mantienen; la UI no las toca.
 import Foundation
 import GRDB
 import ColorEngine
+import SubjectKit
 
 /// Origen de un scan / unlock.
 enum ScanSource: String, Codable, Sendable, CaseIterable {
@@ -17,6 +18,18 @@ enum ScanSource: String, Codable, Sendable, CaseIterable {
     case library
     /// Desbloqueo manual desde Explorar/Rejilla (sin foto).
     case manual
+}
+
+extension ScanSource {
+    /// Origen en minúsculas para frases ("carrete", "cámara"...).
+    var label: String {
+        switch self {
+        case .camera: "cámara"
+        case .picker: "foto elegida"
+        case .library: "carrete"
+        case .manual: "manual"
+        }
+    }
 }
 
 /// Veredicto del usuario sobre un resultado ("sí, es eso" / "no").
@@ -92,6 +105,20 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
     var deletedAt: Date?
     var rev: Int
     var dirty: Bool
+    // v2: recorte de sujeto (nil en scans anteriores a v2).
+    /// `SubjectMode.rawValue` con el que se calculó la máscara.
+    var subjectMode: String? = nil
+    /// `RegionMode.rawValue`.
+    var regionMode: String? = nil
+    var adaptiveSkin: Bool? = nil
+    /// Personas que detectó Vision (0 sin personas, con Vision no disponible o modo off).
+    var peopleCount: Int? = nil
+    /// Índice (en las personas por cobertura descendente) de la persona usada; nil con allPeople/off.
+    var personIndex: Int? = nil
+    /// JSON `[MaskFallback.rawValue]` con los pasos de la cadena de máscaras.
+    var maskSteps: String? = nil
+    /// Cobertura de la máscara entregada al motor (0 sin máscara).
+    var maskCoverage: Double? = nil
 
     enum Columns {
         static let id = Column(CodingKeys.id)
@@ -103,11 +130,13 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
     }
 
     /// Construye el registro a partir del resultado del motor. `id` nuevo (UUIDv7) si no se pasa.
+    /// `subject`: opciones y pasos del recorte (nil = sin datos de recorte).
     static func make(from result: AnalysisResult, source: ScanSource, assetLocalId: String? = nil,
+                     subject: ScanSubjectInfo? = nil,
                      engineVersion: String = colorEngineVersion, dictVersion: String = dictionaryVersion,
                      now: Date = Date(), id: String? = nil) -> ScanRecord {
         let ids = result.hits.map(\.comboId)
-        return ScanRecord(
+        var record = ScanRecord(
             id: id ?? UUIDv7.string(now: now),
             assetLocalId: assetLocalId,
             source: source,
@@ -125,6 +154,38 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
             rev: 1,
             dirty: true
         )
+        if let subject {
+            record.apply(subject: subject)
+        }
+        return record
+    }
+
+    /// Sustituye resultado y recorte (p. ej. al elegir otra persona en Resultado):
+    /// mismo id y origen, rev + 1 y dirty.
+    func updated(with result: AnalysisResult, subject: ScanSubjectInfo?, now: Date = Date()) -> ScanRecord {
+        var copy = ScanRecord.make(from: result, source: source, assetLocalId: assetLocalId, subject: subject,
+                                   engineVersion: engineVersion, dictVersion: dictVersion, now: scannedAt, id: id)
+        copy.updatedAt = updatedAt
+        copy.rev = rev
+        copy.deletedAt = deletedAt
+        copy.touch(now: now)
+        return copy
+    }
+
+    mutating func apply(subject: ScanSubjectInfo) {
+        subjectMode = subject.mode.rawValue
+        regionMode = subject.region.rawValue
+        adaptiveSkin = subject.adaptiveSkin
+        peopleCount = subject.peopleCount
+        personIndex = subject.personIndex
+        maskSteps = JSONCoding.encode(subject.steps.map(\.rawValue))
+        maskCoverage = subject.maskCoverage
+    }
+
+    /// Pasos del recorte decodificados (vacío en scans anteriores a v2).
+    var maskStepValues: [MaskFallback] {
+        guard let maskSteps, let raw = JSONCoding.decode([String].self, from: maskSteps) else { return [] }
+        return raw.compactMap(MaskFallback.init(rawValue:))
     }
 
     /// Ids del top-3 en orden (los no nulos).

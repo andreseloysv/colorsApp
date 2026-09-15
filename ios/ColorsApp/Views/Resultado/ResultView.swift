@@ -1,9 +1,13 @@
-// Pantalla Resultado (PLAN §7.3): foto, paleta con pesos, top-1 grande
-// (nombre curado o "Nº 012", tamaño/colección, swatches), top-2 y top-3,
-// "Entre A y B" si es ambiguo, "Sí, es eso" / "No", "Desbloquear" y
-// "Compartir tarjeta" (ShareLink con la tarjeta de 1080 x 1350).
+// Pantalla Resultado (PLAN §7.3): foto (con "Ver máscara"), aviso con los pasos
+// del recorte de sujeto, fila "Personas" si hay dos o más (miniaturas y "Todas";
+// tocar una re-analiza sin volver a ejecutar Vision), "Ver capas" (inspector de
+// las 11 capas del análisis), paleta con pesos, top-1 grande (nombre curado o
+// "Nº 012", tamaño/colección, swatches), top-2 y top-3, "Entre A y B" si es
+// ambiguo, "Sí, es eso" / "No", "Desbloquear" y "Compartir tarjeta" (ShareLink
+// con la tarjeta de 1080 x 1350).
 import SwiftUI
 import UIKit
+import SubjectKit
 
 struct ResultView: View {
     @StateObject private var model: ResultViewModel
@@ -17,10 +21,9 @@ struct ResultView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 photo
-                if let note = model.outcome.maskNote {
-                    Label(note, systemImage: model.outcome.maskApplied ? "person.crop.rectangle" : "person.crop.rectangle.badge.xmark")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                subjectSection
+                if model.showsPeopleRow {
+                    peopleSection
                 }
                 paletteSection
                 topSection
@@ -35,7 +38,9 @@ struct ResultView: View {
                         .foregroundStyle(.red)
                         .accessibilityIdentifier("result.error")
                 }
-                Text("Motor \(model.outcome.scan.engineVersion) · diccionario \(model.outcome.scan.dictVersion) · \(model.outcome.elapsedMs) ms")
+                Text(String(format: "Motor %@ · diccionario %@ · %d ms (Vision %.0f · máscara %.0f · motor %.0f)",
+                            model.outcome.scan.engineVersion, model.outcome.scan.dictVersion, model.outcome.elapsedMs,
+                            model.outcome.timings.visionMs, model.outcome.timings.maskMs, model.outcome.timings.engineMs))
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }
@@ -49,15 +54,131 @@ struct ResultView: View {
                 shareImage = model.makeShareImage()
             }
         }
+        .onChange(of: model.outcome.scan.rev) { _, _ in
+            shareImage = model.makeShareImage()
+        }
     }
 
     private var photo: some View {
         Image(decorative: model.outcome.image, scale: 1)
             .resizable()
             .scaledToFit()
-            .frame(maxWidth: .infinity, maxHeight: 240)
+            .overlay {
+                if model.showMask, let overlay = model.maskOverlay {
+                    Image(decorative: overlay, scale: 1)
+                        .resizable()
+                        .accessibilityIdentifier("result.maskOverlay")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: 300)
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(alignment: .topTrailing) {
+                if model.reanalyzing {
+                    ProgressView()
+                        .padding(8)
+                        .background(.thinMaterial, in: Circle())
+                        .padding(8)
+                }
+            }
             .accessibilityIdentifier("result.photo")
+    }
+
+    /// Aviso con los pasos aplicados y los botones "Ver máscara" / "Ver capas".
+    private var subjectSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            let notice = model.maskNotice
+            Label(notice.text, systemImage: notice.systemImage)
+                .font(.footnote)
+                .foregroundStyle(notice.isFallback ? Color.orange : Color.secondary)
+                .accessibilityIdentifier("result.subjectNotice")
+            HStack(spacing: 12) {
+                Button {
+                    model.showMask.toggle()
+                } label: {
+                    Label(model.showMask ? "Ocultar máscara" : "Ver máscara",
+                          systemImage: model.showMask ? "eye.slash" : "theatermask.and.paintbrush")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.maskOverlay == nil)
+                .accessibilityIdentifier("result.showMask")
+                NavigationLink(value: LayersRoute(outcome: model.outcome)) {
+                    Label("Ver capas", systemImage: "square.3.layers.3d")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.reanalyzing)
+                .accessibilityIdentifier("result.layers")
+            }
+            .font(.subheadline)
+        }
+    }
+
+    /// Fila "Personas": miniatura de cada persona (bbox de su instancia) y "Todas".
+    private var peopleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Personas")
+                .font(.headline)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Array(model.personThumbnails.enumerated()), id: \.offset) { index, thumb in
+                        personButton(.person(index)) {
+                            Image(decorative: thumb, scale: 1)
+                                .resizable()
+                                .scaledToFill()
+                        } caption: {
+                            index == 0 ? "1 · principal" : "\(index + 1)"
+                        }
+                    }
+                    personButton(.all) {
+                        ZStack {
+                            Color(.secondarySystemBackground)
+                            Image(systemName: "person.3.fill")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                        }
+                    } caption: {
+                        "Todas"
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            if model.verdict != nil {
+                Text("Ya has votado este resultado: para usar otra persona, analiza la foto de nuevo.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityIdentifier("result.people")
+    }
+
+    private func personButton<Content: View>(_ choice: ResultViewModel.PersonChoice,
+                                             @ViewBuilder content: () -> Content,
+                                             caption: () -> String) -> some View {
+        let selected = model.currentChoice == choice
+        let label = caption()
+        return Button {
+            Task { await model.choose(choice) }
+        } label: {
+            VStack(spacing: 4) {
+                content()
+                    .frame(width: 64, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: selected ? 3 : 1))
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.canChangePerson && !selected)
+        .accessibilityIdentifier({
+            switch choice {
+            case .all: return "result.person.all"
+            case .person(let i): return "result.person.\(i)"
+            }
+        }())
     }
 
     private var paletteSection: some View {
@@ -145,7 +266,7 @@ struct ResultView: View {
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("result.no")
             }
-            .disabled(model.verdict != nil || model.busy)
+            .disabled(model.verdict != nil || model.busy || model.reanalyzing)
         }
     }
 

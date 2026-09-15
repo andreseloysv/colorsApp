@@ -1,0 +1,389 @@
+{
+ "schema": 1,
+ "kind": "subjectkit-people-references",
+ "description": "Referencias de color de piel y de fondo/objetos de harness/people para medir cuánto peso de la paleta cae en piel o fondo (visionmask report --references, PeoplePhotosTests). Mediana de un parche de 7x7 px centrado en (x, y) del PNG, elegido a mano sobre la foto y revisado con un recorte ampliado. Guía para métricas informativas, no verdad de color; las prendas siguen en harness/people/expected.json.",
+ "patch": "7x7",
+ "created": "2026-09-15",
+ "photos": {
+  "01_single_black_outfit.png": {
+   "sha256": "f2d0fedf2529d9e2e1a5ffc65d71faff055cbc112633fd5405321b5801be1faa",
+   "skin": [
+    {
+     "x": 512,
+     "y": 308,
+     "hex": "#e5cbb9",
+     "name": "cara"
+    },
+    {
+     "x": 628,
+     "y": 356,
+     "hex": "#a67c6a",
+     "name": "mano derecha"
+    },
+    {
+     "x": 455,
+     "y": 462,
+     "hex": "#d3a893",
+     "name": "mano izquierda"
+    }
+   ],
+   "background": [
+    {
+     "x": 200,
+     "y": 300,
+     "hex": "#cbc7c2",
+     "name": "pared blanca"
+    },
+    {
+     "x": 636,
+     "y": 300,
+     "hex": "#bd5c51",
+     "name": "marco rojo de la reja"
+    },
+    {
+     "x": 900,
+     "y": 120,
+     "hex": "#e8e8e6",
+     "name": "reja y pared"
+    }
+   ]
+  },
+  "02_single_dress_umbrella.png": {
+   "sha256": "69d059dc22b178769901d118446950f42cffc1d7dcf474bbccb658429b2330ca",
+   "skin": [
+    {
+     "x": 315,
+     "y": 760,
+     "hex": "#d9916b",
+     "name": "muslo"
+    },
+    {
+     "x": 375,
+     "y": 850,
+     "hex": "#e5b68b",
+     "name": "espinilla"
+    },
+    {
+     "x": 470,
+     "y": 590,
+     "hex": "#d4a675",
+     "name": "antebrazo"
+    },
+    {
+     "x": 360,
+     "y": 370,
+     "hex": "#ebbe98",
+     "name": "escote"
+    }
+   ],
+   "background": [
+    {
+     "x": 150,
+     "y": 800,
+     "hex": "#e6dee1",
+     "name": "andén de ladrillo"
+    },
+    {
+     "x": 630,
+     "y": 720,
+     "hex": "#8aca3c",
+     "name": "césped"
+    },
+    {
+     "x": 60,
+     "y": 650,
+     "hex": "#feeb9b",
+     "name": "franja amarilla"
+    },
+    {
+     "x": 150,
+     "y": 260,
+     "hex": "#06070b",
+     "name": "paraguas negro"
+    }
+   ]
+  },
+  "03_couple_denim_street.png": {
+   "sha256": "8000ffae9e65d289ba06cef31884f152cac1c875fa47b28ada3aa99fd4874c81",
+   "skin": [
+    {
+     "x": 550,
+     "y": 540,
+     "hex": "#e0c2b7",
+     "name": "brazo del hombre"
+    },
+    {
+     "x": 390,
+     "y": 555,
+     "hex": "#dac1b8",
+     "name": "antebrazo del hombre"
+    },
+    {
+     "x": 478,
+     "y": 355,
+     "hex": "#e4cdbf",
+     "name": "nuca del hombre"
+    }
+   ],
+   "background": [
+    {
+     "x": 100,
+     "y": 850,
+     "hex": "#b7b0aa",
+     "name": "acera"
+    },
+    {
+     "x": 310,
+     "y": 75,
+     "hex": "#fbcf25",
+     "name": "señal amarilla"
+    },
+    {
+     "x": 620,
+     "y": 150,
+     "hex": "#485857",
+     "name": "fachada"
+    }
+   ]
+  },
+  "04_two_women_backlit.png": {
+   "sha256": "5c6ede6b96ad0704e727c89e481d307f937906f6bd232896f42eec82c91c4ce5",
+   "skin": [
+    {
+     "x": 548,
+     "y": 364,
+     "hex": "#c09c81",
+     "name": "cintura de la derecha"
+    }
+   ],
+   "background": [
+    {
+     "x": 500,
+     "y": 100,
+     "hex": "#ffffff",
+     "name": "cielo"
+    },
+    {
+     "x": 800,
+     "y": 500,
+     "hex": "#adb4bc",
+     "name": "arena"
+    },
+    {
+     "x": 330,
+     "y": 420,
+     "hex": "#d8dbe0",
+     "name": "manta blanca"
+    }
+   ]
+  },
+  "05_three_friends_closeup.png": {
+   "sha256": "39c1b8d4e3eb0ab667c38da3849ec04615719a320f983f22e1a77a9f9d3666f2",
+   "skin": [
+    {
+     "x": 300,
+     "y": 560,
+     "hex": "#f5beb5",
+     "name": "dorso de la mano"
+    },
+    {
+     "x": 390,
+     "y": 410,
+     "hex": "#f3cfbb",
+     "name": "antebrazo"
+    },
+    {
+     "x": 185,
+     "y": 262,
+     "hex": "#b38683",
+     "name": "mejilla izquierda"
+    },
+    {
+     "x": 545,
+     "y": 240,
+     "hex": "#c5877b",
+     "name": "mejilla derecha"
+    }
+   ],
+   "background": [
+    {
+     "x": 620,
+     "y": 100,
+     "hex": "#bcb5b6",
+     "name": "revestimiento beige"
+    },
+    {
+     "x": 30,
+     "y": 150,
+     "hex": "#c7c3c3",
+     "name": "revestimiento beige 2"
+    }
+   ]
+  },
+  "06_group_courier_street.png": {
+   "sha256": "78e6311982bfbdc335f5d72aff193c929469c63022f32d4a3c120ecde8619342",
+   "skin": [
+    {
+     "x": 533,
+     "y": 585,
+     "hex": "#caa19b",
+     "name": "mano de la mujer"
+    },
+    {
+     "x": 140,
+     "y": 90,
+     "hex": "#c5ada4",
+     "name": "cabeza del hombre calvo"
+    },
+    {
+     "x": 525,
+     "y": 178,
+     "hex": "#d8ab9a",
+     "name": "mejilla del hombre mayor"
+    }
+   ],
+   "background": [
+    {
+     "x": 140,
+     "y": 556,
+     "hex": "#6c4c02",
+     "name": "moto amarilla (sombra)"
+    },
+    {
+     "x": 320,
+     "y": 560,
+     "hex": "#896801",
+     "name": "caja amarilla"
+    },
+    {
+     "x": 370,
+     "y": 440,
+     "hex": "#838d9a",
+     "name": "tapa gris de la caja"
+    },
+    {
+     "x": 300,
+     "y": 950,
+     "hex": "#9c9c9a",
+     "name": "acera"
+    },
+    {
+     "x": 250,
+     "y": 30,
+     "hex": "#ede6e0",
+     "name": "fachada"
+    }
+   ]
+  },
+  "07_group_mural_white_outfits.png": {
+   "sha256": "be9339e10c9559517549b8970d7f403cb0f2e0d58b428e359cd4cfe323f69139",
+   "skin": [
+    {
+     "x": 225,
+     "y": 330,
+     "hex": "#663e38",
+     "name": "brazo izquierda"
+    },
+    {
+     "x": 705,
+     "y": 440,
+     "hex": "#985622",
+     "name": "brazo de la sentada"
+    },
+    {
+     "x": 718,
+     "y": 372,
+     "hex": "#e2a675",
+     "name": "cara de la sentada"
+    },
+    {
+     "x": 480,
+     "y": 470,
+     "hex": "#54291b",
+     "name": "pierna"
+    },
+    {
+     "x": 380,
+     "y": 145,
+     "hex": "#b46d49",
+     "name": "cara"
+    }
+   ],
+   "background": [
+    {
+     "x": 950,
+     "y": 400,
+     "hex": "#ef2c2e",
+     "name": "mural rojo"
+    },
+    {
+     "x": 380,
+     "y": 60,
+     "hex": "#bc467e",
+     "name": "mural magenta"
+    },
+    {
+     "x": 530,
+     "y": 470,
+     "hex": "#2d9eb1",
+     "name": "mural turquesa"
+    },
+    {
+     "x": 100,
+     "y": 655,
+     "hex": "#483828",
+     "name": "suelo mojado"
+    }
+   ]
+  },
+  "08_artist_colorful_mural.png": {
+   "sha256": "bb096c840a2c7e5dce037a07c24a98be04c5f2ebbaf2a1633084d2bd0c11bf6f",
+   "skin": [
+    {
+     "x": 640,
+     "y": 470,
+     "hex": "#7c625e",
+     "name": "antebrazo"
+    },
+    {
+     "x": 505,
+     "y": 445,
+     "hex": "#32211e",
+     "name": "mano"
+    },
+    {
+     "x": 865,
+     "y": 175,
+     "hex": "#8d6a58",
+     "name": "cuello"
+    }
+   ],
+   "background": [
+    {
+     "x": 620,
+     "y": 300,
+     "hex": "#ceeda2",
+     "name": "mural amarillo"
+    },
+    {
+     "x": 150,
+     "y": 380,
+     "hex": "#e25604",
+     "name": "mural naranja"
+    },
+    {
+     "x": 380,
+     "y": 510,
+     "hex": "#008d51",
+     "name": "hoja verde"
+    },
+    {
+     "x": 300,
+     "y": 40,
+     "hex": "#1e2c5c",
+     "name": "mural azul"
+    }
+   ]
+  }
+ }
+}

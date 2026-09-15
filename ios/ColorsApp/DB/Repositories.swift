@@ -4,6 +4,7 @@
 // Mantienen las columnas sync-ready: updated_at, rev, dirty y borrado suave.
 import Foundation
 import GRDB
+import SubjectKit
 
 // MARK: - scans
 
@@ -54,6 +55,12 @@ struct ScanRepository: Sendable {
     /// Borra todos los scans de un origen (p. ej. "Rehacer escaneo": `.library`).
     func deleteAll(source: ScanSource) async throws {
         _ = try await db.write { db in try ScanRecord.filter(ScanRecord.Columns.source == source.rawValue).deleteAll(db) }
+    }
+
+    /// Actualiza un scan existente (p. ej. otra persona elegida en Resultado).
+    /// El llamador debe haber hecho `touch` (ScanRecord.updated(with:subject:)).
+    func update(_ scan: ScanRecord) async throws {
+        try await db.write { db in try scan.update(db) }
     }
 
     /// Observación de los últimos scans (emite el valor actual y cada cambio).
@@ -116,6 +123,14 @@ struct UnlockRepository: Sendable {
         try UnlockRecord(comboId: comboId, firstSeenAt: date, source: source, assetLocalId: assetLocalId,
                          scanId: scanId).insert(db)
         return true
+    }
+
+    /// Desbloqueo vivo de una combinación (nil si no está desbloqueada).
+    func record(comboId: Int) async throws -> UnlockRecord? {
+        try await db.read { db in
+            try UnlockRecord.filter(UnlockRecord.Columns.comboId == comboId && UnlockRecord.Columns.deletedAt == nil)
+                .fetchOne(db)
+        }
     }
 
     func isUnlocked(comboId: Int) async throws -> Bool {
@@ -231,8 +246,20 @@ struct FeedbackRepository: Sendable {
 struct SettingsRepository: Sendable {
     /// Claves conocidas (tabla `settings`, valor TEXT).
     enum Key: String, Sendable, CaseIterable {
-        /// "true"/"false": máscara de persona (Vision) en el análisis. Apagado por defecto.
+        /// HEREDADA (F6): "true"/"false", máscara de persona única de Vision. Solo
+        /// la lee la migración v2, que la convierte en `subject_mode`/`region_mode`
+        /// y la marca borrada; la app ya no la escribe.
         case personMask = "person_mask"
+        /// `SubjectMode` del recorte: off | allPeople | largestPerson (defecto largestPerson).
+        case subjectMode = "subject_mode"
+        /// `RegionMode`: wholePerson | clothing (defecto clothing).
+        case regionMode = "region_mode"
+        /// "true"/"false": exclusión adaptativa de piel (defecto true).
+        case adaptiveSkin = "adaptive_skin"
+        /// Double: score máximo del top-1 para desbloquear en el escaneo del carrete (defecto 12.0).
+        case unlockMaxScore = "unlock_max_score"
+        /// "true": el usuario saltó la presentación del escaneo del carrete en Hoy.
+        case scanOnboardingSkipped = "scan_onboarding_skipped"
         /// "true"/"false": el escaneo del carrete (día 0) ya se hizo.
         case initialScanDone = "initial_scan_done"
         /// ISO 8601 del último escaneo del carrete.
@@ -286,6 +313,30 @@ struct SettingsRepository: Sendable {
 
     func setInt(_ key: Key, _ value: Int) async throws {
         try await set(key, String(value))
+    }
+
+    func double(_ key: Key, default defaultValue: Double) async throws -> Double {
+        guard let raw = try await get(key), let v = Double(raw), v.isFinite else { return defaultValue }
+        return v
+    }
+
+    func setDouble(_ key: Key, _ value: Double) async throws {
+        try await set(key, String(value))
+    }
+
+    /// Ajustes del recorte y del desbloqueo con sus valores por defecto (un valor
+    /// ilegible o `selectedPerson`, que no es un ajuste, cuenta como ausente).
+    func subjectSettings() async throws -> SubjectSettings {
+        var out = SubjectSettings.default
+        if let raw = try await get(.subjectMode), let mode = SubjectMode(rawValue: raw), mode != .selectedPerson {
+            out.mode = mode
+        }
+        if let raw = try await get(.regionMode), let region = RegionMode(rawValue: raw) {
+            out.region = region
+        }
+        out.adaptiveSkin = try await bool(.adaptiveSkin, default: SubjectSettings.default.adaptiveSkin)
+        out.unlockMaxScore = try await double(.unlockMaxScore, default: SubjectSettings.default.unlockMaxScore)
+        return out
     }
 
     /// Observación del valor de una clave (nil si no existe o está borrada).

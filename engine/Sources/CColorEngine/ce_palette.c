@@ -376,8 +376,22 @@ static int ce_centers_compact(ce_ctx *ctx, int k)
     return n;
 }
 
-/* Fusiona iterativamente el par más próximo mientras ΔE00 < merge_de. */
-static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de)
+/* Contabilidad de depuración de una fusión: todos los clusters del grupo de
+ * `absorbed` pasan al grupo de `head` (solo enteros). */
+static void ce_debug_merge_groups(ce_ctx *ctx, int head, int absorbed)
+{
+    int c;
+    for (c = 0; c < ctx->dbg.n_clusters; ++c) {
+        if (ctx->dbg.clusters[c].group_head == absorbed) {
+            ctx->dbg.clusters[c].group_head = head;
+        }
+    }
+}
+
+/* Fusiona iterativamente el par más próximo mientras ΔE00 < merge_de.
+ * `slot` (contabilidad de depuración) sigue a los centros: slot[i] es el
+ * cluster representante del grupo que ocupa la posición i. */
+static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de, int *slot)
 {
     if (!(merge_de > 0.0)) {
         return n;
@@ -407,8 +421,10 @@ static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de)
             a->lab.b = (a->wsum * a->lab.b + b->wsum * b->lab.b) / w;
             a->wsum = w;
         }
+        ce_debug_merge_groups(ctx, slot[bi], slot[bj]);
         for (j = bj + 1; j < n; ++j) {
             ctx->centers[j - 1] = ctx->centers[j];
+            slot[j - 1] = slot[j];
         }
         --n;
     }
@@ -417,7 +433,7 @@ static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de)
 
 /* Descarta los centros con peso relativo < min_weight; el más pesado (primero
  * en caso de empate) siempre se conserva. */
-static int ce_centers_discard(ce_ctx *ctx, int n, double min_weight)
+static int ce_centers_discard(ce_ctx *ctx, int n, double min_weight, int *slot)
 {
     double total = 0.0;
     int heaviest = 0, j, m = 0;
@@ -434,6 +450,7 @@ static int ce_centers_discard(ce_ctx *ctx, int n, double min_weight)
         if (j == heaviest || ctx->centers[j].wsum / total >= min_weight) {
             if (m != j) {
                 ctx->centers[m] = ctx->centers[j];
+                slot[m] = slot[j];
             }
             ++m;
         }
@@ -496,6 +513,112 @@ static int ce_palette_fallback_mean(const ce_ctx *ctx, ce_swatch *out)
 }
 
 /* ------------------------------------------------------------------------
+ * Contabilidad de las capas de depuración (ce_debug.c). Solo copia valores y
+ * mueve enteros: ninguna operación de coma flotante del resultado cambia.
+ * ---------------------------------------------------------------------- */
+
+/* Estado de la paleta de reserva (peso total 0): sin clusters. */
+static void ce_debug_fallback(ce_ctx *ctx, double total, double sigma_px)
+{
+    int j;
+    ctx->dbg.lloyd_iterations = 0;
+    ctx->dbg.n_clusters = 0;
+    ctx->dbg.n_swatches = 1;
+    ctx->dbg.total_weight = total > 0.0 ? total : 0.0;
+    ctx->dbg.center_sigma_px = sigma_px;
+    for (j = 0; j < CE_PALETTE_K_MAX; ++j) {
+        ctx->dbg.center_label[j] = (uint8_t)CE_LABEL_NONE;
+        ctx->dbg.center_cluster[j] = (uint8_t)CE_LABEL_NONE;
+    }
+    ctx->dbg.valid = 1;
+}
+
+/* Antes de compactar: los k centros de Lloyd no vacíos pasan a clusters[] en
+ * orden de índice (el mismo orden que deja ce_centers_compact); slot[c] = c. */
+static void ce_debug_record_clusters(ce_ctx *ctx, int k, int *slot)
+{
+    int j, c = 0;
+    for (j = 0; j < CE_PALETTE_K_MAX; ++j) {
+        ctx->dbg.center_label[j] = (uint8_t)CE_LABEL_NONE;
+        ctx->dbg.center_cluster[j] = (uint8_t)CE_LABEL_NONE;
+    }
+    for (j = 0; j < k; ++j) {
+        const ce_center *ce = &ctx->centers[j];
+        ce_cluster_debug *cd;
+        if (!(ce->wsum > 0.0)) {
+            continue;
+        }
+        cd = &ctx->dbg.clusters[c];
+        cd->lab = ce->lab;
+        ce_lab_to_srgb8(ce->lab, &cd->rgb[0], &cd->rgb[1], &cd->rgb[2]);
+        cd->weight = ce->wsum; /* se normaliza en ce_debug_finish */
+        cd->fate = CE_FATE_DISCARDED;
+        cd->final_index = -1;
+        cd->group_head = c;
+        ctx->dbg.center_cluster[j] = (uint8_t)c;
+        slot[c] = c;
+        ++c;
+    }
+    ctx->dbg.n_clusters = c;
+    for (j = c; j < CE_PALETTE_K_MAX; ++j) {
+        ce_cluster_debug *cd = &ctx->dbg.clusters[j];
+        cd->lab.L = cd->lab.a = cd->lab.b = 0.0;
+        cd->rgb[0] = cd->rgb[1] = cd->rgb[2] = 0;
+        cd->weight = 0.0;
+        cd->fate = 0;
+        cd->final_index = 0;
+        cd->group_head = 0;
+    }
+}
+
+/* Tras descartar (n_kept posiciones), ordenar (`order`) y recortar (n_out):
+ * destino de cada cluster y etiqueta de cada centro de Lloyd. */
+static void ce_debug_finish(ce_ctx *ctx, int k, int n_kept, int n_out, const int *order,
+                            const int *slot, int lloyd_iterations, double total, double sigma_px)
+{
+    enum { HEAD_DISCARDED = -1, HEAD_TRUNCATED = -2 };
+    int head_label[CE_PALETTE_K_MAX];
+    double wsum = 0.0;
+    int c, j;
+    const int nc = ctx->dbg.n_clusters;
+
+    for (c = 0; c < nc; ++c) {
+        head_label[c] = HEAD_DISCARDED;
+        wsum += ctx->dbg.clusters[c].weight;
+    }
+    for (j = 0; j < n_kept; ++j) {
+        head_label[slot[order[j]]] = (j < n_out) ? j : HEAD_TRUNCATED;
+    }
+    for (c = 0; c < nc; ++c) {
+        ce_cluster_debug *cd = &ctx->dbg.clusters[c];
+        const int hl = head_label[cd->group_head];
+        cd->weight = wsum > 0.0 ? cd->weight / wsum : 0.0;
+        if (hl >= 0) {
+            cd->fate = (cd->group_head == c) ? CE_FATE_KEPT : CE_FATE_MERGED;
+            cd->final_index = hl;
+        } else {
+            cd->fate = (hl == HEAD_TRUNCATED) ? CE_FATE_TRUNCATED : CE_FATE_DISCARDED;
+            cd->final_index = -1;
+        }
+    }
+    for (j = 0; j < k && j < CE_PALETTE_K_MAX; ++j) {
+        const int c2 = ctx->dbg.center_cluster[j];
+        if (c2 == CE_LABEL_NONE || c2 >= nc) {
+            ctx->dbg.center_label[j] = (uint8_t)CE_LABEL_NONE;
+        } else if (ctx->dbg.clusters[c2].final_index >= 0) {
+            ctx->dbg.center_label[j] = (uint8_t)ctx->dbg.clusters[c2].final_index;
+        } else {
+            ctx->dbg.center_label[j] = (uint8_t)CE_LABEL_DISCARDED;
+        }
+    }
+    ctx->dbg.lloyd_iterations = lloyd_iterations;
+    ctx->dbg.n_swatches = n_out;
+    ctx->dbg.total_weight = total;
+    ctx->dbg.center_sigma_px = sigma_px;
+    ctx->dbg.valid = 1;
+}
+
+/* ------------------------------------------------------------------------
  * API
  * ---------------------------------------------------------------------- */
 
@@ -503,9 +626,10 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
                        ce_swatch *out, int cap)
 {
     ce_palette_opts def;
-    int rc, n_max, nboxes, k, n, it, j;
+    int rc, n_max, nboxes, k, n, n_kept, it, j;
     int order[CE_PALETTE_K_MAX];
-    double total;
+    int slot[CE_PALETTE_K_MAX];
+    double total, hist_total, sigma_px = 0.0;
 
     if (ctx == NULL || img == NULL || out == NULL || cap < 1) {
         return CE_ERR_ARG;
@@ -513,6 +637,8 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
     if (ctx->magic != CE_CTX_MAGIC) {
         return CE_ERR_CTX;
     }
+    /* Cualquier llamada invalida las capas de depuración anteriores. */
+    ctx->dbg.valid = 0;
     rc = ce_image_validate(img);
     if (rc != CE_OK) {
         return rc;
@@ -530,7 +656,11 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
     ce_image_reduce(ctx, img, o->max_side);
     if (o->center_sigma > 0.0) {
         const int m = ctx->reduced_w < ctx->reduced_h ? ctx->reduced_w : ctx->reduced_h;
-        ce_image_apply_center_weight(ctx, o->center_sigma * (double)m);
+        const double sigma = o->center_sigma * (double)m;
+        ce_image_apply_center_weight(ctx, sigma);
+        if (sigma > 0.0 && isfinite(sigma)) {
+            sigma_px = sigma; /* ce_image_apply_center_weight ignora sigma no finita */
+        }
     }
     if (o->skin_rule != 0) {
         ce_image_apply_skin_rule(ctx);
@@ -540,13 +670,16 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
     ce_hist_clear(ctx);
     ce_hist_accumulate(ctx);
     total = ce_hist_finalize(ctx);
+    hist_total = total;
     if (!(total > 0.0)) {
+        ce_debug_fallback(ctx, total, sigma_px);
         return ce_palette_fallback_mean(ctx, out);
     }
 
     /* 4. MMCQ -> asignación inicial y centros. */
     nboxes = ce_mmcq(ctx, o->k_init);
     if (nboxes < 1) {
+        ce_debug_fallback(ctx, total, sigma_px);
         return ce_palette_fallback_mean(ctx, out);
     }
     ce_assign_from_boxes(ctx, nboxes);
@@ -561,13 +694,15 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
         ce_lloyd_update(ctx, k);
     }
 
-    /* 6. Fusión y descarte. */
+    /* 6. Fusión y descarte (con la contabilidad de clusters para ce_debug.c). */
+    ce_debug_record_clusters(ctx, k, slot);
     n = ce_centers_compact(ctx, k);
-    n = ce_centers_merge(ctx, n, o->merge_de);
-    n = ce_centers_discard(ctx, n, o->min_weight);
+    n = ce_centers_merge(ctx, n, o->merge_de, slot);
+    n = ce_centers_discard(ctx, n, o->min_weight, slot);
 
     /* 7. Orden, recorte, normalización. */
     ce_centers_sort(ctx, n, order);
+    n_kept = n;
     if (n > n_max) {
         n = n_max;
     }
@@ -579,6 +714,7 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
         const ce_center *c = &ctx->centers[order[j]];
         ce_swatch_from_lab(&out[j], c->lab, c->wsum / total);
     }
+    ce_debug_finish(ctx, k, n_kept, n, order, slot, it, hist_total, sigma_px);
     return n;
 }
 

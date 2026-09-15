@@ -45,12 +45,14 @@ _Static_assert(CE_MATCH_MAX_HITS >= 1 && CE_MATCH_MAX_HITS <= 348,
 /* Capacidad de la tabla de mejores scores por combinación (ids 1..ncombos). */
 #define CE_MATCH_MAX_COMBOS 512
 
-/* Máximo de pasos de exposición a cada lado (|EV| <= CE_MATCH_EV_MAX_LIMIT). */
-#define CE_MATCH_MAX_STEPS ((int)(CE_MATCH_EV_MAX_LIMIT / CE_MATCH_EV_STEP + 0.5))
+/* Iluminantes hipotéticos distintos de D65, en orden de evaluación
+ * (CE_MATCH_N_ILLS y CE_MATCH_MAX_STEPS viven en ce_internal.h). */
+static const ce_illuminant CE_MATCH_ILLS[CE_MATCH_N_ILLS] = {CE_ILL_A, CE_ILL_D50, CE_ILL_D75, CE_ILL_F2};
 
-/* Iluminantes hipotéticos distintos de D65, en orden de evaluación. */
-static const ce_illuminant CE_MATCH_ILLS[4] = {CE_ILL_A, CE_ILL_D50, CE_ILL_D75, CE_ILL_F2};
-#define CE_MATCH_N_ILLS 4
+ce_illuminant ce_match_hyp_illuminant(int ill)
+{
+    return (ill >= 0 && ill < CE_MATCH_N_ILLS) ? CE_MATCH_ILLS[ill] : CE_ILL_D65;
+}
 
 /* ------------------------------------------------------------------------
  * Opciones
@@ -77,7 +79,7 @@ void ce_match_opts_default(ce_match_opts *o)
  * los normaliza ce_de2000_k a 1.0; ambiguous_gap <= 0 => nunca ambiguo;
  * exposure_ev_max en [0, CE_MATCH_EV_MAX_LIMIT]; penalizaciones >= 0;
  * illuminant_search 0 o 1. */
-static int ce_match_opts_valid(const ce_match_opts *o)
+int ce_match_opts_valid(const ce_match_opts *o)
 {
     if (!isfinite(o->kL) || !isfinite(o->kC) || !isfinite(o->kH)) return 0;
     if (!isfinite(o->coverage_lambda) || o->coverage_lambda < 0.0) return 0;
@@ -90,7 +92,7 @@ static int ce_match_opts_valid(const ce_match_opts *o)
 }
 
 /* Lab finito y peso finito >= 0 en cada swatch (la paleta lo garantiza). */
-static int ce_swatches_valid(const ce_swatch *sw, int n)
+int ce_match_swatches_valid(const ce_swatch *sw, int n)
 {
     int i;
     for (i = 0; i < n; ++i) {
@@ -138,7 +140,7 @@ static void ce_hits_insert(ce_hit *best, int *n, int cap, int id, double score)
 
 /* Aplica la hipótesis (matriz de Bradford X -> D65 opcional y ganancia g en
  * XYZ lineal) a un Lab. La identidad no pasa por aquí: conserva los bits. */
-static ce_lab ce_adapt_lab(ce_lab lab, const double *m, double gain)
+ce_lab ce_match_adapt_lab(ce_lab lab, const double *m, double gain)
 {
     ce_xyz xyz = ce_lab_to_xyz(lab);
     if (m != NULL) {
@@ -240,7 +242,7 @@ int ce_match(const ce_ctx *ctx, const ce_swatch *sw, int n, const ce_match_opts 
     if (!ce_match_opts_valid(o)) {
         return CE_ERR_OPTS;
     }
-    if (!ce_swatches_valid(sw, n)) {
+    if (!ce_match_swatches_valid(sw, n)) {
         return CE_ERR_ARG;
     }
 
@@ -275,7 +277,7 @@ int ce_match(const ce_ctx *ctx, const ce_swatch *sw, int n, const ce_match_opts 
             const double gain = identity ? 1.0 : ce_pow(2.0, ev);
             int c;
             for (i = 0; i < n; ++i) {
-                const ce_lab lab = identity ? sw[i].lab : ce_adapt_lab(sw[i].lab, m, gain);
+                const ce_lab lab = identity ? sw[i].lab : ce_match_adapt_lab(sw[i].lab, m, gain);
                 for (c = 0; c < ncolors; ++c) {
                     dist[i][c] = ce_de2000_k(lab, ctx->dict_lab[c], o->kL, o->kC, o->kH);
                 }
@@ -314,6 +316,8 @@ int ce_analyze(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *po,
     if (ctx->magic != CE_CTX_MAGIC) {
         return CE_ERR_CTX;
     }
+    /* Las capas de depuración solo describen un análisis completado. */
+    ctx->dbg.valid = 0;
     if (mo == NULL) {
         ce_match_opts_default(&def);
         mo = &def;

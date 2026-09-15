@@ -1,6 +1,7 @@
-// Detalle de una combinación: swatches grandes, nombre curado o "Nº 012",
-// tamaño y colección, y por cada color su nombre inglés (Ridgway, tal cual),
-// hex, RGB y el Lab D65 que calcula el motor (dictionaryColorLab).
+// Detalle de una combinación (Explorar, Resultado y la hoja de la Rejilla):
+// swatches grandes, nombre curado o "Nº 012", tamaño y colección, estado en la
+// rejilla (fecha y origen del desbloqueo) y por cada color su nombre inglés
+// (Ridgway, tal cual), hex, RGB y el Lab D65 que calcula el motor (dictionaryColorLab).
 import SwiftUI
 import ColorEngine
 
@@ -8,6 +9,7 @@ struct ComboDetailView: View {
     @EnvironmentObject private var env: AppEnvironment
     let comboId: Int
     @State private var unlocked: Bool?
+    @State private var unlock: UnlockRecord?
 
     var body: some View {
         Group {
@@ -20,7 +22,10 @@ struct ComboDetailView: View {
         }
         .navigationTitle(env.dictionary.displayName(id: comboId))
         .navigationBarTitleDisplayMode(.inline)
-        .task { unlocked = try? await env.unlocks.isUnlocked(comboId: comboId) }
+        .task {
+            unlock = try? await env.unlocks.record(comboId: comboId)
+            unlocked = unlock != nil
+        }
     }
 
     private func content(_ combo: WadaCombo) -> some View {
@@ -34,11 +39,16 @@ struct ComboDetailView: View {
                         .font(.title.bold())
                     Text(headline(combo))
                         .foregroundStyle(.secondary)
-                    if let unlocked {
-                        Label(unlocked ? "En tu rejilla" : "Todavía no está en tu rejilla",
-                              systemImage: unlocked ? "checkmark.seal.fill" : "lock")
+                    if let unlock {
+                        Label("En tu rejilla desde el \(unlock.firstSeenAt.formatted(date: .abbreviated, time: .shortened)) · \(unlock.source.label)",
+                              systemImage: "checkmark.seal.fill")
                             .font(.footnote)
-                            .foregroundStyle(unlocked ? .green : .secondary)
+                            .foregroundStyle(.green)
+                            .padding(.top, 4)
+                    } else if unlocked == false {
+                        Label("Todavía no está en tu rejilla: fotografía estos colores o escanea tu carrete.", systemImage: "lock")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                             .padding(.top, 4)
                     }
                 }

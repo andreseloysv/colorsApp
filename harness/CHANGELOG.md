@@ -125,3 +125,13 @@ los promueve solo el usuario; el agente propone en `harness/out/thresholds.propo
 - Promovido por el orquestador con `COLORSAPP_ALLOW_PROTECTED=1 make protected-hash` tras la verificación
   adversarial de F3/F5 (69 ficheros en el manifiesto). El diseño del holdout (variantes 10-11 con la misma
   distribución de degradaciones que el dev) queda sujeto a revisión del usuario.
+
+## 2026-09-15 — F8: tooling del set dorado
+
+- `harness/label/index.html` creado por primera vez (ruta protegida, pendiente de promoción) con `make label-html` sobre 8 imágenes sintéticas; tags del set dorado ampliados con `grupo` (fotos con varias personas: se etiqueta la persona más grande), pendiente de añadir a `L4.tags` de `thresholds.json` por el usuario.
+- F9 (capa 4 por variantes de recorte e informe de capas; sin cambios en umbrales, goldens ni rutas protegidas): `oracle/l4/run.py` evalúa `none`, `allPeople`, `largest`, `largest-clothing` y `largest-clothing-skin` (oficial) con máscaras del manifest (`masks`) > `visionmask` > `skipped` con motivo (`make l4-variants`), `make l4-people-smoke` (ΔE00 informativo sobre `harness/people`) y `make layers-report` (HTML de capas); gate propuesto no promovido `L4_variants.official_recall_at_3_minus_none_min_points = -3` en `harness/out/thresholds.proposed.json` (no en `harness/thresholds.proposed.json`, que es ruta protegida).
+
+## 2026-09-15 — Recorte de sujeto, piel y capas: baseline de `harness/label/index.html` promovido
+
+- `harness/label/index.html` (página de etiquetado del set dorado, F8, primera creación) promovido por el
+  orquestador con `COLORSAPP_ALLOW_PROTECTED=1 make protected-hash` para poder commitear el punto de control.

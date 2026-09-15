@@ -1,5 +1,6 @@
 /*
- * ce.h — API pública del motor de color de colorsApp (capas 1, 2 y 3).
+ * ce.h — API pública del motor de color de colorsApp (capas 1, 2 y 3, máscaras
+ * de ropa y piel, y capas de depuración).
  *
  * Matemática de color pura en C11: sin I/O, sin reserva dinámica de memoria,
  * sin dependencias más allá de <math.h>. Todo en double. El mismo código se
@@ -241,7 +242,11 @@ typedef enum ce_status {
     CE_ERR_STRIDE = -4,          /**< stride_bytes < width*bpp o height*stride > INT_MAX */
     CE_ERR_FORMAT = -5,          /**< ce_pixel_format desconocido */
     CE_ERR_OPTS = -6,            /**< opción fuera de rango o NaN (ce_palette_opts, ce_match_opts) */
-    CE_ERR_NOT_IMPLEMENTED = -7  /**< reservado (ninguna función lo devuelve desde la fase 3) */
+    CE_ERR_NOT_IMPLEMENTED = -7, /**< reservado (ninguna función lo devuelve desde la fase 3) */
+    CE_ERR_POSE = -8,            /**< ce_mask_clothing_regions: faltan hombros o caderas (ni por
+                                      simetría) o la pose es degenerada; la máscara no se toca */
+    CE_ERR_SKIN_SAMPLES = -9     /**< ce_skin_model_fit: < CE_SKIN_MIN_SAMPLES muestras de piel;
+                                      ce_mask_exclude_skin: modelo con n < CE_SKIN_MIN_SAMPLES */
 } ce_status;
 
 /** Lado máximo (píxeles) de la imagen de entrada. */
@@ -482,6 +487,319 @@ uint64_t ce_swatch_hash(const ce_swatch *sw, int n);
  *  (`ce match --top K`) y el wrapper Swift lo calculan con n_hits = K, es
  *  decir, sobre lo que devuelven. */
 uint64_t ce_result_hash(const ce_result *r);
+
+/* ========================================================================
+ * Máscaras: regiones de ropa por pose y exclusión de piel adaptativa
+ * (ce_mask.c). La plataforma (Vision en iOS, MediaPipe en la web) aporta la
+ * máscara de la persona, los puntos de la pose y la muestra de piel de la
+ * cara; la geometría y la estadística viven aquí para que iOS y WASM
+ * produzcan los mismos bits. Sin malloc, sin estáticos mutables, recorridos
+ * en orden de índice. Las regiones y el recorte de cabeza solo usan +, −, ×, ÷,
+ * sqrt y comparaciones; la piel usa además el Lab del motor (ce_srgb8_to_lab,
+ * que pasa por ce_libm). El resultado es bit a bit igual en nativo y WASM
+ * (test_mask: MASK_HASH; make parity: tests/layers_parity.js).
+ *
+ * Todas las máscaras son width*height bytes empaquetados sin stride, fila a
+ * fila desde arriba-izquierda, 0..255 (0 = fuera).
+ * ====================================================================== */
+
+/** Código positivo de ce_mask_exclude_skin: la salvaguarda saltó (se habría
+ *  excluido más de max_excluded_fraction de la máscara: prenda parecida a la
+ *  piel) y la máscara NO se modificó. */
+#define CE_SKIN_GUARD 1
+
+/** Articulaciones de la pose, en el orden de VNHumanBodyPoseObservation
+ *  (cuello = punto medio de los hombros; raíz = punto medio de las caderas). */
+typedef enum ce_joint {
+    CE_JOINT_NOSE = 0,
+    CE_JOINT_NECK,
+    CE_JOINT_LSHOULDER,
+    CE_JOINT_RSHOULDER,
+    CE_JOINT_LELBOW,
+    CE_JOINT_RELBOW,
+    CE_JOINT_LWRIST,
+    CE_JOINT_RWRIST,
+    CE_JOINT_LHIP,
+    CE_JOINT_RHIP,
+    CE_JOINT_LKNEE,
+    CE_JOINT_RKNEE,
+    CE_JOINT_LANKLE,
+    CE_JOINT_RANKLE,
+    CE_JOINT_ROOT,
+    CE_JOINT_COUNT
+} ce_joint;
+
+/** Punto de la pose en píxeles de la máscara (origen arriba-izquierda, x a la
+ *  derecha, y hacia abajo; el centro del píxel (i, j) es (i + 0.5, j + 0.5)).
+ *  confidence <= 0 significa ausente. */
+typedef struct ce_keypoint {
+    double x;
+    double y;
+    double confidence;
+} ce_keypoint;
+
+typedef struct ce_pose {
+    ce_keypoint k[CE_JOINT_COUNT];
+} ce_pose;
+
+/** Cota de |x| e |y| de un punto utilizable (píxeles); por encima el punto se
+ *  trata como ausente (evita desbordes con coordenadas absurdas). */
+#define CE_POSE_COORD_MAX 1048576.0
+/** Mano (siempre excluida): cápsula desde la muñeca hasta muñeca +
+ *  CE_HAND_LENGTH·sw en la dirección codo -> muñeca, de radio CE_HAND_RADIUS·sw
+ *  (sw = ancho de hombros); sin codo, disco de radio CE_HAND_LENGTH·sw
+ *  centrado en la muñeca. Antropometría: la mano mide ~0,47 sw de largo. */
+#define CE_HAND_LENGTH 0.45
+#define CE_HAND_RADIUS 0.2
+/** Ancho de hombros mínimo (píxeles) de una pose utilizable. */
+#define CE_POSE_MIN_SHOULDER_WIDTH 1.0
+
+/** Opciones de ce_mask_clothing_regions (rangos; fuera => CE_ERR_ARG):
+ *  - min_confidence [0, 1] (0.3): un punto cuenta si confidence > 0,
+ *    confidence >= min_confidence y x, y finitos con |x|, |y| <= CE_POSE_COORD_MAX.
+ *  - torso_margin [0, 1] (0.12): expansión del torso, en anchos de hombros.
+ *  - limb_width [0, 2] (0.45): ANCHO total de las cápsulas de brazos y
+ *    piernas en anchos de hombros (radio = limb_width·sw/2).
+ *  - include_upper_arms (1), include_forearms (0), include_legs (1),
+ *    include_lower_legs (1): 0 o 1. */
+typedef struct ce_region_opts {
+    double min_confidence;
+    double torso_margin;
+    double limb_width;
+    int include_upper_arms;
+    int include_forearms;
+    int include_legs;
+    int include_lower_legs;
+} ce_region_opts;
+
+/** min_confidence 0.3, torso_margin 0.12, limb_width 0.45, include_upper_arms 1,
+ *  include_forearms 0, include_legs 1, include_lower_legs 1. */
+void ce_region_opts_default(ce_region_opts *o);
+
+/**
+ * Recorta la máscara de una persona a su ropa según la pose.
+ *
+ * `inout_mask` entra con la máscara de la persona y sale con
+ * min(máscara, región) donde región(p) (evaluada en el centro de cada píxel,
+ * sin antialiasing, 255 dentro y 0 fuera) es:
+ *
+ *   lado(p) ∧ ¬mano(p) ∧ (torso(p) ∨ cápsulas(p))
+ *
+ *  - Hombros LS, RS y caderas LH, RH: si falta uno solo de los hombros se
+ *    estima por simetría puntual respecto al cuello, S_falta = 2·NECK − S_otro
+ *    (Vision define el cuello como su punto medio); si falta una sola cadera,
+ *    H_falta = 2·ROOT − H_otra. Sin el punto de simetría, o con los dos
+ *    ausentes: CE_ERR_POSE. También CE_ERR_POSE si sw = |LS − RS| <
+ *    CE_POSE_MIN_SHOULDER_WIDTH o si el punto medio de las caderas cae sobre
+ *    la recta de los hombros (pose degenerada).
+ *  - lado(p): p está en el semiplano de la recta LS–RS que contiene el punto
+ *    medio de las caderas, o sobre la recta. Excluye la cabeza (y cualquier
+ *    cosa por encima de la línea de hombros, también los brazos levantados).
+ *  - torso(p): distancia de p a la envolvente convexa de {LS, RS, RH, LH}
+ *    <= torso_margin·sw (dentro de la envolvente, distancia 0).
+ *  - cápsulas(p): distancia de p al segmento <= limb_width·sw/2 para
+ *    hombro->codo (include_upper_arms), codo->muñeca (include_forearms),
+ *    cadera->rodilla (include_legs) y rodilla->tobillo (include_lower_legs),
+ *    solo si los dos extremos existen (las caderas y hombros estimados valen).
+ *  - mano(p): ver CE_HAND_LENGTH / CE_HAND_RADIUS, para cada muñeca presente
+ *    aunque include_forearms = 0.
+ *
+ * Todo se calcula relativo a los puntos (p − A, B − A) con +, −, ×, ÷ y sqrt:
+ * con coordenadas cuyas operaciones son exactas (p. ej. múltiplos de 1/64 de
+ * magnitud moderada) el resultado es exactamente invariante a espejo
+ * horizontal (con L/R intercambiados) y a traslaciones enteras; con
+ * coordenadas arbitrarias solo pueden cambiar píxeles cuyo centro está a
+ * ~1e-12 px de un borde.
+ *
+ * Devuelve el número de píxeles > 0 resultantes (>= 0), o CE_ERR_ARG (punteros
+ * nulos, width/height fuera de [1, CE_IMAGE_MAX_SIDE], opciones no finitas o
+ * fuera de rango) o CE_ERR_POSE; con error la máscara no se modifica.
+ */
+int ce_mask_clothing_regions(const ce_pose *pose, const ce_region_opts *o, uint8_t *inout_mask,
+                             int width, int height);
+
+/**
+ * Fallback sin pose: anula la franja superior del bbox de los píxeles > 0.
+ * Con y0..y1 las filas primera y última con algún píxel > 0 y H = y1 − y0 + 1,
+ * pone a 0 las filas y0 .. y0 + c − 1 con c = floor(fraction·H + 0.5).
+ * `fraction` en [0, 0.5]. Devuelve los píxeles > 0 resultantes (máscara vacía:
+ * 0 sin error) o CE_ERR_ARG (máscara nula, dimensiones fuera de
+ * [1, CE_IMAGE_MAX_SIDE], fraction NaN o fuera de rango) sin tocar la máscara.
+ */
+int ce_mask_cut_head(uint8_t *inout_mask, int width, int height, double fraction);
+
+/** Muestras mínimas de ce_skin_model_fit y umbral de la máscara de muestra. */
+#define CE_SKIN_MIN_SAMPLES 50
+#define CE_SKIN_SAMPLE_THRESHOLD 128
+/** Regularización de la covarianza (unidades Lab al cuadrado): cov + ε·I.
+ *  Pone un suelo de 1 ΔE*ab de desviación típica en cada eje, así una muestra
+ *  plana (covarianza singular) sigue siendo invertible y no excluye solo el
+ *  color exacto. */
+#define CE_SKIN_COV_EPSILON 1.0
+
+/** Modelo gaussiano de piel en CIELAB: media, covarianza regularizada y su
+ *  inversa (row-major, 3x3) y número de muestras. */
+typedef struct ce_skin_model {
+    ce_lab mean;
+    double cov[9];
+    double inv_cov[9];
+    int n;
+} ce_skin_model;
+
+/**
+ * Ajusta el modelo de piel con los píxeles de `img` cuya `sample_mask`
+ * (width*height bytes) vale >= CE_SKIN_SAMPLE_THRESHOLD (p. ej. las mejillas
+ * de la cara). Lab bit a bit igual a ce_srgb8_to_lab (calculado con una tabla
+ * por canal, ver ce_internal.h); media y covarianza poblacional
+ * (dividida por n) acumuladas en orden de índice en dos pasadas; covarianza
+ * + CE_SKIN_COV_EPSILON·I invertida por adjuntos. img->mask se ignora.
+ * Devuelve CE_OK y escribe `out`, o sin escribir: CE_ERR_ARG (punteros),
+ * los errores de imagen de ce_palette_extract (CE_ERR_DIMS, CE_ERR_FORMAT,
+ * CE_ERR_STRIDE) o CE_ERR_SKIN_SAMPLES (< CE_SKIN_MIN_SAMPLES muestras).
+ */
+int ce_skin_model_fit(const ce_image *img, const uint8_t *sample_mask, ce_skin_model *out);
+
+/** Opciones de ce_mask_exclude_skin: max_mahalanobis finito >= 0 (2.5);
+ *  max_excluded_fraction en [0, 1] (0.35). Fuera de rango => CE_ERR_ARG. */
+typedef struct ce_skin_opts {
+    double max_mahalanobis;
+    double max_excluded_fraction;
+} ce_skin_opts;
+
+/** max_mahalanobis 2.5, max_excluded_fraction 0.35. */
+void ce_skin_opts_default(ce_skin_opts *o);
+
+/**
+ * Pone a 0 los píxeles con máscara > 0 cuyo Lab (ce_srgb8_to_lab) está a
+ * distancia de Mahalanobis <= max_mahalanobis del modelo (d² = vᵀ·inv_cov·v
+ * con v = Lab − media, comparada con max_mahalanobis²). Cuenta primero (orden
+ * de índice): si excluidos > max_excluded_fraction · píxeles > 0 de la
+ * máscara, NO la modifica y devuelve CE_SKIN_GUARD (1); si no, la modifica y
+ * devuelve CE_OK (0). La máscara tiene las dimensiones de `img` (img->mask se
+ * ignora). Errores sin tocar la máscara: CE_ERR_ARG (punteros, opciones, modelo
+ * con valores no finitos o inv_cov cuya parte simétrica no es definida
+ * positiva), errores de imagen, CE_ERR_SKIN_SAMPLES (m->n < CE_SKIN_MIN_SAMPLES).
+ */
+int ce_mask_exclude_skin(const ce_image *img, const ce_skin_model *m, const ce_skin_opts *o,
+                         uint8_t *inout_mask);
+
+/* ========================================================================
+ * Capas de depuración (ce_debug.c): lectura del estado que deja en el
+ * contexto la última ce_palette_extract / ce_analyze completada, para ver cada
+ * etapa del pipeline (imagen reducida, peso por píxel, qué píxeles alimentan
+ * cada swatch, clusters fusionados o descartados) y explicar el score de una
+ * combinación. Sin malloc: buffers del llamante. Cualquier llamada a
+ * ce_palette_extract invalida el estado anterior (aunque falle).
+ * ====================================================================== */
+
+/** Etiqueta de un píxel reducido con peso 0 (máscara, piel o fuera del sujeto). */
+#define CE_LABEL_NONE 255
+/** Etiqueta de un píxel de un cluster descartado (por min_weight o por el
+ *  recorte a max_colors / cap). */
+#define CE_LABEL_DISCARDED 254
+
+/** Destino de un cluster de Lloyd (ce_cluster_debug.fate). */
+#define CE_FATE_KEPT 0      /**< representante de su grupo: es el swatch final_index */
+#define CE_FATE_MERGED 1    /**< fusionado (ΔE00 < merge_de) en el swatch final_index */
+#define CE_FATE_DISCARDED 2 /**< su grupo pesaba < min_weight: descartado */
+#define CE_FATE_TRUNCATED 3 /**< su grupo sobrevivió al descarte pero quedó fuera
+                                 del recorte a min(max_colors, cap) (extensión) */
+
+/** Cluster de Lloyd (tras converger, antes de fusionar), en el orden de las
+ *  cajas MMCQ sin los centros vacíos. */
+typedef struct ce_cluster_debug {
+    ce_lab lab;       /**< centro de Lloyd antes de la fusión */
+    uint8_t rgb[3];   /**< Lab -> sRGB8 */
+    double weight;    /**< peso del cluster / peso total (antes de fusionar y descartar) */
+    int fate;         /**< CE_FATE_* */
+    int final_index;  /**< índice del swatch en la paleta devuelta (fate 0 o 1), -1 si no */
+    int group_head;   /**< extensión: índice (en clusters[]) del representante de su
+                           grupo de fusión (== el propio índice si no se fusionó) */
+} ce_cluster_debug;
+
+typedef struct ce_palette_debug {
+    int reduced_width, reduced_height;
+    int n_clusters;                                  /**< 0 con la paleta de reserva (peso total 0) */
+    ce_cluster_debug clusters[CE_PALETTE_K_MAX];     /**< posiciones >= n_clusters a cero */
+    int lloyd_iterations;                            /**< rondas de Lloyd con cambios de asignación */
+    double total_weight;                             /**< Σ pesos de la imagen reducida */
+    double zero_weight_fraction;                     /**< píxeles reducidos con peso 0 / total */
+    double center_sigma_px;                          /**< sigma de la gaussiana usada (0 = uniforme) */
+    int n_swatches;                                  /**< swatches devueltos por la extracción */
+} ce_palette_debug;
+
+/** Resumen de la última extracción. CE_OK, CE_ERR_ARG (punteros) o CE_ERR_CTX
+ *  (contexto sin inicializar o sin extracción válida). */
+int ce_palette_debug_info(const ce_ctx *ctx, ce_palette_debug *out);
+
+/** Imagen reducida RGB8 (reduced_width*reduced_height*3 bytes). Devuelve los
+ *  bytes escritos, CE_ERR_ARG (puntero nulo o cap insuficiente, sin escribir)
+ *  o CE_ERR_CTX. */
+int ce_debug_reduced_rgb(const ce_ctx *ctx, uint8_t *out_rgb, size_t cap);
+
+/** Peso final por píxel reducido (máscara x gaussiana x regla de piel)
+ *  escalado al máximo: v = floor(w / w_max · 255 + 0.5) (0 si w_max = 0; un
+ *  peso positivo muy pequeño puede dar 0). reduced_width*reduced_height bytes.
+ *  Devuelve los bytes escritos, CE_ERR_ARG o CE_ERR_CTX. */
+int ce_debug_weight_map(const ce_ctx *ctx, uint8_t *out, size_t cap);
+
+/** Índice del swatch final (orden de la paleta devuelta) al que alimenta cada
+ *  píxel reducido: píxel -> bin del histograma -> centro de Lloyd -> grupo de
+ *  fusión -> swatch; CE_LABEL_NONE si su peso es 0, CE_LABEL_DISCARDED si su
+ *  cluster se descartó o se recortó. Devuelve los bytes escritos, CE_ERR_ARG o
+ *  CE_ERR_CTX. */
+int ce_debug_label_map(const ce_ctx *ctx, uint8_t *out, size_t cap);
+
+/** Extensión: índice del cluster de Lloyd (posición en
+ *  ce_palette_debug.clusters) de cada píxel reducido, o CE_LABEL_NONE si su
+ *  peso es 0. Devuelve los bytes escritos, CE_ERR_ARG o CE_ERR_CTX. */
+int ce_debug_cluster_map(const ce_ctx *ctx, uint8_t *out, size_t cap);
+
+/** Capacidad de ce_match_explain.per_color (== CE_DICT_COMBO_MAX). Misma
+ *  lista de reemplazo que la definición de ce_dict_data.h (redefinición
+ *  idéntica, permitida por C11 6.10.3p2). */
+#define CE_DICT_MAX_COLORS 7
+
+/** Swatch i de la paleta frente a la combinación, bajo la hipótesis ganadora. */
+typedef struct ce_swatch_explain {
+    int nearest_color_index; /**< índice de color del diccionario (0..158) más cercano de la
+                                  combinación (empates: el primero en orden ascendente) */
+    double de;               /**< su ΔE00 (kL, kC, kH de las opciones) */
+} ce_swatch_explain;
+
+/** Color j de la combinación frente a la paleta, bajo la hipótesis ganadora. */
+typedef struct ce_color_explain {
+    int color_index;         /**< índice de color del diccionario */
+    int nearest_swatch;      /**< swatch más cercano (empates: el de índice menor) */
+    double de;
+} ce_color_explain;
+
+typedef struct ce_match_explain {
+    uint16_t combo_id;
+    double score;              /**< bit a bit el score de ce_match para esta combinación */
+    double fit_term;           /**< Σ_i w_i · min_j ΔE00 */
+    double coverage_term;      /**< λ · (1/|C|) · Σ_j min_i ΔE00 */
+    double hypothesis_penalty; /**< exposure_penalty·|EV| + illuminant_penalty·[X != D65] */
+    double exposure_ev;        /**< EV de la hipótesis ganadora */
+    int illuminant;            /**< -1 sin adaptación de iluminante, o el ce_illuminant X */
+    int n_swatches;
+    ce_swatch_explain per_swatch[CE_PALETTE_MAX_COLORS];
+    int combo_size;
+    ce_color_explain per_color[CE_DICT_MAX_COLORS];
+} ce_match_explain;
+
+/**
+ * Explica el score de la combinación `combo_id` frente a los swatches `sw`:
+ * recorre las mismas hipótesis en el mismo orden que ce_match, con las mismas
+ * operaciones, y se queda con la primera de score mínimo. score ==
+ * fit_term + coverage_term + hypothesis_penalty evaluado en ese orden (bit a
+ * bit, salvo el caso inalcanzable de un score NaN, que ce_match convierte en
+ * HUGE_VAL). No necesita una extracción previa (usa la caché Lab del
+ * contexto). Devuelve CE_OK o, sin escribir, los errores de ce_match
+ * (CE_ERR_ARG también con combo_id fuera de 1..ce_dict_num_combos()).
+ */
+int ce_match_explain_combo(const ce_ctx *ctx, const ce_swatch *sw, int n, const ce_match_opts *o,
+                           int combo_id, ce_match_explain *out);
 
 #ifdef __cplusplus
 }

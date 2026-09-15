@@ -1,0 +1,40 @@
+{
+  "engine": "0.1.0",
+  "dict_version": "fd95ac692777",
+  "file": "layers_demo.ppm",
+  "mask": "layers_demo.mask.pgm",
+  "width": 300,
+  "height": 400,
+  "reduced_width": 150,
+  "reduced_height": 200,
+  "layers": {"reduced": "reduced.ppm", "weights": "weights.pgm", "labels": "labels.pgm", "labels_color": "labels.ppm", "clusters": "clusters.pgm", "clusters_color": "clusters.ppm", "swatches": ["swatch_0.pgm", "swatch_1.pgm"], "mask": "mask.pgm"},
+  "label_values": {"none": 255, "discarded": 254},
+  "palette_debug": {"lloyd_iterations": 2, "total_weight": 1169997.19098264, "zero_weight_fraction": 0.78976666666666662, "center_sigma_px": 52.5, "n_swatches": 2, "n_clusters": 6,
+    "clusters": [
+      {"index": 0, "rgb": [40, 39, 41], "hex": "#282729", "lab": [15.866758326376361, 0.71589742751097518, -0.85297379211536872], "weight": 0.011473726274364007, "fate": 2, "fate_name": "discarded", "final_index": null, "group_head": 0, "pixels": 230},
+      {"index": 1, "rgb": [164, 123, 88], "hex": "#a47b58", "lab": [54.871365816910341, 11.226376754370865, 25.173797003732847], "weight": 0.0044708320397919086, "fate": 2, "fate_name": "discarded", "final_index": null, "group_head": 1, "pixels": 101},
+      {"index": 2, "rgb": [9, 145, 151], "hex": "#099197", "lab": [54.626689362320469, -29.253594195540032, -12.337570119867104], "weight": 0.68805680966565308, "fate": 0, "fate_name": "kept", "final_index": 0, "group_head": 2, "pixels": 3641},
+      {"index": 3, "rgb": [117, 167, 158], "hex": "#75a79e", "lab": [64.831547214791044, -18.462305840967904, -0.96666891508745167], "weight": 0.0043978363776944699, "fate": 2, "fate_name": "discarded", "final_index": null, "group_head": 3, "pixels": 60},
+      {"index": 4, "rgb": [59, 155, 154], "hex": "#3b9b9a", "lab": [58.644005220095835, -27.596956088811936, -8.0432246100714782], "weight": 0.0037030326967192164, "fate": 1, "fate_name": "merged", "final_index": 0, "group_head": 2, "pixels": 30},
+      {"index": 5, "rgb": [197, 165, 111], "hex": "#c5a56f", "lab": [69.566753735908406, 4.2984857683961097, 32.639501652866784], "weight": 0.28789776294577724, "fate": 0, "fate_name": "kept", "final_index": 1, "group_head": 5, "pixels": 2245}
+    ]},
+  "swatches": [
+    {"index": 0, "rgb": [10, 145, 151], "hex": "#0a9197", "lab": [54.648194299530452, -29.244726110548431, -12.314582226005736], "weight": 0.70612409745421267, "pixels": 3671, "layer": "swatch_0.pgm"},
+    {"index": 1, "rgb": [197, 165, 111], "hex": "#c5a56f", "lab": [69.566753735908406, 4.2984857683961097, 32.639501652866784], "weight": 0.29387590254578744, "pixels": 2245, "layer": "swatch_1.pgm"}
+  ],
+  "label_counts": {"none": 23693, "discarded": 391},
+  "opts": {"palette": {"k_init": 6, "max_iters": 20, "max_colors": 5, "max_side": 256, "center_sigma": 0.34999999999999998, "merge_de": 5, "min_weight": 0.050000000000000003, "skin_rule": 0}, "match": {"kL": 1, "kC": 1, "kH": 1, "coverage_lambda": 1, "ambiguous_gap": 1, "exposure_ev_max": 1, "exposure_penalty": 2, "illuminant_search": 1, "illuminant_penalty": 2, "top": 3}},
+  "hits": [{"id": 12, "score": 0.18340934547051527}, {"id": 178, "score": 14.885939180005263}, {"id": 148, "score": 16.56393330545356}],
+  "ambiguous": 0,
+  "explain": [
+    {"rank": 1, "id": 12, "score": 0.18340934547051527, "score_equals_match": true, "fit_term": 0.080937844939259068, "coverage_term": 0.1024715005312562, "hypothesis_penalty": 0, "exposure_ev": 0, "illuminant": -1, "illuminant_name": "none",
+      "per_swatch": [{"swatch": 0, "nearest_color": 119, "nearest_color_hex": "#099197", "de": 0.050236813131883766}, {"swatch": 1, "nearest_color": 50, "nearest_color_hex": "#c5a56e", "de": 0.15470618793062862}],
+      "per_color": [{"color": 50, "hex": "#c5a56e", "name": "Isabella Color", "nearest_swatch": 1, "de": 0.15470618793062862}, {"color": 119, "hex": "#099197", "name": "Green Blue", "nearest_swatch": 0, "de": 0.050236813131883766}]},
+    {"rank": 2, "id": 178, "score": 14.885939180005263, "score_equals_match": true, "fit_term": 3.4808483115435287, "coverage_term": 11.405090868461734, "hypothesis_penalty": 0, "exposure_ev": 0, "illuminant": -1, "illuminant_name": "none",
+      "per_swatch": [{"swatch": 0, "nearest_color": 119, "nearest_color_hex": "#099197", "de": 0.050236813131883766}, {"swatch": 1, "nearest_color": 41, "nearest_color_hex": "#ebd3a2", "de": 11.723910866339216}],
+      "per_color": [{"color": 41, "hex": "#ebd3a2", "name": "Ivory Buff", "nearest_swatch": 1, "de": 11.723910866339216}, {"color": 112, "hex": "#a5c8d1", "name": "Light Glaucous Blue", "nearest_swatch": 0, "de": 22.441124925914107}, {"color": 119, "hex": "#099197", "name": "Green Blue", "nearest_swatch": 0, "de": 0.050236813131883766}]},
+    {"rank": 3, "id": 148, "score": 16.56393330545356, "score_equals_match": true, "fit_term": 6.4845779647210531, "coverage_term": 10.079355340732505, "hypothesis_penalty": 0, "exposure_ev": 0, "illuminant": -1, "illuminant_name": "none",
+      "per_swatch": [{"swatch": 0, "nearest_color": 117, "nearest_color_hex": "#0093a5", "de": 4.705995767598643}, {"swatch": 1, "nearest_color": 58, "nearest_color_hex": "#d6b43e", "de": 10.758149692826644}],
+      "per_color": [{"color": 58, "hex": "#d6b43e", "name": "Olive Ocher", "nearest_swatch": 1, "de": 10.758149692826644}, {"color": 60, "hex": "#fcb315", "name": "Orange Yellow", "nearest_swatch": 1, "de": 14.773920561772226}, {"color": 117, "hex": "#0093a5", "name": "Cerulian Blue", "nearest_swatch": 0, "de": 4.705995767598643}]}
+  ]
+}

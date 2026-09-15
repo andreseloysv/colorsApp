@@ -6,6 +6,7 @@ import XCTest
 import ImageIO
 import UIKit
 import ColorEngine
+import SubjectKit
 @testable import ColorsApp
 
 @MainActor
@@ -24,13 +25,13 @@ final class ResultViewModelTests: XCTestCase {
         XCTAssertEqual(image.width, 256)
         XCTAssertEqual(image.height, 256)
 
-        let analysis = try ScanAnalyzer.analyze(image: image, personMask: false)
+        let analysis = try ScanAnalyzer.analyze(image: image, subject: SubjectOptions(mode: .off))
         XCTAssertEqual(analysis.result.hits.map(\.comboId).first, 12)
         XCTAssertEqual(analysis.result.hits.count, 3)
         XCTAssertEqual(analysis.result.hits[0].score, 0, accuracy: 1e-9)
         XCTAssertFalse(analysis.result.ambiguous)
         XCTAssertFalse(analysis.maskApplied)
-        XCTAssertNil(analysis.maskNote)
+        XCTAssertEqual(analysis.subject.steps, [.none], "modo off: sin Vision ni máscara")
         // La paleta recupera los dos colores exactos de la combinación 12 (Isabella Color, Green Blue).
         XCTAssertEqual(Set(analysis.result.swatches.map(\.hex)), ["#c5a56e", "#099197"])
         XCTAssertEqual(analysis.result.swatches.map(\.weight).reduce(0, +), 1, accuracy: 1e-9)
@@ -48,7 +49,7 @@ final class ResultViewModelTests: XCTestCase {
         let past = Date(timeIntervalSince1970: 1_750_000_000)
 
         let outcome = try await ScanAnalyzer.run(image: image, source: .picker, assetLocalId: "asset-12",
-                                                  personMask: false, env: env, timing: timing, now: past)
+                                                  subject: SubjectOptions(mode: .off), env: env, timing: timing, now: past)
         XCTAssertEqual(outcome.scan.top1, 12)
         XCTAssertEqual(outcome.scan.source, .picker)
         XCTAssertEqual(outcome.scan.assetLocalId, "asset-12")
@@ -121,8 +122,7 @@ final class ResultViewModelTests: XCTestCase {
         let ambiguous = AnalysisResult(swatches: [], hits: [Hit(comboId: 12, score: 1.0), Hit(comboId: 178, score: 1.5)],
                                        ambiguous: true, hash: 0)
         let scan = ScanRecord.make(from: ambiguous, source: .camera, now: Date(timeIntervalSince1970: 1_750_000_000))
-        let outcome = ScanOutcome(image: image, raster: raster, result: ambiguous, scan: scan,
-                                  maskApplied: false, maskNote: nil, elapsedMs: 1)
+        let outcome = ScanOutcome(image: image, raster: raster, result: ambiguous, scan: scan)
         let model = ResultViewModel(outcome: outcome, env: env)
         XCTAssertEqual(model.ambiguityText, "Entre Nº 012 y Nº 178")
         XCTAssertEqual(model.shareTitle, "colorsApp · Wada Nº 012")
@@ -133,7 +133,7 @@ final class ResultViewModelTests: XCTestCase {
     func testShareCardRenders1080x1350() async throws {
         let env = try makeEnvironment()
         let image = try XCTUnwrap(SyntheticImage.blocks(comboId: 12, dictionary: env.dictionary))
-        let outcome = try await ScanAnalyzer.run(image: image, source: .manual, personMask: false, env: env,
+        let outcome = try await ScanAnalyzer.run(image: image, source: .manual, subject: SubjectOptions(mode: .off), env: env,
                                                   timing: TimingLog(url: temporaryDirectory().appendingPathComponent("t.txt")),
                                                   now: Date(timeIntervalSince1970: 1_750_000_001))
         let card = ShareCardRenderer.card(for: outcome, dictionary: env.dictionary)
@@ -176,6 +176,13 @@ final class ResultViewModelTests: XCTestCase {
         XCTAssertNil(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "otra"]))
         XCTAssertNil(DebugLaunch.screen(from: ["ColorsApp"]))
         XCTAssertEqual(DebugLaunch.demoComboId, 12)
+        XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "layers-demo"]), .layersDemo)
+        XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "layers-people"]), .layersPeople)
+        XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "result-people"]), .resultPeople)
+        XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "result-people-mask"]), .resultPeopleMask)
+        XCTAssertEqual(DebugLaunch.layer(from: ["ColorsApp", "-uiScreen", "layers-demo", "-uiLayer", "6"]), 6)
+        XCTAssertNil(DebugLaunch.layer(from: ["ColorsApp", "-uiLayer", "12"]))
+        XCTAssertNotNil(DebugLaunch.groupPhoto(), "la foto de grupo de depuración está en el bundle de Debug")
     }
 
     func testSyntheticImageCoversAllComboSizes() throws {

@@ -20,7 +20,8 @@ final class AppEnvironment: ObservableObject {
     let engineDictVersion: String
     /// Lanzamientos de la app (Documents/launches.txt; criterio de F0).
     let launches: Int
-    /// Runner del escaneo del carrete (NoopScanRunner hasta la fase 7).
+    /// Runner del escaneo del carrete: PhotoKitScanRunner en la app (bootstrap);
+    /// NoopScanRunner en tests y previews salvo que se inyecte otro.
     private(set) var scanRunner: any ScanRunning
     /// Progreso del escaneo en curso, para la pestaña Hoy.
     @Published private(set) var scanProgress: ScanProgress = .idle
@@ -45,12 +46,21 @@ final class AppEnvironment: ObservableObject {
     }
 
     /// Arranque real: diccionario del bundle (con comprobación de versión),
-    /// base de datos en Application Support y contador de lanzamientos.
+    /// base de datos en Application Support, contador de lanzamientos y el
+    /// escaneo del carrete real (PhotoKitScanRunner; no pide acceso a Fotos hasta
+    /// que se lanza un escaneo).
     static func bootstrap(bundle: Bundle = .main) throws -> AppEnvironment {
         let dictionary = try WadaDictionary.load(from: bundle)
         let database = try AppDatabase.open()
         let launches = (try? LaunchCounter.increment()) ?? LaunchCounter.read()
-        return AppEnvironment(dictionary: dictionary, database: database, scanRunner: NoopScanRunner(), launches: launches)
+        let env = AppEnvironment(dictionary: dictionary, database: database, scanRunner: NoopScanRunner(), launches: launches)
+        env.installPhotoKitScanRunner()
+        return env
+    }
+
+    /// true si el proceso es el host de XCTest (no se presentan hojas automáticas).
+    nonisolated static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
     /// Entorno para tests y previews: base de datos en memoria, sin contador.

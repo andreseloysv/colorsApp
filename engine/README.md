@@ -1,4 +1,4 @@
-# Motor de color (capas 1, 2 y 3: matemática de color, extracción de paleta y match)
+# Motor de color (capas 1, 2 y 3, máscaras de ropa y piel, capas de depuración)
 
 Librería C11 sin I/O, sin `malloc` y sin dependencias (solo `<math.h>`), con
 todo en `double`. La misma fuente compila a nativo (iOS/macOS vía Swift Package
@@ -14,6 +14,12 @@ o CMake) y a WebAssembly (Emscripten). Cubre:
 - **Capa 3** (`ce_match.c`): match de la paleta contra las 348 combinaciones
   (`ce_match`) y análisis completo imagen → paleta → match (`ce_analyze`), ver
   más abajo.
+- **Máscaras** (`ce_mask.c`): regiones de ropa a partir de la pose, recorte de
+  cabeza sin pose y exclusión de piel con un modelo adaptativo por persona
+  (ver «Máscaras: regiones de ropa y piel»).
+- **Capas de depuración** (`ce_debug.c`): imagen reducida, peso, swatch y
+  cluster por píxel, destino de cada cluster y explicación del score (ver
+  «Capas de depuración»).
 - **libm portable** (`ce_libm.c`, fase 5): `ce_cbrt`, `ce_pow`, `ce_exp`,
   `ce_atan2`, `ce_sin` y `ce_cos` copiados de musl 1.2.6 (sin FMA) y
   compilados con el motor en todas las plataformas: Lab, ΔE00, pesos, scores y
@@ -27,7 +33,9 @@ Wrapper Swift: `Sources/ColorEngine/ColorEngine.swift` (`Lab`, `srgbToLab`,
 `AnalysisResult`, `analyze`, accesores `dictionary*`). Desde la fase 6
 `extractPalette` y `analyze` aceptan `mask:` opcional (`UnsafeBufferPointer<UInt8>?`,
 width × height bytes sin stride, 0 anula el píxel; corto => `.maskTooSmall`), que
-va tal cual a `ce_image.mask`; la app la usa para la máscara de persona.
+va tal cual a `ce_image.mask`; la app la usa para la máscara de persona. Máscaras
+de ropa y piel (`clothingRegions`, `cutHead`, `fitSkinModel`, `excludeSkin`) y
+capas de depuración (`paletteDebugLayers`, `explainMatch`): ver sus secciones.
 
 ## Compilar y probar
 
@@ -41,10 +49,10 @@ Desde la raíz del repo (todas las rutas del `Makefile` son relativas a él):
 | `make golden`      | Regenera `tests/data/golden_*.tsv` con el oráculo Python           |
 | `make diff-oracle` | 100 000 colores sRGB8 por `ce convert` contra el oráculo estricto  |
 | `make swift-test`  | `swift test` del paquete (XCTest)                                  |
-| `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | Fuzz loop propio de la capa 2 bajo ASan/UBSan en `build-asan/` (`mk/engine.mk`) |
+| `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | Fuzz loop propio bajo ASan/UBSan en `build-asan/` (`mk/engine.mk`): paleta + capas, parser PNM, regiones de ropa, piel |
 | `make bench-palette` | Imprime `PERF_1024_RGBA_MS` de `test_palette` (nativo -O2); anotar en `BENCHLOG.md` |
 | `make bench-match` | Imprime `MATCH_MS`, `ANALYZE_1024_MS` y el recall exacto de `test_match` (nativo -O2) |
-| `make parity [PARITY_TOP=10]` | Paridad nativo/WASM: `ce match --json` de `build/` y `build-wasm/` sobre las 20 fixtures de `harness/wasm/fixtures/` (`harness/wasm/run_parity.js`); ver «Paridad nativo/WASM» |
+| `make parity [PARITY_TOP=10]` | Paridad nativo/WASM: `ce match --json` de `build/` y `build-wasm/` sobre las 20 fixtures de `harness/wasm/fixtures/` (`harness/wasm/run_parity.js`) y capas/máscaras byte a byte (`tests/layers_parity.js`); ver «Paridad nativo/WASM» |
 | `make parity-fixtures` | Regenera `harness/wasm/fixtures/` (20 PPM ≤ 128 px + `manifest.json`) con `uv` y comprueba que es idéntico byte a byte |
 | `make clean`       | Borra `build*/` y `engine/.build`                                  |
 
@@ -64,7 +72,11 @@ ce dict --version | --list | --id 12 # diccionario embebido
 ce palette foto.ppm --json           # paleta dominante (capa 2), ver abajo
 ce match foto.ppm --top 3 --json     # paleta + match contra el diccionario (capa 3)
 ce analyze foto.ppm --json           # alias exacto de match
-ce batch lista.txt --json            # JSONL: una línea por imagen de la lista
+ce batch lista.txt --json            # JSONL: una línea por "imagen [mascara]" de la lista
+ce match foto.ppm --json --debug-dir capas/   # + capas de depuración en capas/
+ce regions --size 200x400 --mask persona.pgm --pose pose.txt --out ropa.pgm
+ce skin --image foto.ppm --sample cara.pgm --mask ropa.pgm --out sin_piel.pgm
+ce cut-head --mask persona.pgm --fraction 0.2 --out sin_cabeza.pgm
 ```
 
 Opciones CMake: `CE_BUILD_TESTS` (ON), `CE_BUILD_CLI` (ON), `CE_SANITIZE`
@@ -344,7 +356,8 @@ diccionario sin lógica (`dictionaryVersion`, `dictionaryComboCount`,
    `cli_match_contract` (`tests/cli_match_check.js` con node: claves y orden
    exactos del contrato, tipos, rangos, pesos, orden de hits, `--top`, alias,
    determinismo, códigos 1/2, JSONL del batch, hash batch == hash match,
-   opciones de hipótesis propagadas y validadas; 409 comprobaciones).
+   opciones de hipótesis propagadas y validadas; desde las máscaras, `"mask"`
+   en las líneas del batch; 413 comprobaciones).
 
 **Rendimiento** (Apple M4 Pro; `make bench-match`): con las 25 hipótesis por
 defecto `MATCH_MS` = 1,23 ms nativo -O2 (5 swatches × 348 combinaciones,
@@ -353,6 +366,179 @@ mejor de 200; media 1,32), 2,09 ms con ASan/UBSan, 1,49 ms en WASM (cota
 ASan, 4,4 ms WASM (cota 10 ms). El match v0 (una hipótesis) costaba 0,047 ms
 nativo con `ce_libm.c` (0,034 con la libm de Apple). Historial en
 `BENCHLOG.md`.
+
+## Máscaras: regiones de ropa y piel (`ce_mask.c`)
+
+Requisito del usuario tras la primera build en su iPhone: fotos con varias
+personas, fondo sucio y piel meten error. La plataforma (Vision en iOS,
+MediaPipe en la web) aporta **máscara de instancia de la persona, puntos de la
+pose y muestra de piel de la cara**; la geometría y la estadística viven en el
+motor para que iOS y WASM den los mismos bits. Todas las máscaras son
+`width × height` bytes sin stride (0..255); ninguna función reserva memoria ni
+modifica la máscara cuando devuelve un error.
+
+**Regiones de ropa** (`ce_mask_clothing_regions`, opciones `ce_region_opts`):
+la máscara sale con `min(máscara, región)`, evaluando cada píxel en su centro
+`(x + 0.5, y + 0.5)` sin antialiasing:
+
+```
+región(p) = lado(p) ∧ ¬mano(p) ∧ (torso(p) ∨ cápsulas(p))
+```
+
+| Pieza | Regla exacta |
+|---|---|
+| Puntos | Un punto cuenta si `confidence` es finita, > 0 y ≥ `min_confidence` (0,3) y `x`, `y` son finitos con \|x\|, \|y\| ≤ `CE_POSE_COORD_MAX` (2^20). |
+| Simetría | Si falta un solo hombro: `S = 2·NECK − S_otro`; si falta una sola cadera: `H = 2·ROOT − H_otra` (Vision define cuello y raíz como puntos medios). Sin el punto de simetría o con los dos ausentes: `CE_ERR_POSE` (−8). También `CE_ERR_POSE` si el ancho de hombros `sw` < 1 px o el punto medio de las caderas cae sobre la recta de los hombros. |
+| `lado` | Semiplano de la recta hombro–hombro que contiene las caderas (inclusivo): nada por encima de la línea de hombros (cabeza, brazos levantados). |
+| `torso` | Distancia a la envolvente convexa de {LS, RS, RH, LH} ≤ `torso_margin·sw` (0,12). |
+| `cápsulas` | Distancia al segmento ≤ `limb_width·sw/2` (ancho total 0,45·sw) para hombro→codo (`include_upper_arms` 1), codo→muñeca (`include_forearms` 0), cadera→rodilla (`include_legs` 1), rodilla→tobillo (`include_lower_legs` 1), si existen los dos extremos. |
+| `mano` | Siempre excluida para cada muñeca presente: cápsula desde la muñeca hasta muñeca + 0,45·sw en la dirección codo→muñeca con radio 0,2·sw (sin codo, disco de radio 0,45·sw). Antropometría: la mano mide ~0,47·sw. |
+
+Todo se calcula relativo a un punto (`p − A`, `B − A`) con +, −, ×, ÷ y sqrt en
+orden fijo (sin funciones trascendentes): con coordenadas cuyas operaciones son
+exactas (p. ej. múltiplos de 1/4) el resultado es exactamente invariante a
+espejo horizontal con L/R intercambiados y a traslaciones enteras; con
+coordenadas arbitrarias solo pueden cambiar píxeles a ~1e-12 px de un borde.
+Devuelve los píxeles > 0 resultantes. `ce_mask_cut_head` es el fallback sin
+pose: anula las `floor(fraction·H + 0.5)` filas superiores del bbox (fraction
+en [0, 0,5]); máscara vacía → 0.
+
+**Piel adaptativa** (`ce_skin_model_fit`, `ce_mask_exclude_skin`): no hay regla
+de color fija (la YCbCr de Chai y Ngan borra camel, beige y salmón, colores de
+Wada: en L3 bajó el recall@1 de 97 % a 66 %). El modelo es una gaussiana en
+CIELAB ajustada a la muestra de la cara de cada persona (píxeles con muestra ≥
+128, al menos `CE_SKIN_MIN_SAMPLES` = 50, si no `CE_ERR_SKIN_SAMPLES` (−9)):
+media y covarianza poblacional en dos pasadas en orden de índice, **regularizada
+con ε = 1 (unidades Lab²) en la diagonal** (`CE_SKIN_COV_EPSILON`: suelo de 1
+ΔE*ab de desviación típica; una muestra plana sigue siendo invertible) e
+invertida por adjuntos. `ce_mask_exclude_skin` pone a 0 los píxeles de la
+máscara con distancia de Mahalanobis ≤ `max_mahalanobis` (2,5); **si fuera a
+excluir más de `max_excluded_fraction` (35 %) de la máscara no toca nada y
+devuelve `CE_SKIN_GUARD` (1)**: una prenda parecida a la piel no se borra. El
+modelo se valida (valores finitos, n ≥ 50, parte simétrica de `inv_cov` definida
+positiva por Sylvester) antes de tocar la máscara. El Lab de cada píxel es
+bit a bit el de `ce_srgb8_to_lab`, calculado con una tabla por canal de
+`ce_srgb8_to_xyz` (`ce_srgb8_xyz_table`, 18 KiB de pila) que ahorra las tres
+potencias por píxel; `test_mask` lo comprueba en los 16 777 216 colores.
+
+Medido en `test_mask` (cara, brazos desnudos y torso con ruido ±4 por canal):
+
+| Piel | Brazos eliminados | Prenda roja | Azul marino | Beige (228,192,150), ΔE00 6,09 de la piel clara |
+|---|---:|---:|---:|---:|
+| clara (236,198,172) | 100 % | 0 % | 0 % | 0 % |
+| media (198,145,110) | 100 % | 0 % | 0 % | 0 % |
+| oscura (110,72,50) | 100 % | 0 % | 0 % | 0 % |
+
+Con el torso entero del color de la piel salta la salvaguarda (máscara intacta).
+Aviso honesto: con ruido ±4 la covarianza es estrecha y la beige queda lejos
+(~4 desviaciones); una cara real con sombras tiene más varianza, el elipsoide
+crece y una prenda a ΔE00 ~6 puede caer parcialmente: eso lo mide la capa 4.
+
+**Tiempos** (Apple M4 Pro, nativo -O2, `test_mask`, sin cota): regiones en
+1024×2048 con máscara llena 28 ms; ajuste del modelo 1,8 ms; exclusión de piel
+en 1024×1024 con máscara llena y dos pasadas completas 42 ms (158 ms antes de
+la tabla por canal).
+
+**CLI**:
+
+```
+ce regions --size WxH --mask persona.pgm --pose pose.txt --out ropa.pgm \
+           [--min-confidence F] [--torso-margin F] [--limb-width F] \
+           [--upper-arms 0|1] [--forearms 0|1] [--legs 0|1] [--lower-legs 0|1]
+    # pose.txt: 15 líneas "x y confidence" en el orden de ce_joint ('#' y vacías ignoradas)
+    # stdout {"pixels", "mask_pixels"}; CE_ERR_POSE -> exit 1 sin escribir --out
+ce skin --image foto.ppm --sample cara.pgm --mask ropa.pgm --out sin_piel.pgm \
+        [--max-mahalanobis F] [--max-excluded F]
+    # stdout {"excluded", "guard", "mask_pixels", "candidates", "model": {n, mean, cov, inv_cov}}
+ce cut-head --mask persona.pgm --fraction 0.2 --out sin_cabeza.pgm   # {"pixels"}
+ce batch lista.txt --json
+    # cada línea: imagen.ppm [mascara.pgm] (espacio o tabulador; rutas con espacios
+    # entre comillas dobles); la máscara de la línea gana a --mask; JSONL con
+    # "mask": ruta|null tras "file"; una entrada ilegible da {"file","mask","error"}
+```
+
+**Tests** (`tests/test_mask.c`, nativo, ASan/UBSan y WASM): (1) pose de frente
+200×400: nada por encima de los hombros ni en discos de 0,15·sw alrededor de
+las muñecas, torso y muslos dentro, recuento igual a un **rasterizador de
+referencia independiente** del propio test (envolvente de Andrew, distancias
+con sqrt y vector unitario, normal orientada) y a los dorados 26 012 (por
+defecto), 28 090 (con antebrazos) y 7 680 (solo torso sin margen = área exacta
+del trapecio); (2) espejo y traslación de 7 px exactos, escala ×2 → ×3,9999;
+(3) `CE_ERR_POSE` con máscara intacta, simetría de cadera y hombro idéntica al
+punto real, confianza bajo el umbral, coordenadas no finitas, pose degenerada,
+`CE_ERR_ARG`; (4) `ce_mask_cut_head`; (5) piel en tres tonos (tabla de arriba),
+salvaguarda, < 50 muestras, modelos degenerados; tabla Lab exhaustiva; (6)
+determinismo y `MASK_HASH` = `36160cbd7630fb2b` igual en nativo, ASan y WASM.
+Fuzz (`make fuzz`): entradas 3 (regiones y recorte con poses NaN/±inf/fuera de
+imagen/confianzas absurdas, dims 0..512) y 4 (piel con covarianza singular o
+indefinida, n pequeño, valores enormes). CLI: `cli_batch_masks`, `cli_regions`,
+`cli_skin`, `cli_debug_dir` y `cli_mask_contract` (`tests/cli_mask_check.js`,
+node: CLI == API byte a byte).
+
+**Swift** (`ColorEngine.swift`): `Joint`, `Keypoint`, `Pose`, `RegionOptions.default`,
+`clothingRegions(pose:options:mask:width:height:)`, `cutHead(mask:width:height:fraction:)`,
+`SkinModel`, `SkinOptions.default`, `fitSkinModel(rgba:width:height:stride:sampleMask:)`,
+`excludeSkin(rgba:width:height:stride:model:options:mask:)` y las constantes
+`ColorEngineError.poseMissing` / `.tooFewSkinSamples` (no son casos nuevos del
+enum: los `switch` exhaustivos de la app siguen compilando).
+
+## Capas de depuración (`ce_debug.c`, `--debug-dir`)
+
+Requisito del usuario: «The colors are not right. It will be helpful for me to
+see the layers from which the color is being extracted». Cada etapa del motor
+se puede ver como una capa, en la app (un único análisis y un único `ce_ctx`)
+y desde la línea de comandos. `ce_palette_extract` rellena, con contabilidad
+paralela de enteros y copias que no toca ninguna operación de coma flotante
+(`golden-check` 20/20 + 50/50 en verde y 280 salidas de `ce match/palette`
+byte a byte iguales a las de HEAD; `make parity` sin cambios), un estado de depuración en el contexto
+(`ce_ctx_size()` pasa de 2 044 176 a 2 047 936 B, ≤ 2 MiB):
+
+| Capa | API C | Qué muestra |
+|---|---|---|
+| Imagen reducida | `ce_debug_reduced_rgb` | Lo que ve el clustering tras el box-downscale (≤ 256 px). |
+| Peso por píxel | `ce_debug_weight_map` | máscara × gaussiana al centro × regla de piel, escalado al máximo: `floor(w/w_max·255 + 0.5)`. |
+| Swatch por píxel | `ce_debug_label_map` | Píxel → bin del histograma → centro de Lloyd → grupo de fusión → índice del swatch final; `CE_LABEL_NONE` (255) si su peso es 0, `CE_LABEL_DISCARDED` (254) si su cluster se descartó o se recortó. |
+| Cluster por píxel | `ce_debug_cluster_map` (extensión) | Cluster de Lloyd antes de fusionar (`CE_LABEL_NONE` si peso 0). |
+| Clusters | `ce_palette_debug_info` | Lab/rgb/peso de cada cluster de Lloyd, `fate` (0 conservado, 1 fusionado en `final_index`, 2 descartado por `min_weight`, 3 recortado por `max_colors`/cap — extensión), `group_head` (extensión), iteraciones de Lloyd, peso total, fracción de peso 0, sigma usada. |
+| Por qué ganó | `ce_match_explain_combo` | Para una combinación: `score` bit a bit igual al de `ce_match` y `fit_term + coverage_term + hypothesis_penalty == score`; EV e iluminante de la hipótesis ganadora; por swatch, su color más cercano de la combinación y ΔE00; por color, su swatch más cercano y ΔE00. |
+
+`CE_ERR_CTX` si el contexto no tiene una extracción válida (recién iniciado o
+tras una llamada fallida: cualquier `ce_palette_extract` o `ce_analyze`
+invalida el estado anterior); `CE_ERR_ARG` con buffers nulos o cortos, sin
+escribir.
+
+**CLI**: `ce palette|match|analyze <imagen> [opciones] --debug-dir DIR` deja
+stdout idéntico y escribe en `DIR` (lo crea): `reduced.ppm`, `weights.pgm`,
+`labels.pgm` (índices crudos), `labels.ppm` (color de su swatch; NONE negro,
+DISCARDED gris 128), `clusters.pgm`/`clusters.ppm`, `swatch_<k>.pgm` (255
+donde el píxel alimenta el swatch k), `mask.pgm` (máscara reducida con la
+misma caja entera que el motor, solo con `--mask`) y `debug.json`
+(`palette_debug` con cada cluster y su destino y recuento de píxeles, swatches
+con píxeles, recuentos NONE/DISCARDED, opciones y, en match, los hits y la
+explicación de los top-K con `score_equals_match`). Ejemplo:
+
+```
+build/tools/ce match foto.ppm --mask ropa.pgm --top 3 --json --debug-dir out/capas
+```
+
+**Swift**: `paletteDebugLayers(rgba:width:height:stride:paletteOptions:matchOptions:topK:mask:)`
+devuelve `PaletteDebugLayers` (`analysis` idéntico a `analyze`, `debug:
+PaletteDebug` con `clusters: [ClusterDebug]`, `reducedRGB`, `weightMap`,
+`labelMap`, `clusterMap` y `explanations: [MatchExplanation]` de los hits), y
+`explainMatch(swatches:options:comboId:)` explica una combinación cualquiera.
+Constantes `paletteLabelNone` / `paletteLabelDiscarded`.
+
+**Tests** (`tests/test_debug.c`, nativo, ASan y WASM): composición 200×200 de
+tres bloques + magenta 6×6 con un cuarto enmascarado (label map exacto, NONE,
+DISCARDED, fate 2, `zero_weight_fraction` 0,25); dos rojos en bins distintos
+fusionados (fate 1, `final_index` del rojo); recorte a 2 colores (fate 3);
+Σ weight_map por etiqueta = peso del swatch ±0,01 también con gaussiana y
+reducción; explicación bit a bit en el top-10 con opciones por defecto, match
+v0 y 20 paletas aleatorias con kL 2 y λ 0,5; errores; `DEBUG_LAYERS_HASH` =
+`60b15a4bf131c4bf` igual en nativo, ASan y WASM. `make parity` ejecuta además
+`tests/layers_parity.js`: `--debug-dir` de las 20 fixtures y `regions`/`skin`/
+`cut-head`/`match --mask` sintéticos (coordenadas no diádicas) byte a byte
+iguales en nativo y WASM.
 
 ## Paridad nativo/WASM (`make parity`, fase 5)
 
@@ -533,6 +719,8 @@ engine/
   Sources/CColorEngine/ce_image.c     capa 2: validación, box-downscale, pesos
   Sources/CColorEngine/ce_palette.c   capa 2: histograma, MMCQ, Lloyd, fusión
   Sources/CColorEngine/ce_match.c     capa 3: score, top-k con desempate por id, ce_analyze
+  Sources/CColorEngine/ce_mask.c      máscaras: regiones de ropa por pose, recorte de cabeza, piel adaptativa
+  Sources/CColorEngine/ce_debug.c     capas de depuración y ce_match_explain_combo
   Sources/CColorEngine/ce_internal.h  layout del contexto (no es API pública)
   Sources/CColorEngine/include/ce/ce.h  API pública
   Sources/CColorEngine/include/module.modulemap
@@ -542,13 +730,17 @@ engine/
   tests/test_ctx.c                    tests Unity (contexto, errores)
   tests/test_palette.c                tests Unity (paleta, PNM, rendimiento)
   tests/test_match.c                  tests Unity (match: recall 348/348, empates, errores, hash, rendimiento)
+  tests/test_mask.c                   tests Unity (regiones, simetría, invariancias, piel, hash de paridad)
+  tests/test_debug.c                  tests Unity (label/weight map, fusión/descarte, explicación bit a bit)
   tests/cli_match_check.js            validador del contrato JSON de match/analyze/batch (node)
+  tests/cli_mask_check.js             validador de batch con máscaras, regions, skin, cut-head, --debug-dir (node)
+  tests/layers_parity.js              paridad nativo/WASM de capas y máscaras (make parity)
   tests/fuzz_palette.c                fuzz loop propio (make fuzz)
   tests/unity/                        Unity 2.7.2 (MIT), vendorizado
   tests/data/                         Sharma + golden TSV (generados por el oráculo)
   tests/ColorEngineTests/             XCTest del wrapper (en macOS APFS "Tests/" y
                                       "tests/" son el mismo directorio)
-  tools/ce_cli.c                      CLI "ce" (version, lab, de2000, convert, dict, palette, match, analyze, batch)
+  tools/ce_cli.c                      CLI "ce" (version, lab, de2000, convert, dict, palette, match, analyze, batch, regions, skin, cut-head)
   tools/ce_pnm.c, ce_pnm.h            parser P6/P5 (entrada no confiable; fuera del SPM)
   BENCHLOG.md                         una línea por iteración de rendimiento
 ```

@@ -2,12 +2,19 @@
 # se versiona. Firma: DEVELOPMENT_TEAM viene de ios/Signing.xcconfig (gitignored;
 # copia de ios/Signing.example.xcconfig que `make ios-generate` crea si falta).
 #
-# Dependencias SPM: el motor local ../engine (producto ColorEngine) y GRDB.swift
-# (SQLite, MIT). La red solo se usa para resolver paquetes al compilar; la app
-# no usa red (make ios-lint). Sin entitlements ni capabilities (Personal Team).
+# Dependencias SPM: el motor local ../engine (producto ColorEngine), SubjectKit
+# (../apple/SubjectKit: Apple Vision on-device para personas, pose y caras; la
+# geometría de ropa y la piel las calcula el motor) y GRDB.swift (SQLite, MIT).
+# La red solo se usa para resolver paquetes al compilar; la app no usa red
+# (make ios-lint). Sin entitlements ni capabilities (Personal Team).
 #
 # Recursos del diccionario: se referencian desde ../data/wada (no se copian al
 # árbol de ios/); names.es.json es ruta protegida y solo se lee.
+#
+# Fotos de personas (harness/people, CC0, ver SOURCES.md): se referencian, no se
+# copian. En la app solo en Debug (atajos -uiScreen result-people / layers-people);
+# en Release las excluye EXCLUDED_SOURCE_FILE_NAMES. En el bundle de tests, dos
+# fotos para ScanAnalyzerSubjectTests.
 name: ColorsApp
 options:
   bundleIdPrefix: com.andreseloy
@@ -33,6 +40,8 @@ settings:
 packages:
   ColorEngine:
     path: ../engine
+  SubjectKit:
+    path: ../apple/SubjectKit
   GRDB:
     url: https://github.com/groue/GRDB.swift
     from: 7.0.0
@@ -51,12 +60,21 @@ targets:
       - path: ../data/wada/names.es.json
         buildPhase: resources
         group: Resources
+      # Foto de grupo solo para los atajos de depuración (Release la excluye).
+      - path: ../harness/people/06_group_courier_street.png
+        buildPhase: resources
+        group: DebugResources
     dependencies:
       - package: ColorEngine
         product: ColorEngine
+      - package: SubjectKit
+        product: SubjectKit
       - package: GRDB
         product: GRDB
     settings:
+      configs:
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "06_group_courier_street.png"
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.andreseloy.colorsapp
         PRODUCT_NAME: ColorsApp
@@ -75,10 +93,19 @@ targets:
       # generadas por oracle/tools/make_ios_fixtures.py; van planas en el bundle del test.
       - path: ColorsAppTests/Fixtures
         buildPhase: resources
+      # Dos fotos reales de harness/people (pareja de espaldas; vestido con piel).
+      - path: ../harness/people/03_couple_denim_street.png
+        buildPhase: resources
+        group: PeopleFixtures
+      - path: ../harness/people/02_single_dress_umbrella.png
+        buildPhase: resources
+        group: PeopleFixtures
     dependencies:
       - target: ColorsApp
       - package: ColorEngine
         product: ColorEngine
+      - package: SubjectKit
+        product: SubjectKit
       - package: GRDB
         product: GRDB
     settings:

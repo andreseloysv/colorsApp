@@ -1,7 +1,8 @@
 // Pestaña Rejilla (PLAN §7.5): las 348 combinaciones de Wada en un LazyVGrid,
 // en orden de id; casilla gris si no está desbloqueada y con los swatches de la
 // combinación si lo está (observación de `unlocks`); contador "41/348" arriba;
-// filtro por tamaño (2/3/4 colores); tap -> detalle propio (`RejillaComboDetailView`);
+// filtro por tamaño (2/3/4 colores); tap -> hoja con el detalle de Explorar
+// (`ComboDetailView`, vía `RejillaComboDetailView`);
 // botón "Escanear carrete" que presenta `ScanOnboardingView` (día 0).
 import SwiftUI
 
@@ -28,7 +29,8 @@ struct RejillaView: View {
                 }
             }
             .sheet(item: $selected) { combo in
-                RejillaComboDetailView(combo: combo, dictionary: env.dictionary, unlock: model.unlock(for: combo.id))
+                RejillaComboDetailView(combo: combo)
+                    .environmentObject(env)
                     .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $showScan) {
@@ -136,79 +138,18 @@ struct ComboTile: View {
     }
 }
 
-/// Detalle mínimo de una combinación desde la rejilla (Explorar tiene el suyo).
+/// Detalle de una combinación desde la rejilla: el mismo `ComboDetailView` de
+/// Explorar (nombre, colores con hex/RGB/Lab y fecha y origen del desbloqueo)
+/// dentro de la hoja, con su propia pila de navegación.
 struct RejillaComboDetailView: View {
     let combo: WadaCombo
-    let dictionary: WadaDictionary
-    let unlock: UnlockRecord?
-
-    private var colors: [WadaColor] { dictionary.colors(of: combo) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 0) {
-                    ForEach(colors) { color in
-                        Color(wada: color)
-                    }
-                }
-                .frame(height: 140)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .saturation(unlock == nil ? 0.15 : 1)
-                .opacity(unlock == nil ? 0.6 : 1)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(dictionary.displayName(id: combo.id))
-                        .font(.title2.bold())
-                    Text("\(WadaDictionary.numberLabel(combo.id)) · \(combo.size) colores" + (combo.collection.map { " · \($0)" } ?? ""))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(colors) { color in
-                        HStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color(wada: color))
-                                .frame(width: 36, height: 36)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(color.name)
-                                    .font(.body)
-                                Text(color.hex.uppercased())
-                                    .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                    }
-                }
-
-                Group {
-                    if let unlock {
-                        Label {
-                            Text("Desbloqueada el \(unlock.firstSeenAt.formatted(date: .abbreviated, time: .shortened)) · \(Self.sourceLabel(unlock.source))")
-                        } icon: {
-                            Image(systemName: "checkmark.seal.fill")
-                        }
-                        .foregroundStyle(.green)
-                    } else {
-                        Label("Todavía no la has desbloqueado: fotografía estos colores o escanea tu carrete.", systemImage: "lock")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .font(.footnote)
-            }
-            .padding()
+        NavigationStack {
+            ComboDetailView(comboId: combo.id)
         }
         .accessibilityIdentifier("rejilla.detail.\(combo.id)")
     }
 
-    static func sourceLabel(_ source: ScanSource) -> String {
-        switch source {
-        case .camera: "cámara"
-        case .picker: "foto elegida"
-        case .library: "carrete"
-        case .manual: "manual"
-        }
-    }
+    static func sourceLabel(_ source: ScanSource) -> String { source.label }
 }

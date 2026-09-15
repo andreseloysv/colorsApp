@@ -1,0 +1,95 @@
+[
+  {
+    "file": "01_single_black_outfit.png",
+    "people": 1,
+    "largest_person": {
+      "bbox_hint": [395, 262, 645, 680],
+      "garments": [
+        {"part": "torso", "color_hex": "#080a0e", "name": "blusa negra de gasa con canesú de encaje"},
+        {"part": "legs", "color_hex": "#090c11", "name": "pantalón negro ajustado"}
+      ]
+    },
+    "notes": "Ropa negra sobre pared blanca (#cccbc6) y reja roja a la derecha; lleva en la mano una chaqueta de cuero negra (no vestida) y botines negros. Piel solo en cara y manos. Prueba de ropa oscura: la paleta de la persona debe ser casi toda negra, sin el rojo de la reja."
+  },
+  {
+    "file": "02_single_dress_umbrella.png",
+    "people": 1,
+    "largest_person": {
+      "bbox_hint": [238, 222, 498, 985],
+      "garments": [
+        {"part": "full", "color_hex": "#090c14", "name": "vestido corto azul marino casi negro (tejido base)"},
+        {"part": "full", "color_hex": "#d4ced7", "name": "estampado blanco ornamental del vestido"}
+      ]
+    },
+    "notes": "Cuerpo entero caminando. Paraguas negro grande sobre la cabeza (no es ropa; puede entrar en la máscara de persona). Piernas y brazos desnudos: mucha piel (#d0845e aprox.) que debe excluirse. Fondo: andén de ladrillo rojizo, franja amarilla, césped verde y edificio blanco."
+  },
+  {
+    "file": "03_couple_denim_street.png",
+    "people": 2,
+    "largest_person": {
+      "bbox_hint": [135, 335, 392, 958],
+      "garments": [
+        {"part": "torso", "color_hex": "#afbacf", "name": "camisa de rayas azules y blancas (espalda, parte sin pelo)"},
+        {"part": "legs", "color_hex": "#3d5b7d", "name": "vaqueros anchos azul medio"}
+      ]
+    },
+    "notes": "De espaldas, sin caras visibles (sin muestra de piel de cara). Tamaño casi empatado con el hombre de la derecha [365, 283, 582, 950]: camiseta negra (#17151b) y pantalón negro (#030305), zapatillas blancas, bolsa de plástico. Pelo largo castaño tapa media espalda de la mujer; bolso negro. Una figura desenfocada al fondo. Fondo urbano con señal amarilla y coches blancos."
+  },
+  {
+    "file": "04_two_women_backlit.png",
+    "people": 2,
+    "largest_person": {
+      "bbox_hint": [88, 262, 272, 680],
+      "garments": [
+        {"part": "torso", "color_hex": "#1a1b13", "name": "chaqueta negra (a contraluz)"},
+        {"part": "legs", "color_hex": "#080a07", "name": "vaqueros negros"}
+      ]
+    },
+    "notes": "Contraluz fuerte con cielo quemado y colina de arena o grava clara. Manta blanca con cuadros negros (#d8dee3) sostenida entre las dos: no es ropa de ninguna. Segunda persona [400, 185, 705, 645] con el brazo levantado: top negro corto (se ve #44351e por el contraluz) y vaqueros azul muy oscuro (#1e201a), botines negros, franja de piel en la cintura. La de la izquierda asoma camiseta blanca bajo la chaqueta. Caras de perfil o de espaldas."
+  },
+  {
+    "file": "05_three_friends_closeup.png",
+    "people": 3,
+    "largest_person": {
+      "bbox_hint": [165, 95, 455, 1024],
+      "garments": [
+        {"part": "full", "color_hex": "#acc3ee", "name": "vestido azul claro"}
+      ]
+    },
+    "notes": "Plano medio posado, cortadas por abajo; tamaños casi empatados (la central por área visible). Mano con anillo en primer plano, desenfocada, delante del vestido (piel y uñas rosas). Izquierda [0, 85, 245, 1024]: vestido estampado verde amarillento pálido (#b6b9b1). Derecha [385, 95, 665, 1024]: jersey blanco (#e2e6fd) y vaqueros azul oscuro (#053d65). Pelo rubio abundante en las tres; gafas de espejo azules en la central. Fondo: revestimiento beige desenfocado."
+  },
+  {
+    "file": "06_group_courier_street.png",
+    "people": 5,
+    "largest_person": {
+      "bbox_hint": [505, 140, 772, 965],
+      "garments": [
+        {"part": "torso", "color_hex": "#b9c8dd", "name": "chaqueta con capucha azul claro con estampado blanco"},
+        {"part": "legs", "color_hex": "#466f9c", "name": "vaqueros azul medio"}
+      ]
+    },
+    "notes": "Grupo en la calle: 5 personas visibles (quizá alguna más tapada detrás de la moto), muchas oclusiones y cuerpos cortados por el borde derecho. Repartidor sentado en moto amarilla con caja amarilla y negra muy saturada (objeto, no ropa): chaqueta acolchada negra (#222329), vaqueros azul oscuro (#111e34), gorra marrón. Detrás: hombre calvo con sudadera negra, mujer con camisa de rayas azules, hombre mayor con chaleco gris y camisa de cuadros. Bolsa de plástico blanca y zapatillas rosa pálido en la persona más grande."
+  },
+  {
+    "file": "07_group_mural_white_outfits.png",
+    "people": 6,
+    "largest_person": {
+      "bbox_hint": [190, 140, 350, 620],
+      "garments": [
+        {"part": "full", "color_hex": "#d3d8db", "name": "vestido blanco holgado de gasa"}
+      ]
+    },
+    "notes": "Seis mujeres vestidas de blanco o crema delante de un mural muy saturado (rojo #e81922, magenta, verde #53dea1, turquesa). Tamaños parecidos; la de la izquierda y la central delantera [432, 165, 610, 620] son las mayores. Otras prendas: top blanco (#dbdbe4) y pantalón taupe (#5e4e46) en la segunda [320, 105, 467, 540]; vestido largo crema (#d4d1c2) en la cuarta; top de encaje crema (#e0d6cc) y pantalón blanco en la quinta; top y vaqueros blancos en la sentada. Mucha piel oscura en brazos y piernas; sandalias y tacones camel. El reto: que el mural no contamine la paleta de ropa blanca."
+  },
+  {
+    "file": "08_artist_colorful_mural.png",
+    "people": 1,
+    "largest_person": {
+      "bbox_hint": [468, 5, 1024, 682],
+      "garments": [
+        {"part": "torso", "color_hex": "#9fcefe", "name": "camiseta blanca con dos rayas negras en la manga (se ve azulada por la luz)"}
+      ]
+    },
+    "notes": "Plano medio de perfil, cortado por la derecha y por abajo (sin piernas). Mascarilla respiratoria gris que tapa boca y nariz: la muestra de piel de cara casi no existe; brazo desnudo con bote de spray. Fondo: mural recién pintado muy saturado (amarillo #cbee95, naranja #d95103, verde, azul, magenta) que ocupa más de la mitad de la foto. La ropa real es blanca: el azulado es dominante de color o reflejo, útil para ver si se confunde con el fondo."
+  }
+]

@@ -18,6 +18,11 @@
 #   make ios-install DEVICE=<udid>  build firmada + devicectl install + launch (exige identidad)
 #   make ios-lint                 sin red en la app: 0 referencias a URLSession|NWConnection|CFNetwork
 #                                 en ios/ (sin el .xcodeproj generado ni build-ios/); exit 1 si hay alguna
+#   make ios-layers-fixtures      regenera ios/ColorsAppTests/Fixtures/layers/ (escena sintética de la app +
+#                                 máscara de su cadena, escritas por LayersInspectorTests en el simulador, y
+#                                 `ce match --mask --debug-dir` con un `ce` propio en $(DERIVED)/engine)
+#   make ios-screens-subject      build + install + `simctl launch -uiScreen ...` y capturas del recorte de
+#                                 sujeto y del inspector de capas en SUBJECT_SCREENS_DIR
 #
 # Variables:
 #   SIM_NAME   nombre del simulador (defecto "iPhone 18 Pro"); SIM_UDID se resuelve desde él
@@ -29,8 +34,10 @@
 #              `uv run --project oracle python oracle/tools/make_sim_media.py` los regenera)
 #   SIM_MEDIA  1 (defecto) añade las fixtures antes de los tests; 0 no toca el carrete
 #   SIM_RESET  1 = `simctl erase` del simulador antes de añadirlas (borra apps y fotos; defecto 0)
-#   SCREENS_DIR  directorio donde DayZeroScanTests guarda rejilla.png y wrapped.png
-#              (defecto harness/out/screens; se pasa como TEST_RUNNER_COLORSAPP_SCREENS_DIR)
+#   SCREENS_DIR  directorio donde DayZeroScanTests guarda rejilla.png y wrapped.png y LayersInspectorTests
+#              las hojas de "Compartir capas" (defecto harness/out/screens; TEST_RUNNER_COLORSAPP_SCREENS_DIR)
+#   SUBJECT_SCREENS_DIR  capturas de ios-screens-subject (defecto harness/out/screens-subject)
+#   SCREEN_WAIT  segundos entre lanzar la app y capturar (defecto 7)
 
 IOS_DIR    := $(ROOT)/ios
 IOS_PROJ   := $(IOS_DIR)/ColorsApp.xcodeproj
@@ -54,7 +61,7 @@ SIM_RESET ?= 0
 SIM_MEDIA_STAMP = $(ROOT)/harness/out/sim-media/$(SIM_UDID).stamp
 SCREENS_DIR ?= $(ROOT)/harness/out/screens
 
-.PHONY: ios-generate ios-build-sim ios-build-device-nosign ios-test-sim ios-test-sim-media ios-run-sim ios-addmedia ios-install ios-lint ios-clean
+.PHONY: ios-generate ios-build-sim ios-build-device-nosign ios-test-sim ios-test-sim-media ios-run-sim ios-addmedia ios-install ios-lint ios-clean ios-layers-fixtures ios-screens-subject
 
 ios-generate:
 	@test -f $(IOS_DIR)/Signing.xcconfig || { cp $(IOS_DIR)/Signing.example.xcconfig $(IOS_DIR)/Signing.xcconfig && echo "ios-generate: creado ios/Signing.xcconfig desde la plantilla (DEVELOPMENT_TEAM = REEMPLAZAR)"; }
@@ -170,3 +177,70 @@ ios-lint:
 	else \
 	  echo "ios-lint: grep falló (rc=$$rc)"; exit $$rc; \
 	fi
+
+# Fixtures del inspector de capas (LayersInspectorTests): el test escribe la
+# escena sintética de la app (SyntheticPersonScene) y la máscara de su cadena
+# por defecto en $(IOS_LAYERS_WORK) (en esa pasada falla la comparación si las
+# fixtures estaban desfasadas: se ignora), el CLI `ce` compilado en
+# $(BUILD_IOS)/engine calcula labels.pgm y debug.json con --debug-dir, y
+# ios/Scripts/make_layers_fixtures.sh copia todo a Fixtures/layers/. Después se
+# regenera el proyecto (ficheros nuevos) y hay que volver a ejecutar ios-test-sim.
+IOS_LAYERS_FIXTURES := $(IOS_DIR)/ColorsAppTests/Fixtures/layers
+IOS_LAYERS_WORK = $(BUILD_IOS)/layers-fixtures
+IOS_CE_BUILD = $(BUILD_IOS)/engine
+
+ios-layers-fixtures: $(IOS_PROJ)/project.pbxproj
+	@test -n "$(SIM_UDID)" || { echo "ios-layers-fixtures: no hay simulador '$(SIM_NAME)'"; exit 1; }
+	cmake -S $(ENGINE) -B $(IOS_CE_BUILD) -DCMAKE_BUILD_TYPE=Release > /dev/null
+	cmake --build $(IOS_CE_BUILD) --parallel --target ce
+	rm -rf $(IOS_LAYERS_WORK) && mkdir -p $(IOS_LAYERS_WORK)
+	xcrun simctl bootstatus $(SIM_UDID) -b
+	-TEST_RUNNER_COLORSAPP_LAYERS_FIXTURES_OUT=$(IOS_LAYERS_WORK) $(XCB) $(XCB_QUIET) -destination 'platform=iOS Simulator,id=$(SIM_UDID)' CODE_SIGNING_ALLOWED=NO -collect-test-diagnostics never test -only-testing:ColorsAppTests/LayersInspectorTests/testDemoSceneMatchesFixtures
+	sh $(IOS_DIR)/Scripts/make_layers_fixtures.sh $(IOS_CE_BUILD)/tools/ce $(IOS_LAYERS_WORK) $(IOS_LAYERS_FIXTURES)
+	$(MAKE) ios-generate
+
+# Capturas del recorte de sujeto y de las capas (atajos DEBUG de DebugLaunch):
+# Resultado con la foto de grupo embebida (result-people), con "Ver máscara"
+# (result-people-mask), inspector de esa foto (layers-people), la escena
+# sintética con una persona (result-demo-person; layers-demo, una captura por
+# capa con -uiLayer) y con dos (result-demo-people[-mask]: fila "Personas" y
+# "Ver máscara" con la cadena real) y Ajustes (sección Recorte arriba). En el simulador Vision no crea su contexto
+# de inferencia: result-people y layers-people muestran el retorno "Vision no
+# disponible"; layers-demo usa personas sintéticas y la cadena real del motor.
+SUBJECT_SCREENS_DIR ?= $(ROOT)/harness/out/screens-subject
+SCREEN_WAIT ?= 7
+SUBJECT_SCREENS := result-people:-uiScreen,result-people \
+  result-people-mask:-uiScreen,result-people-mask \
+  layers-people-04:-uiScreen,layers-people,-uiLayer,4 \
+  layers-people-07:-uiScreen,layers-people,-uiLayer,7 \
+  layers-people-11:-uiScreen,layers-people,-uiLayer,11 \
+  result-demo-person:-uiScreen,result-demo-person \
+  result-demo-people:-uiScreen,result-demo-people \
+  result-demo-people-mask:-uiScreen,result-demo-people-mask \
+  layers-demo-01:-uiScreen,layers-demo,-uiLayer,1 \
+  layers-demo-03:-uiScreen,layers-demo,-uiLayer,3 \
+  layers-demo-04:-uiScreen,layers-demo,-uiLayer,4 \
+  layers-demo-05:-uiScreen,layers-demo,-uiLayer,5 \
+  layers-demo-06:-uiScreen,layers-demo,-uiLayer,6 \
+  layers-demo-07:-uiScreen,layers-demo,-uiLayer,7 \
+  layers-demo-08:-uiScreen,layers-demo,-uiLayer,8 \
+  layers-demo-09:-uiScreen,layers-demo,-uiLayer,9 \
+  layers-demo-10:-uiScreen,layers-demo,-uiLayer,10 \
+  layers-demo-11:-uiScreen,layers-demo,-uiLayer,11 \
+  ajustes-recorte:-uiScreen,ajustes
+
+ios-screens-subject: $(IOS_PROJ)/project.pbxproj
+	@test -n "$(SIM_UDID)" || { echo "ios-screens-subject: no hay simulador '$(SIM_NAME)'"; exit 1; }
+	$(XCB) $(XCB_QUIET) -destination 'platform=iOS Simulator,id=$(SIM_UDID)' CODE_SIGNING_ALLOWED=NO build
+	xcrun simctl bootstatus $(SIM_UDID) -b
+	xcrun simctl install $(SIM_UDID) $(SIM_APP)
+	mkdir -p $(SUBJECT_SCREENS_DIR)
+	@for spec in $(SUBJECT_SCREENS); do \
+	  name=$${spec%%:*}; args=$$(echo "$${spec#*:}" | tr ',' ' '); \
+	  xcrun simctl terminate $(SIM_UDID) $(IOS_BUNDLE) >/dev/null 2>&1 || true; \
+	  xcrun simctl launch $(SIM_UDID) $(IOS_BUNDLE) $$args >/dev/null || exit 1; \
+	  sleep $(SCREEN_WAIT); \
+	  xcrun simctl io $(SIM_UDID) screenshot $(SUBJECT_SCREENS_DIR)/$$name.png >/dev/null 2>&1 || exit 1; \
+	  echo "ios-screens-subject: $$name ($$args) -> $(SUBJECT_SCREENS_DIR)/$$name.png"; \
+	done
+	xcrun simctl terminate $(SIM_UDID) $(IOS_BUNDLE) >/dev/null 2>&1 || true

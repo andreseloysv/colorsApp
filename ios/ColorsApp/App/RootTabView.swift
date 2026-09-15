@@ -26,6 +26,25 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// Acción para cambiar de pestaña desde una vista hija (p. ej. "Ver rejilla" del escaneo en Hoy).
+struct SelectTabAction {
+    let action: @MainActor (AppTab) -> Void
+
+    @MainActor
+    func callAsFunction(_ tab: AppTab) { action(tab) }
+}
+
+private struct SelectTabKey: EnvironmentKey {
+    static var defaultValue: SelectTabAction { SelectTabAction(action: { _ in }) }
+}
+
+extension EnvironmentValues {
+    var selectTab: SelectTabAction {
+        get { self[SelectTabKey.self] }
+        set { self[SelectTabKey.self] = newValue }
+    }
+}
+
 struct RootTabView: View {
     @State private var selection: AppTab = .hoy
 
@@ -45,6 +64,7 @@ struct RootTabView: View {
                 .tag(AppTab.ajustes)
         }
         .accessibilityIdentifier("root.tabs")
+        .environment(\.selectTab, SelectTabAction(action: { tab in selection = tab }))
     }
 }
 

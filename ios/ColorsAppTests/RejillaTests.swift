@@ -3,6 +3,7 @@
 // diccionario, la observación sigue los cambios y la rejilla se renderiza.
 import XCTest
 import SwiftUI
+import UIKit
 @testable import ColorsApp
 
 final class RejillaTests: XCTestCase {
@@ -102,9 +103,12 @@ final class RejillaTests: XCTestCase {
         let locked = ComboTile(combo: combo, colors: env.dictionary.colors(of: combo), unlocked: false)
             .frame(width: 60, height: 60)
         XCTAssertNotNil(ImageRenderer(content: locked).cgImage)
-        let detail = RejillaComboDetailView(combo: combo, dictionary: env.dictionary, unlock: model.unlock(for: 1))
-            .frame(width: 390, height: 500)
-        XCTAssertNotNil(ImageRenderer(content: detail).cgImage)
+        XCTAssertNotNil(model.unlock(for: 1))
+        // El detalle es ComboDetailView (con .task): se aloja en un UIHostingController;
+        // ImageRenderer de una vista con .task dentro de NavigationStack aborta al liberarse (iOS 27).
+        let host = UIHostingController(rootView: RejillaComboDetailView(combo: combo).environmentObject(env))
+        XCTAssertGreaterThan(host.sizeThatFits(in: CGSize(width: 390, height: 2000)).height, 100,
+                             "el detalle de la rejilla se construye y ocupa espacio")
         XCTAssertEqual(RejillaComboDetailView.sourceLabel(.library), "carrete")
     }
 

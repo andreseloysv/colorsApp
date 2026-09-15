@@ -38,11 +38,14 @@ const MATCH_KEYS = ['kL', 'kC', 'kH', 'coverage_lambda', 'ambiguous_gap', 'expos
   'illuminant_search', 'illuminant_penalty', 'top'];
 const RESULT_KEYS = ['engine', 'dict_version', 'file', 'width', 'height', 'reduced_width', 'reduced_height',
   'opts', 'swatches', 'hits', 'ambiguous', 'hash'];
+// Las líneas del batch llevan además "mask" (ruta o null) tras "file".
+const BATCH_KEYS = RESULT_KEYS.slice(0, 3).concat(['mask'], RESULT_KEYS.slice(3));
 
 // Comprueba un objeto de resultado completo (match o línea ok del batch).
-function checkResult(obj, file, top, expectedTop1) {
-  assert(JSON.stringify(Object.keys(obj)) === JSON.stringify(RESULT_KEYS),
+function checkResult(obj, file, top, expectedTop1, batch) {
+  assert(JSON.stringify(Object.keys(obj)) === JSON.stringify(batch ? BATCH_KEYS : RESULT_KEYS),
     'claves del resultado: ' + Object.keys(obj).join(','));
+  if (batch) assert(obj.mask === null, 'batch sin mascara -> "mask": null');
   assert(obj.engine === '0.1.0', 'engine');
   assert(/^[0-9a-f]{12}$/.test(obj.dict_version), 'dict_version 12 hex');
   assert(obj.file === file, 'file: ' + obj.file + ' != ' + file);
@@ -172,10 +175,11 @@ lines.forEach((line, i) => {
   assert(!/\n/.test(line), 'JSONL: una linea por imagen');
   const [file, top1] = expected[i];
   if (top1 === null) {
-    assert(JSON.stringify(Object.keys(o)) === '["file","error"]', 'linea de error: {file, error}');
+    assert(JSON.stringify(Object.keys(o)) === '["file","mask","error"]', 'linea de error: {file, mask, error}');
+    assert(o.mask === null, 'linea de error sin mascara -> "mask": null');
     assert(o.file === file && typeof o.error === 'string' && o.error.length > 0, 'error de ' + file);
   } else {
-    checkResult(o, file, 3, top1);
+    checkResult(o, file, 3, top1, true);
   }
 });
 // batch con lista inexistente -> 2; batch de la lista con --top 1 mantiene el orden.

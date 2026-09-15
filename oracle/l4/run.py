@@ -15,6 +15,18 @@ sección L4 (``golden_min_photos``, ``by_tag``, ``aggregate``).
 Sin ``COLORSAPP_GOLDEN_DIR`` la capa es ``skipped`` (motivo en el scorecard, exit 0); es
 el único motivo admitido de ``skipped`` para L4 (sección 6 del plan). Las fotos nunca
 entran en el repo: solo se copian PPM temporales a ``<out>/l4/``.
+
+Variantes de recorte (``l4.variants``, sección 10 del contexto): además de ``none`` se evalúan
+``allPeople``, ``largest``, ``largest-clothing`` y ``largest-clothing-skin`` (oficial, la de la
+app) con máscaras del manifest (``masks``), de ``visionmask`` o ``skipped`` con motivo; tabla
+comparativa en ``l4_detail.json`` (``variants``) y en el scorecard. Opciones:
+
+    --variants none,largest-clothing-skin   subconjunto (none siempre se incluye)
+    --no-variants                            solo none (el runner mínimo de F3)
+    --visionmask PATH                        binario explícito (por defecto $COLORSAPP_VISIONMASK
+                                             o build-subject/visionmask)
+    --no-visionmask                          solo máscaras del manifest (el resto, skipped)
+    --build-visionmask                       si falta el binario, ``make visionmask``
 """
 
 from __future__ import annotations
@@ -33,6 +45,8 @@ from typing import Any
 from oracle import l3
 from oracle import metrics as mt
 from oracle.l2 import Check, find_cli_optional, load_thresholds
+
+from l4 import variants as l4v
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO_ROOT / "harness" / "out"
@@ -208,12 +222,23 @@ def _pct(x: float) -> str:
 
 
 def run_layer4(cli: Path | None, thresholds: dict[str, Any] | None, out_dir: Path | None,
-               golden_dir: Path | None = None, log=print) -> tuple[str, list[Check], dict[str, Any]]:
-    """(estado, checks, detalle). Estado ``skipped`` sin ``$COLORSAPP_GOLDEN_DIR``; si no, pass | fail."""
+               golden_dir: Path | None = None, log=print, *, variants: list[str] | None = None,
+               visionmask: Path | str | None = "auto", build_visionmask: bool = False,
+               with_variants: bool = True) -> tuple[str, list[Check], dict[str, Any]]:
+    """(estado, checks, detalle). Estado ``skipped`` sin ``$COLORSAPP_GOLDEN_DIR``; si no, pass | fail.
+
+    ``variants``/``visionmask``/``build_visionmask``: ver ``l4.variants.run_variants``; con
+    ``with_variants=False`` solo se evalúa ``none``.
+    """
     golden_dir = golden_dir or golden_dir_from_env()
+    if out_dir is not None:
+        l4v.write_proposal(out_dir)
     if golden_dir is None:
         reason = f"sin ${GOLDEN_DIR_ENV}: el set dorado vive fuera del repo (fase 8); solo el usuario lo exporta"
-        return "skipped", [Check("set dorado", "skipped", reason)], {"status": "skipped", "reason": reason}
+        return "skipped", [Check("set dorado", "skipped", reason)], {
+            "status": "skipped", "reason": reason,
+            "variants": {"status": "skipped", "reason": reason, "order": list(variants or l4v.VARIANTS),
+                         "official": l4v.OFFICIAL_VARIANT}}
     th, defaulted = resolve_thresholds(thresholds)
     started = time.perf_counter()
     checks: list[Check] = []
@@ -312,6 +337,24 @@ def run_layer4(cli: Path | None, thresholds: dict[str, Any] | None, out_dir: Pat
                   value=float(agg["max_class_share"]), threshold=float(a_th["max_class_share_max"])))
     if defaulted:
         add(Check("umbrales L4 con valores por defecto (no promovidos)", "info", ", ".join(defaulted), value=len(defaulted)))
+
+    # Variantes de recorte (none reutiliza los resultados de arriba).
+    if with_variants:
+        try:
+            v_checks, v_detail = l4v.run_variants(
+                cli, golden_dir, scored, files, results, (out_dir / "l4" / "variants") if out_dir is not None else Path(golden_dir) / ".l4_variants",
+                variants=variants, visionmask=visionmask, build_visionmask=build_visionmask, thresholds=thresholds,
+                all_tags=list(th.get("tags") or []), log=log)
+        except Exception as exc:  # noqa: BLE001 - la capa base debe terminar siempre
+            import traceback
+
+            add(Check("variantes de recorte", "fail", f"excepción {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1200:]}"))
+        else:
+            for c in v_checks:
+                add(c)
+            detail["variants"] = {k: v for k, v in v_detail.items() if k not in ("markdown", "per_photo")}
+            detail["variants_per_photo"] = v_detail["per_photo"]
+            detail["variants_markdown"] = v_detail["markdown"]
     detail["seconds"] = round(time.perf_counter() - started, 1)
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -325,12 +368,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cli", type=str, default=None)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--golden-dir", type=Path, default=None, help=f"por defecto ${GOLDEN_DIR_ENV}")
+    ap.add_argument("--variants", type=str, default=None, help="lista separada por comas (defecto: " + ",".join(l4v.VARIANTS) + ")")
+    ap.add_argument("--no-variants", action="store_true", help="solo la variante none")
+    ap.add_argument("--visionmask", type=str, default=None, help=f"binario visionmask (defecto ${l4v.VISIONMASK_ENV} o build-subject/visionmask)")
+    ap.add_argument("--no-visionmask", action="store_true", help="no ejecutar visionmask: solo máscaras del manifest")
+    ap.add_argument("--build-visionmask", action="store_true", help="si falta visionmask, make visionmask")
     args = ap.parse_args(argv)
-    status, checks, detail = run_layer4(find_cli_optional(args.cli), load_thresholds(), args.out, golden_dir=args.golden_dir)
+    variants = [v.strip() for v in args.variants.split(",") if v.strip()] if args.variants else None
+    visionmask: Path | str | None = None if args.no_visionmask else (args.visionmask or "auto")
+    status, checks, detail = run_layer4(find_cli_optional(args.cli), load_thresholds(), args.out, golden_dir=args.golden_dir,
+                                        variants=variants, visionmask=visionmask, build_visionmask=args.build_visionmask,
+                                        with_variants=not args.no_variants)
     if status == "skipped":
         print(f"L4: skipped ({detail['reason']})")
         return 0
+    if detail.get("variants_markdown"):
+        print("")
+        print(detail["variants_markdown"])
     print(f"L4: {status.upper()} ({sum(1 for c in checks if c.status == 'pass')}/{len(checks)} checks pass; {detail.get('seconds')} s)")
+    if args.out is not None:
+        print(f"detalle: {args.out / 'l4_detail.json'}; propuesta de umbrales: {args.out / 'thresholds.proposed.json'} (L4_variants)")
     return 0 if status == "pass" else 1
 
 

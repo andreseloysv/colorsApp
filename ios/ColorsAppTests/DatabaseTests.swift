@@ -1,5 +1,7 @@
-// GRDB: migración v1 (tablas, columnas sync-ready, WAL), inserción de scan +
-// unlock + feedback, observación de unlocks y UUIDv7 monotónico.
+// GRDB: migraciones v1 + v2 (tablas, columnas sync-ready y del recorte, WAL),
+// inserción de scan + unlock + feedback, observación de unlocks y UUIDv7
+// monotónico. La migración v1 -> v2 sobre una base creada solo con v1 está en
+// SubjectDatabaseTests.
 import XCTest
 import GRDB
 import ColorEngine
@@ -26,7 +28,7 @@ final class DatabaseTests: XCTestCase {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let db = try AppDatabase.open(at: dir.appendingPathComponent("colors.sqlite"))
-        XCTAssertEqual(try db.appliedMigrations(), ["v1"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2"])
         try db.writer.read { db in
             for table in ["scans", "unlocks", "feedback", "settings"] {
                 XCTAssertTrue(try db.tableExists(table), table)
@@ -38,6 +40,8 @@ final class DatabaseTests: XCTestCase {
             let scanColumns = Set(try db.columns(in: "scans").map(\.name))
             XCTAssertTrue(scanColumns.isSuperset(of: ["id", "asset_local_id", "source", "top1", "top2", "top3", "scores",
                                                       "palette_json", "ambiguous", "engine_version", "dict_version", "scanned_at"]))
+            XCTAssertTrue(scanColumns.isSuperset(of: ["subject_mode", "region_mode", "adaptive_skin", "people_count",
+                                                      "person_index", "mask_steps", "mask_coverage"]))
             XCTAssertEqual(try db.primaryKey("unlocks").columns, ["combo_id"])
             XCTAssertEqual(try db.primaryKey("settings").columns, ["key"])
             let mode = try String.fetchOne(db, sql: "PRAGMA journal_mode")

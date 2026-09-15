@@ -1,8 +1,11 @@
 // "Exportar diagnóstico" (PLAN §7.8): zip en tmp con README.txt, feedback.csv
-// (scan_id, verdict, top1..3, scores, created_at), scans.csv (sin rutas ni
-// identificadores de fotos), times.txt (tiempos registrados por TimingLog) y
-// images/<scan_id>.png (copias PNG sRGB de 256 px de las fotos con veredicto,
-// ver DiagnosticsImages.swift). Solo por acción explícita del usuario (botón de
+// (scan_id, verdict, top1..3, scores, created_at + columnas del recorte),
+// scans.csv (sin rutas ni identificadores de fotos), times.txt (tiempos
+// registrados por TimingLog), images/<scan_id>.png (copias PNG sRGB de 256 px de
+// las fotos con veredicto, ver DiagnosticsImages.swift) y, junto a cada PNG, las
+// máscaras de 256 px de las variantes largest / largest-clothing /
+// largest-clothing-skin (PGM), el JSON del recorte, el label map y debug.json
+// (DiagnosticsSubject.swift). Solo por acción explícita del usuario (botón de
 // Ajustes) y entregado por ShareLink/AirDrop; la app sigue sin usar red.
 import Foundation
 import GRDB
@@ -41,8 +44,20 @@ enum Diagnostics {
     /// Devuelve el PNG sRGB de 256 px de un scan, o nil si no está disponible.
     typealias ImageProvider = @Sendable (ScanRecord) async -> Data?
 
-    static let feedbackHeader = "scan_id,verdict,top1,top2,top3,scores,created_at"
-    static let scansHeader = "id,source,top1,top2,top3,scores,ambiguous,engine_version,dict_version,scanned_at,palette"
+    /// PNG de 256 px de un scan y sus ficheros extra (máscaras, JSON, capas).
+    struct PhotoAttachment: Equatable, Sendable {
+        let png: Data
+        var extras: [DiagnosticsSubject.Extra] = []
+    }
+
+    /// Devuelve la foto de un scan con sus extras, o nil si no está disponible.
+    typealias PhotoProvider = @Sendable (ScanRecord) async -> PhotoAttachment?
+
+    /// Columnas del recorte de sujeto (al final, opcionales para feedback_report.py).
+    static let subjectColumns = "subject_mode,region_mode,adaptive_skin,people_count,person_index"
+    static let feedbackHeader = "scan_id,verdict,top1,top2,top3,scores,created_at," + subjectColumns
+    static let scansHeader = "id,source,top1,top2,top3,scores,ambiguous,engine_version,dict_version,scanned_at,palette,"
+        + subjectColumns + ",mask_steps,mask_coverage"
 
     static func iso(_ date: Date) -> String {
         date.formatted(.iso8601)
@@ -52,6 +67,17 @@ enum Diagnostics {
     static func csvField(_ value: String) -> String {
         guard value.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }) else { return value }
         return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
+    /// subject_mode, region_mode, adaptive_skin (1/0), people_count, person_index (vacíos antes de v2).
+    static func subjectFields(_ s: ScanRecord?) -> [String] {
+        [
+            s?.subjectMode ?? "",
+            s?.regionMode ?? "",
+            s?.adaptiveSkin.map { $0 ? "1" : "0" } ?? "",
+            s?.peopleCount.map(String.init) ?? "",
+            s?.personIndex.map(String.init) ?? "",
+        ]
     }
 
     static func feedbackCSV(_ feedback: [FeedbackRecord], scans: [String: ScanRecord]) -> String {
@@ -66,7 +92,7 @@ enum Diagnostics {
                 s?.top3.map(String.init) ?? "",
                 s?.scores ?? "",
                 iso(f.createdAt),
-            ]
+            ] + subjectFields(s)
             lines.append(fields.map(csvField).joined(separator: ","))
         }
         return lines.joined(separator: "\n") + "\n"
@@ -89,15 +115,33 @@ enum Diagnostics {
                 s.dictVersion,
                 iso(s.scannedAt),
                 palette,
-            ]
+            ] + subjectFields(s) + [s.maskSteps ?? "", s.maskCoverage.map { String(format: "%.4f", $0) } ?? ""]
             lines.append(fields.map(csvField).joined(separator: ","))
         }
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// Construye el zip en `directory` (tmp por defecto) y devuelve su URL y el resumen.
+    /// Construye el zip en `directory` (tmp por defecto) y devuelve su URL y el
+    /// resumen. `imageProvider` solo aporta el PNG (sin extras).
     static func export(scans scanRepository: ScanRepository, feedback feedbackRepository: FeedbackRepository,
                        timings: TimingLog, imageProvider: ImageProvider?,
+                       directory: URL = FileManager.default.temporaryDirectory,
+                       now: Date = Date()) async throws -> Export {
+        var provider: PhotoProvider?
+        if let imageProvider {
+            provider = { @Sendable scan in
+                guard let png = await imageProvider(scan) else { return nil }
+                return PhotoAttachment(png: png)
+            }
+        }
+        return try await export(scans: scanRepository, feedback: feedbackRepository, timings: timings,
+                                photoProvider: provider, directory: directory, now: now)
+    }
+
+    /// Construye el zip con el PNG de cada foto con veredicto y sus extras
+    /// (images/<scan_id>.<sufijo>, en orden de sufijo).
+    static func export(scans scanRepository: ScanRepository, feedback feedbackRepository: FeedbackRepository,
+                       timings: TimingLog, photoProvider: PhotoProvider?,
                        directory: URL = FileManager.default.temporaryDirectory,
                        now: Date = Date()) async throws -> Export {
         let feedback = try await feedbackRepository.all()
@@ -124,8 +168,11 @@ enum Diagnostics {
                 notes.append("scan \(f.scanId): veredicto sin scan en la base de datos")
                 continue
             }
-            if let imageProvider, let png = await imageProvider(scan) {
-                entries.append(ZipEntry(name: "images/\(scan.id).png", data: png))
+            if let photoProvider, let photo = await photoProvider(scan) {
+                entries.append(ZipEntry(name: "images/\(scan.id).png", data: photo.png))
+                for extra in photo.extras {
+                    entries.append(ZipEntry(name: "images/\(scan.id).\(extra.suffix)", data: extra.data))
+                }
                 images += 1
             } else {
                 omitted += 1
@@ -139,10 +186,12 @@ enum Diagnostics {
         colorsApp — diagnóstico
         exportado: \(iso(now))
         app \(appVersion) (\(appBuild)) · motor \(colorEngineVersion) · diccionario \(dictionaryVersion) · GRDB \(grdbVersion) · SQLite \(sqliteVersion)
-        feedback.csv: scan_id, verdict (yes|no), top1..top3, scores (JSON), created_at
-        scans.csv: todos los scans vivos, sin rutas ni identificadores de fotos
-        times.txt: tiempos registrados (analyze.<origen>, scan.done...)
+        feedback.csv: scan_id, verdict (yes|no), top1..top3, scores (JSON), created_at, subject_mode, region_mode, adaptive_skin (1/0), people_count, person_index
+        scans.csv: todos los scans vivos, sin rutas ni identificadores de fotos (+ recorte, mask_steps JSON, mask_coverage)
+        times.txt: tiempos registrados (analyze.<origen>[.vision|.mask|.engine], scan.done, scan.vision, scan.mask, scan.engine)
         images/<scan_id>.png: PNG sRGB de 256 px de las fotos con veredicto (\(images) incluidas, \(omitted) omitidas)
+        images/<scan_id>.<largest|largest-clothing|largest-clothing-skin>.pgm: máscara de 256 px de esa variante (sin fichero = sin máscara)
+        images/<scan_id>.json: recorte (modo, pasos, personas, variantes, tiempos); .labels.png y .debug.json: capas del motor
         \(notes.joined(separator: "\n"))
         """
         entries.insert(ZipEntry(name: "README.txt", text: readme + "\n"), at: 0)

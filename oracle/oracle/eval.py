@@ -141,6 +141,8 @@ class Layer:
     warnings: list[str] = field(default_factory=list)
     #: Markdown adicional (p. ej. la tabla de L3 por degradación y columna).
     markdown: str | None = None
+    #: Datos estructurados adicionales para scorecard.json (p. ej. las variantes de recorte de L4).
+    data: dict[str, Any] | None = None
 
     def finalize(self) -> None:
         if self.status in ("not implemented", "skipped"):
@@ -521,7 +523,7 @@ def run_layer4(cli: Path, thresholds: dict[str, Any], out_dir: Path) -> Layer:
         return layer
     print(f"L4 fotos reales del set dorado ({golden_dir})")
     try:
-        status, checks, _detail = l4run.run_layer4(cli, thresholds, out_dir, golden_dir=golden_dir, log=lambda *_: None)
+        status, checks, detail = l4run.run_layer4(cli, thresholds, out_dir, golden_dir=golden_dir, log=lambda *_: None)
     except Exception as exc:  # noqa: BLE001
         import traceback
 
@@ -530,6 +532,8 @@ def run_layer4(cli: Path, thresholds: dict[str, Any], out_dir: Path) -> Layer:
         layer.finalize()
         return layer
     layer.checks = [Check(**asdict(c)) for c in checks]
+    layer.markdown = detail.get("variants_markdown")
+    layer.data = {"variants": detail["variants"]} if detail.get("variants") else None
     _print_checks(layer.checks)
     layer.finalize()
     return layer
@@ -588,6 +592,13 @@ def versions() -> dict[str, str]:
     }
 
 
+#: Título de la sección de markdown adicional de cada capa en scorecard.md.
+MARKDOWN_TITLES = {
+    "L3": "recall por degradación y columna (kL1 oficial; kL2 y skin1 informativas)",
+    "L4": "variantes de recorte (largest-clothing-skin oficial, delta frente a none)",
+}
+
+
 def render_markdown(card: dict[str, Any]) -> str:
     lines: list[str] = []
     add = lines.append
@@ -638,7 +649,7 @@ def render_markdown(card: dict[str, Any]) -> str:
     for layer in card["layers"]:
         if layer.get("markdown"):
             add("")
-            add(f"## {layer['id']} {layer['title']}: recall por degradación y columna (kL1 oficial; kL2 y skin1 informativas)")
+            add(f"## {layer['id']} {layer['title']}: " + MARKDOWN_TITLES.get(layer["id"], "detalle"))
             add("")
             add(layer["markdown"])
     add("")
@@ -725,7 +736,7 @@ def main(argv: list[str] | None = None) -> int:
         "protected": asdict(protected),
         "layers": [
             {"id": layer.id, "title": layer.title, "status": layer.status, "checks": [asdict(c) for c in layer.checks],
-             "warnings": layer.warnings, "markdown": layer.markdown}
+             "warnings": layer.warnings, "markdown": layer.markdown, "data": layer.data}
             for layer in layers
         ],
         "warnings": warnings,

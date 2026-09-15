@@ -11,19 +11,27 @@
 //     `resizeMode .fast`, `isSynchronous` dentro de una tarea de fondo,
 //     `isNetworkAccessAllowed = false`: las fotos que solo están en iCloud se
 //     cuentan como omitidas).
-//  3. Un `TaskGroup` con `policy.concurrency` (3) tareas concurrentes llama a
-//     `EngineBridge.analyze`, que reserva su propio `ce_ctx` por llamada: sin
-//     estáticos mutables, sin contexto compartido.
+//  3. Un `TaskGroup` con `policy.concurrency` (3) tareas concurrentes: cada una
+//     rasteriza la foto una vez, calcula el recorte de sujeto con SubjectKit
+//     sobre ese buffer (Vision + motor; modo de Ajustes: persona principal por
+//     defecto, o desactivado / todas las personas si así está) y llama a
+//     `EngineBridge.analyze` con la máscara, con su propio `ce_ctx` por llamada:
+//     sin estáticos mutables, sin contexto compartido. Vision y el motor corren
+//     fuera del MainActor.
 //  4. Cada resultado se guarda como `ScanRecord` (source `.library`,
-//     `asset_local_id`) y, si cumple la regla de desbloqueo (`ScanPolicy`), su
-//     top-1 se desbloquea (`UnlockRepository.unlock`, que ya ignora repetidos).
-//  5. Al terminar: `scan.done <n> <ms>` en os.Logger, settings
+//     `asset_local_id`, modo/región/piel, personas, persona usada, pasos y
+//     cobertura de la máscara) y, si cumple la regla de desbloqueo (`ScanPolicy`),
+//     su top-1 se desbloquea (`UnlockRepository.unlock`, que ya ignora repetidos).
+//  5. Al terminar: `scan.done <n> <ms>` en os.Logger (con los tiempos de Vision,
+//     máscara y motor y el recuento de pasos), `scan.done`, `scan.vision`,
+//     `scan.mask` y `scan.engine` en TimingLog, settings
 //     `initial_scan_done/at/count`, y `ScanSummary` con desbloqueos nuevos,
 //     combinaciones y colores más frecuentes y color firma.
 //
 // Regla de desbloqueo (documentada también en ScanPolicy): el top-1 de una foto
 // se desbloquea solo si el resultado NO es `ambiguous` (gap top-1/top-2 ≥ 1,0 ΔE)
-// y su score es ≤ `unlockMaxScore` (12,0 por defecto, informativo: el score es la
+// y su score es ≤ `unlockMaxScore` (ajuste `unlock_max_score` de Ajustes, 12,0 por
+// defecto; el escaneo lo lee al empezar. Informativo: el score es la
 // suma ponderada de ΔE00 de ajuste + cobertura, PLAN §6 / engine/README.md; las
 // fotos sintéticas limpias puntúan ≈ 0 y BENCHLOG no tiene todavía la
 // distribución en fotos reales, que fijará F8). Las fotos ambiguas o lejanas se
@@ -38,13 +46,15 @@ import SwiftUI
 import UIKit
 import os
 import ColorEngine
+import SubjectKit
 
 /// Parámetros del escaneo y regla de desbloqueo.
 struct ScanPolicy: Equatable, Sendable {
-    /// Umbral por defecto del score del top-1 para desbloquear (informativo, ver arriba).
+    /// Umbral por defecto del score del top-1 para desbloquear (informativo, ver
+    /// arriba); el valor efectivo es el ajuste `unlock_max_score`.
     static let defaultUnlockMaxScore = 12.0
 
-    /// Score máximo del top-1 para desbloquearlo.
+    /// Score máximo del top-1 para desbloquearlo (el escaneo lo sustituye por el ajuste).
     var unlockMaxScore: Double = defaultUnlockMaxScore
     /// Solo desbloquea si el resultado no es ambiguo.
     var requireUnambiguous: Bool = true
@@ -95,7 +105,7 @@ struct AssetRef: @unchecked Sendable {
 final class PhotoKitScanRunner: ScanRunning {
     /// Resultado de una tarea del TaskGroup.
     enum WorkerResult: Sendable {
-        case analyzed(id: String?, AnalysisResult, milliseconds: Double, usedFallback: Bool)
+        case analyzed(id: String?, AnalysisResult, subject: ScanSubjectInfo, timings: AnalysisTimings, usedFallback: Bool)
         /// No hay imagen disponible sin red (iCloud) o no se pudo decodificar.
         case skipped(id: String?, reason: String)
         /// El motor o el puente fallaron.
@@ -113,20 +123,26 @@ final class PhotoKitScanRunner: ScanRunning {
     private(set) var lastDurationMs: Double = 0
     /// Fotos del último escaneo que necesitaron el fallback `.highQualityFormat`.
     private(set) var lastFallbacks = 0
+    /// Recuento de pasos del recorte (MaskFallback.rawValue -> fotos) del último escaneo.
+    private(set) var lastStepCounts: [String: Int] = [:]
+    /// Suma de tiempos (Vision, máscara, motor) del último escaneo.
+    private(set) var lastTimings = AnalysisTimings.zero
 
     let policy: ScanPolicy
     private let scans: ScanRepository
     private let unlocks: UnlockRepository
     private let settings: SettingsRepository
     private let dictionary: WadaDictionary
+    private let timing: TimingLog
 
     init(scans: ScanRepository, unlocks: UnlockRepository, settings: SettingsRepository,
-         dictionary: WadaDictionary, policy: ScanPolicy = .default) {
+         dictionary: WadaDictionary, policy: ScanPolicy = .default, timing: TimingLog = .shared) {
         self.scans = scans
         self.unlocks = unlocks
         self.settings = settings
         self.dictionary = dictionary
         self.policy = policy
+        self.timing = timing
     }
 
     convenience init(environment: AppEnvironment, policy: ScanPolicy = .default) {
@@ -197,9 +213,14 @@ final class PhotoKitScanRunner: ScanRunning {
         var failed = 0
         var newUnlocks: [Int] = []
         var comboCounts: [Int: Int] = [:]
-        var engineMs = 0.0
         var fallbacks = 0
-        let policy = self.policy
+        var totals = AnalysisTimings.zero
+        var stepCounts: [String: Int] = [:]
+        // Ajustes leídos una vez al empezar: modo del recorte (persona principal por
+        // defecto; desactivado o todas las personas si así está) y umbral de desbloqueo.
+        let subjectSettings = (try? await settings.subjectSettings()) ?? .default
+        let policy = subjectSettings.scanPolicy(base: self.policy)
+        let subjectOptions = subjectSettings.subjectOptions
         let concurrency = max(1, policy.concurrency)
 
         do {
@@ -208,15 +229,19 @@ final class PhotoKitScanRunner: ScanRunning {
                 for _ in 0..<min(concurrency, inputs.count) {
                     let input = inputs[next]
                     next += 1
-                    group.addTask { await Self.analyze(input, policy: policy) }
+                    group.addTask { await Self.analyze(input, policy: policy, subject: subjectOptions) }
                 }
                 while let result = try await group.next() {
                     try Task.checkCancellation()
                     switch result {
-                    case .analyzed(let id, let analysis, let ms, let usedFallback):
-                        engineMs += ms
+                    case .analyzed(let id, let analysis, let subject, let t, let usedFallback):
+                        totals.visionMs += t.visionMs
+                        totals.maskMs += t.maskMs
+                        totals.engineMs += t.engineMs
+                        totals.rasterMs += t.rasterMs
+                        for step in subject.steps { stepCounts[step.rawValue, default: 0] += 1 }
                         if usedFallback { fallbacks += 1 }
-                        let record = ScanRecord.make(from: analysis, source: .library, assetLocalId: id)
+                        let record = ScanRecord.make(from: analysis, source: .library, assetLocalId: id, subject: subject)
                         try await scans.insert(record)
                         scanned += 1
                         if let top = analysis.hits.first {
@@ -240,7 +265,7 @@ final class PhotoKitScanRunner: ScanRunning {
                     if next < inputs.count {
                         let input = inputs[next]
                         next += 1
-                        group.addTask { await Self.analyze(input, policy: policy) }
+                        group.addTask { await Self.analyze(input, policy: policy, subject: subjectOptions) }
                     }
                 }
             }
@@ -271,15 +296,22 @@ final class PhotoKitScanRunner: ScanRunning {
             needsPicker: false
         )
         let ms = finishedAt.timeIntervalSince(startedAt) * 1000
+        totals.totalMs = ms
         lastDurationMs = ms
         lastFallbacks = fallbacks
+        lastStepCounts = stepCounts
+        lastTimings = totals
         lastSummary = summary
+        timing.record("scan.done", ms: Int(ms.rounded()), now: finishedAt)
+        timing.record("scan.vision", ms: Int(totals.visionMs.rounded()), now: finishedAt)
+        timing.record("scan.mask", ms: Int(totals.maskMs.rounded()), now: finishedAt)
+        timing.record("scan.engine", ms: Int(totals.engineMs.rounded()), now: finishedAt)
         try await settings.setBool(.initialScanDone, true)
         try await settings.set(.initialScanAt, ISO8601DateFormatter().string(from: finishedAt))
         try await settings.setInt(.initialScanCount, scanned)
         state.phase = .finished
         publish(state)
-        Self.logger.notice("scan.done \(scanned, privacy: .public) \(Int(ms.rounded()), privacy: .public)ms (omitidas \(state.skipped, privacy: .public), fallidas \(failed, privacy: .public), nuevas \(newUnlocks.count, privacy: .public), total \(totalUnlocked, privacy: .public), motor \(Int(engineMs.rounded()), privacy: .public)ms, fallback highQuality \(fallbacks, privacy: .public))")
+        Self.logger.notice("scan.done \(scanned, privacy: .public) \(Int(ms.rounded()), privacy: .public)ms (omitidas \(state.skipped, privacy: .public), fallidas \(failed, privacy: .public), nuevas \(newUnlocks.count, privacy: .public), total \(totalUnlocked, privacy: .public), vision \(Int(totals.visionMs.rounded()), privacy: .public)ms, máscara \(Int(totals.maskMs.rounded()), privacy: .public)ms, motor \(Int(totals.engineMs.rounded()), privacy: .public)ms, recorte \(subjectOptions.mode.rawValue, privacy: .public)/\(subjectOptions.region.rawValue, privacy: .public)/piel \(subjectOptions.adaptiveSkin, privacy: .public), pasos \(Self.stepsText(stepCounts), privacy: .public), fallback highQuality \(fallbacks, privacy: .public))")
         return summary
     }
 
@@ -366,10 +398,17 @@ final class PhotoKitScanRunner: ScanRunning {
         var inCloud = false
     }
 
-    /// Trabajo de una tarea del TaskGroup: imagen + `EngineBridge.analyze`
-    /// (un ce_ctx por llamada). `nonisolated async`: corre siempre en el
-    /// executor genérico, nunca en el MainActor (SE-0338).
-    nonisolated static func analyze(_ input: ScanInput, policy: ScanPolicy) async -> WorkerResult {
+    /// "headCut 3, noPeople 17" (orden alfabético).
+    nonisolated static func stepsText(_ counts: [String: Int]) -> String {
+        counts.isEmpty ? "-" : counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+    }
+
+    /// Trabajo de una tarea del TaskGroup: imagen + recorte de sujeto (SubjectKit
+    /// sobre el raster) + `EngineBridge.analyze` con la máscara (un ce_ctx por
+    /// llamada). `nonisolated async`: corre siempre en el executor genérico, nunca
+    /// en el MainActor (SE-0338).
+    nonisolated static func analyze(_ input: ScanInput, policy: ScanPolicy,
+                                    subject options: SubjectOptions = SubjectSettings.default.subjectOptions) async -> WorkerResult {
         let id = input.id
         let image: CGImage?
         var reason = "sin imagen"
@@ -387,11 +426,14 @@ final class PhotoKitScanRunner: ScanRunning {
             image = cg
         }
         guard let image else { return .skipped(id: id, reason: reason) }
-        let t0 = DispatchTime.now().uptimeNanoseconds
         do {
-            let result = try EngineBridge.analyze(cgImage: image, topK: policy.topK)
-            let ms = Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e6
-            return .analyzed(id: id, result, milliseconds: ms, usedFallback: usedFallback)
+            // Sin capas de depuración en el carrete: solo el resultado y los pasos.
+            let analysis = try ScanAnalyzer.analyze(image: image, subject: options, layers: false, topK: policy.topK)
+            let info = ScanSubjectInfo(options: options, result: analysis.subject)
+            if !analysis.subject.steps.isEmpty {
+                logger.debug("scan.subject \(id ?? "-", privacy: .public): \(analysis.subject.steps.map(\.rawValue).joined(separator: ","), privacy: .public) personas \(analysis.subject.people.count, privacy: .public)")
+            }
+            return .analyzed(id: id, analysis.result, subject: info, timings: analysis.timings, usedFallback: usedFallback)
         } catch {
             return .failed(id: id, error: String(describing: error))
         }

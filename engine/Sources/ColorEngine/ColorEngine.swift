@@ -417,3 +417,541 @@ public func analyze(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, s
     }
     return AnalysisResult(swatches: swatches, hits: hits, ambiguous: res.ambiguous != 0, hash: hash)
 }
+
+// MARK: - Máscaras: regiones de ropa y piel adaptativa
+
+extension ColorEngineError {
+    /// `.engine(code: CE_ERR_POSE)` (-8): faltan hombros o caderas (ni por
+    /// simetría) o la pose es degenerada. Constantes, no casos nuevos: los
+    /// `switch` exhaustivos existentes sobre ColorEngineError siguen compilando.
+    public static let poseMissing = ColorEngineError.engine(code: CE_ERR_POSE.rawValue)
+    /// `.engine(code: CE_ERR_SKIN_SAMPLES)` (-9): menos de 50 muestras de piel.
+    public static let tooFewSkinSamples = ColorEngineError.engine(code: CE_ERR_SKIN_SAMPLES.rawValue)
+}
+
+/// Articulaciones de la pose en el orden de `ce_joint` (el de
+/// VNHumanBodyPoseObservation: cuello = punto medio de los hombros, raíz =
+/// punto medio de las caderas). "left" es la izquierda de la persona.
+public enum Joint: Int, CaseIterable, Sendable {
+    case nose = 0, neck, leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist
+    case leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle, root
+}
+
+/// Punto de la pose en píxeles de la máscara (origen arriba-izquierda, y hacia
+/// abajo; el centro del píxel (i, j) es (i + 0.5, j + 0.5)). `confidence <= 0`
+/// significa ausente.
+public struct Keypoint: Equatable, Hashable, Sendable {
+    public var x: Double
+    public var y: Double
+    public var confidence: Double
+
+    public init(x: Double, y: Double, confidence: Double) {
+        self.x = x
+        self.y = y
+        self.confidence = confidence
+    }
+
+    /// Punto ausente (confidence 0).
+    public static let missing = Keypoint(x: 0, y: 0, confidence: 0)
+}
+
+/// Pose de una persona: 15 puntos en el orden de `Joint` / `ce_joint`.
+public struct Pose: Equatable, Sendable {
+    public var joints: [Keypoint]
+
+    public init(joints: [Keypoint]) {
+        self.joints = joints
+    }
+
+    /// Pose con los 15 puntos ausentes.
+    public init() {
+        self.joints = Array(repeating: .missing, count: Int(CE_JOINT_COUNT.rawValue))
+    }
+
+    public subscript(joint: Joint) -> Keypoint {
+        get { joints[joint.rawValue] }
+        set { joints[joint.rawValue] = newValue }
+    }
+}
+
+/// Opciones de `clothingRegions` (ver `ce_region_opts` en ce.h: rangos y
+/// geometría). `limbWidth` es el ANCHO total de las cápsulas en anchos de hombros.
+public struct RegionOptions: Equatable, Sendable {
+    public var minConfidence: Double
+    public var torsoMargin: Double
+    public var limbWidth: Double
+    public var includeUpperArms: Bool
+    public var includeForearms: Bool
+    public var includeLegs: Bool
+    public var includeLowerLegs: Bool
+
+    /// Valores de ce_region_opts_default: confianza mínima 0,3, margen del torso
+    /// 0,12, ancho de miembros 0,45, brazos sí, antebrazos no, piernas sí.
+    public static var `default`: RegionOptions {
+        var o = ce_region_opts()
+        ce_region_opts_default(&o)
+        return RegionOptions(o)
+    }
+
+    public init(minConfidence: Double, torsoMargin: Double, limbWidth: Double, includeUpperArms: Bool,
+                includeForearms: Bool, includeLegs: Bool, includeLowerLegs: Bool) {
+        self.minConfidence = minConfidence
+        self.torsoMargin = torsoMargin
+        self.limbWidth = limbWidth
+        self.includeUpperArms = includeUpperArms
+        self.includeForearms = includeForearms
+        self.includeLegs = includeLegs
+        self.includeLowerLegs = includeLowerLegs
+    }
+
+    init(_ o: ce_region_opts) {
+        self.init(minConfidence: o.min_confidence, torsoMargin: o.torso_margin, limbWidth: o.limb_width,
+                  includeUpperArms: o.include_upper_arms != 0, includeForearms: o.include_forearms != 0,
+                  includeLegs: o.include_legs != 0, includeLowerLegs: o.include_lower_legs != 0)
+    }
+
+    var cValue: ce_region_opts {
+        ce_region_opts(min_confidence: minConfidence, torso_margin: torsoMargin, limb_width: limbWidth,
+                       include_upper_arms: includeUpperArms ? 1 : 0, include_forearms: includeForearms ? 1 : 0,
+                       include_legs: includeLegs ? 1 : 0, include_lower_legs: includeLowerLegs ? 1 : 0)
+    }
+}
+
+/// Dimensiones de máscara representables como `int` de C (el motor exige además
+/// 1...CE_IMAGE_MAX_SIDE y devuelve CE_ERR_ARG / CE_ERR_DIMS si no).
+private func maskDimsFit(width: Int, height: Int) -> Bool {
+    width >= 1 && height >= 1 && width <= Int(CE_IMAGE_MAX_SIDE) && height <= Int(CE_IMAGE_MAX_SIDE)
+}
+
+/// Recorta la máscara de una persona (`width` x `height` bytes, 0..255, sin
+/// stride) a su ropa según la pose: `min(máscara, región)` con la región de
+/// `ce_mask_clothing_regions` (torso expandido + cápsulas de brazos y piernas;
+/// nunca cabeza ni manos). Si falta un hombro o una cadera se estima por
+/// simetría con el cuello / la raíz. Devuelve la máscara nueva y los píxeles
+/// > 0. Lanza `.engine(code: CE_ERR_POSE)` si faltan hombros o caderas,
+/// `.engine(code: CE_ERR_ARG)` con opciones o dimensiones inválidas o una pose
+/// que no tiene 15 puntos, y `.maskTooSmall` si la máscara es corta.
+public func clothingRegions(pose: Pose, options: RegionOptions = .default, mask: [UInt8], width: Int,
+                            height: Int) throws -> (mask: [UInt8], pixels: Int) {
+    guard pose.joints.count == Int(CE_JOINT_COUNT.rawValue), maskDimsFit(width: width, height: height) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    let count = width * height
+    guard mask.count >= count else {
+        throw ColorEngineError.maskTooSmall(required: count, actual: mask.count)
+    }
+    var cPose = ce_pose()
+    withUnsafeMutableBytes(of: &cPose.k) { raw in
+        let kp = raw.bindMemory(to: ce_keypoint.self)
+        for (i, j) in pose.joints.enumerated() {
+            kp[i] = ce_keypoint(x: j.x, y: j.y, confidence: j.confidence)
+        }
+    }
+    var opts = options.cValue
+    var out = Array(mask.prefix(count))
+    let rc = out.withUnsafeMutableBufferPointer { buf in
+        ce_mask_clothing_regions(&cPose, &opts, buf.baseAddress, Int32(width), Int32(height))
+    }
+    if rc < 0 {
+        throw ColorEngineError.engine(code: rc)
+    }
+    return (out, Int(rc))
+}
+
+/// Fallback sin pose (`ce_mask_cut_head`): anula la franja superior del bbox
+/// de la máscara, `fraction` de su alto (se acota a 0...0,5; NaN cuenta como 0).
+/// No lanza: con dimensiones inválidas o una máscara corta devuelve la máscara
+/// sin tocar y `pixels` = CE_ERR_ARG (-1).
+public func cutHead(mask: [UInt8], width: Int, height: Int, fraction: Double) -> (mask: [UInt8], pixels: Int) {
+    guard maskDimsFit(width: width, height: height), mask.count >= width * height else {
+        return (mask, Int(CE_ERR_ARG.rawValue))
+    }
+    let f = fraction.isNaN ? 0 : min(max(fraction, 0), 0.5)
+    var out = Array(mask.prefix(width * height))
+    let rc = out.withUnsafeMutableBufferPointer { buf in
+        ce_mask_cut_head(buf.baseAddress, Int32(width), Int32(height), f)
+    }
+    return rc < 0 ? (mask, Int(rc)) : (out, Int(rc))
+}
+
+/// Modelo gaussiano de piel en CIELAB ajustado a una muestra (p. ej. las
+/// mejillas): media, covarianza regularizada (+ CE_SKIN_COV_EPSILON · I) y su
+/// inversa, row-major 3x3, y número de muestras.
+public struct SkinModel: Equatable, Sendable {
+    public var mean: Lab
+    public var covariance: [Double]
+    public var inverseCovariance: [Double]
+    public var sampleCount: Int
+
+    public init(mean: Lab, covariance: [Double], inverseCovariance: [Double], sampleCount: Int) {
+        self.mean = mean
+        self.covariance = covariance
+        self.inverseCovariance = inverseCovariance
+        self.sampleCount = sampleCount
+    }
+
+    init(_ m: ce_skin_model) {
+        var c = m
+        let cov = withUnsafeBytes(of: &c.cov) { Array($0.bindMemory(to: Double.self)) }
+        let inv = withUnsafeBytes(of: &c.inv_cov) { Array($0.bindMemory(to: Double.self)) }
+        self.init(mean: Lab(m.mean), covariance: cov, inverseCovariance: inv, sampleCount: Int(m.n))
+    }
+
+    /// nil si las matrices no tienen 9 elementos o `sampleCount` no cabe en Int32.
+    var cValue: ce_skin_model? {
+        guard covariance.count == 9, inverseCovariance.count == 9,
+              sampleCount >= Int(Int32.min), sampleCount <= Int(Int32.max) else { return nil }
+        var m = ce_skin_model()
+        m.mean = mean.cValue
+        m.n = Int32(sampleCount)
+        withUnsafeMutableBytes(of: &m.cov) { raw in
+            let p = raw.bindMemory(to: Double.self)
+            for i in 0..<9 { p[i] = covariance[i] }
+        }
+        withUnsafeMutableBytes(of: &m.inv_cov) { raw in
+            let p = raw.bindMemory(to: Double.self)
+            for i in 0..<9 { p[i] = inverseCovariance[i] }
+        }
+        return m
+    }
+}
+
+/// Opciones de `excludeSkin`: distancia de Mahalanobis máxima (2,5) y fracción
+/// máxima de la máscara que se puede excluir antes de que salte la
+/// salvaguarda (0,35).
+public struct SkinOptions: Equatable, Sendable {
+    public var maxMahalanobis: Double
+    public var maxExcludedFraction: Double
+
+    public static var `default`: SkinOptions {
+        var o = ce_skin_opts()
+        ce_skin_opts_default(&o)
+        return SkinOptions(maxMahalanobis: o.max_mahalanobis, maxExcludedFraction: o.max_excluded_fraction)
+    }
+
+    public init(maxMahalanobis: Double, maxExcludedFraction: Double) {
+        self.maxMahalanobis = maxMahalanobis
+        self.maxExcludedFraction = maxExcludedFraction
+    }
+
+    var cValue: ce_skin_opts {
+        ce_skin_opts(max_mahalanobis: maxMahalanobis, max_excluded_fraction: maxExcludedFraction)
+    }
+}
+
+/// Ajusta el modelo de piel (`ce_skin_model_fit`) con los píxeles del buffer
+/// RGBA8 sRGB cuya `sampleMask` (width * height bytes) vale >= 128. Lanza
+/// `.engine(code: CE_ERR_SKIN_SAMPLES)` con menos de 50 muestras, los errores
+/// de imagen de `extractPalette` y `.maskTooSmall` si la muestra es corta.
+public func fitSkinModel(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                         sampleMask: [UInt8]) throws -> SkinModel {
+    let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    guard sampleMask.count >= width * height else {
+        throw ColorEngineError.maskTooSmall(required: width * height, actual: sampleMask.count)
+    }
+    var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
+                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: nil)
+    var model = ce_skin_model()
+    let rc = sampleMask.withUnsafeBufferPointer { s in
+        ce_skin_model_fit(&img, s.baseAddress, &model)
+    }
+    if rc != 0 {
+        throw ColorEngineError.engine(code: rc)
+    }
+    return SkinModel(model)
+}
+
+/// Quita de `mask` los píxeles cuyo color está a distancia de Mahalanobis <=
+/// `options.maxMahalanobis` del modelo (`ce_mask_exclude_skin`). Si se fuera a
+/// excluir más de `maxExcludedFraction` de la máscara (prenda parecida a la
+/// piel) no toca nada y `guardTriggered` es true. `excluded` = píxeles > 0
+/// que pasaron a 0. Lanza `.engine(code:)` (CE_ERR_ARG con opciones o modelo
+/// inválidos, CE_ERR_SKIN_SAMPLES con un modelo de < 50 muestras), errores de
+/// imagen y `.maskTooSmall`.
+public func excludeSkin(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                        model: SkinModel, options: SkinOptions = .default,
+                        mask: [UInt8]) throws -> (mask: [UInt8], excluded: Int, guardTriggered: Bool) {
+    let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let count = width * height
+    guard mask.count >= count else {
+        throw ColorEngineError.maskTooSmall(required: count, actual: mask.count)
+    }
+    guard var cModel = model.cValue else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
+                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: nil)
+    var opts = options.cValue
+    var out = Array(mask.prefix(count))
+    let before = out.reduce(0) { $0 + ($1 != 0 ? 1 : 0) }
+    let rc = out.withUnsafeMutableBufferPointer { buf in
+        ce_mask_exclude_skin(&img, &cModel, &opts, buf.baseAddress)
+    }
+    if rc < 0 {
+        throw ColorEngineError.engine(code: rc)
+    }
+    let after = out.reduce(0) { $0 + ($1 != 0 ? 1 : 0) }
+    return (out, before - after, rc == CE_SKIN_GUARD)
+}
+
+// MARK: - Capas de depuración
+
+/// Etiqueta de un píxel reducido con peso 0 en `PaletteDebugLayers.labelMap` y
+/// `clusterMap` (máscara, piel o fuera del sujeto).
+public let paletteLabelNone = UInt8(CE_LABEL_NONE)
+/// Etiqueta de un píxel cuyo cluster se descartó (min_weight) o se recortó (max_colors).
+public let paletteLabelDiscarded = UInt8(CE_LABEL_DISCARDED)
+
+/// Destino de un cluster de Lloyd.
+public enum ClusterFate: Int, Sendable {
+    /// Representante de su grupo: es el swatch `finalIndex`.
+    case kept = 0
+    /// Fusionado (ΔE00 < merge_de) en el swatch `finalIndex`.
+    case merged = 1
+    /// Su grupo pesaba menos que min_weight.
+    case discarded = 2
+    /// Su grupo quedó fuera del recorte a max_colors.
+    case truncated = 3
+}
+
+/// Cluster de Lloyd tras converger y antes de fusionar (`ce_cluster_debug`).
+public struct ClusterDebug: Equatable, Sendable {
+    public var lab: Lab
+    public var r: UInt8
+    public var g: UInt8
+    public var b: UInt8
+    /// Peso del cluster sobre el total antes de fusionar y descartar.
+    public var weight: Double
+    public var fate: ClusterFate
+    /// Swatch de la paleta al que alimenta (nil si se descartó o recortó).
+    public var finalIndex: Int?
+    /// Índice (en `PaletteDebug.clusters`) del representante de su grupo de fusión.
+    public var groupHead: Int
+
+    init(_ c: ce_cluster_debug) {
+        lab = Lab(c.lab)
+        r = c.rgb.0
+        g = c.rgb.1
+        b = c.rgb.2
+        weight = c.weight
+        fate = ClusterFate(rawValue: Int(c.fate)) ?? .discarded
+        finalIndex = c.final_index >= 0 ? Int(c.final_index) : nil
+        groupHead = Int(c.group_head)
+    }
+
+    /// "#rrggbb".
+    public var hex: String {
+        Swatch(lab: lab, r: r, g: g, b: b, weight: weight).hex
+    }
+}
+
+/// Resumen de la extracción (`ce_palette_debug`).
+public struct PaletteDebug: Equatable, Sendable {
+    public var reducedWidth: Int
+    public var reducedHeight: Int
+    public var clusters: [ClusterDebug]
+    public var lloydIterations: Int
+    public var totalWeight: Double
+    public var zeroWeightFraction: Double
+    /// Sigma de la gaussiana al centro en píxeles de la reducida (0 = uniforme).
+    public var centerSigmaPx: Double
+    public var swatchCount: Int
+}
+
+/// Swatch i frente a la combinación explicada (hipótesis ganadora).
+public struct SwatchExplanation: Equatable, Sendable {
+    /// Índice de color del diccionario más cercano dentro de la combinación.
+    public var nearestColorIndex: Int
+    public var deltaE: Double
+}
+
+/// Color j de la combinación frente a la paleta (hipótesis ganadora).
+public struct ColorExplanation: Equatable, Sendable {
+    public var colorIndex: Int
+    public var nearestSwatch: Int
+    public var deltaE: Double
+}
+
+/// Por qué una combinación tiene su score (`ce_match_explain_combo`):
+/// `score == fitTerm + coverageTerm + hypothesisPenalty` y `score` es bit a
+/// bit el de `analyze` para esa combinación.
+public struct MatchExplanation: Equatable, Sendable {
+    public var comboId: Int
+    public var score: Double
+    public var fitTerm: Double
+    public var coverageTerm: Double
+    public var hypothesisPenalty: Double
+    /// EV de la hipótesis de exposición ganadora.
+    public var exposureEV: Double
+    /// -1 sin adaptación de iluminante; si no, el `ce_illuminant` (0 A, 1 D50, 3 D75, 4 F2).
+    public var illuminant: Int
+    public var perSwatch: [SwatchExplanation]
+    public var perColor: [ColorExplanation]
+
+    init(_ e: ce_match_explain) {
+        var c = e
+        comboId = Int(e.combo_id)
+        score = e.score
+        fitTerm = e.fit_term
+        coverageTerm = e.coverage_term
+        hypothesisPenalty = e.hypothesis_penalty
+        exposureEV = e.exposure_ev
+        illuminant = Int(e.illuminant)
+        let ns = max(0, min(Int(e.n_swatches), Int(CE_PALETTE_MAX_COLORS)))
+        let nc = max(0, min(Int(e.combo_size), Int(CE_DICT_MAX_COLORS)))
+        perSwatch = withUnsafeBytes(of: &c.per_swatch) { raw in
+            raw.bindMemory(to: ce_swatch_explain.self).prefix(ns).map {
+                SwatchExplanation(nearestColorIndex: Int($0.nearest_color_index), deltaE: $0.de)
+            }
+        }
+        perColor = withUnsafeBytes(of: &c.per_color) { raw in
+            raw.bindMemory(to: ce_color_explain.self).prefix(nc).map {
+                ColorExplanation(colorIndex: Int($0.color_index), nearestSwatch: Int($0.nearest_swatch), deltaE: $0.de)
+            }
+        }
+    }
+}
+
+/// Todas las capas de un único análisis (un único `ce_ctx`): el resultado de
+/// `analyze`, el resumen de clusters y las capas por píxel de la imagen
+/// reducida (`reducedWidth` x `reducedHeight`, fila a fila):
+/// - `reducedRGB`: lo que ve el motor tras el box-downscale (3 bytes por píxel).
+/// - `weightMap`: peso final (máscara x gaussiana x piel) escalado a 0...255.
+/// - `labelMap`: swatch al que alimenta cada píxel, `paletteLabelNone` o `paletteLabelDiscarded`.
+/// - `clusterMap`: cluster de Lloyd de cada píxel (índice en `debug.clusters`) o `paletteLabelNone`.
+/// - `explanations`: `MatchExplanation` de cada hit de `analysis.hits`, en orden.
+public struct PaletteDebugLayers: Sendable {
+    public var analysis: AnalysisResult
+    public var debug: PaletteDebug
+    public var reducedRGB: [UInt8]
+    public var weightMap: [UInt8]
+    public var labelMap: [UInt8]
+    public var clusterMap: [UInt8]
+    public var explanations: [MatchExplanation]
+}
+
+/// `AnalysisResult` de un `ce_result` truncado a `topK` hits (hash incluido).
+private func analysisResult(from res: inout ce_result, topK: Int) -> AnalysisResult {
+    let nSwatches = Int(res.n_swatches)
+    let nHits = min(topK, Int(res.n_hits))
+    res.n_hits = Int32(nHits)
+    let hash = ce_result_hash(&res)
+    let swatches: [Swatch] = withUnsafePointer(to: &res.swatches) { p in
+        p.withMemoryRebound(to: ce_swatch.self, capacity: Int(CE_PALETTE_MAX_COLORS)) { q in
+            (0..<nSwatches).map { Swatch(q[$0]) }
+        }
+    }
+    let hits: [Hit] = withUnsafePointer(to: &res.hits) { p in
+        p.withMemoryRebound(to: ce_hit.self, capacity: Int(CE_MATCH_MAX_HITS)) { q in
+            (0..<nHits).map { Hit(q[$0]) }
+        }
+    }
+    return AnalysisResult(swatches: swatches, hits: hits, ambiguous: res.ambiguous != 0, hash: hash)
+}
+
+/// Reserva un `ce_ctx` alineado a 16 durante `body`.
+private func withEngineContext<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+    let size = ce_ctx_size()
+    let mem = UnsafeMutableRawPointer.allocate(byteCount: size, alignment: 16)
+    defer { mem.deallocate() }
+    guard let ctx = ce_ctx_init(mem, size) else {
+        throw ColorEngineError.engine(code: CE_ERR_CTX.rawValue)
+    }
+    return try body(ctx)
+}
+
+/// `analyze` + todas las capas de depuración en la misma llamada y el mismo
+/// contexto: la paleta, los hits y el hash son idénticos a los de `analyze`
+/// con los mismos argumentos. Mismos errores que `analyze`.
+public func paletteDebugLayers(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                               paletteOptions: PaletteOptions = .default, matchOptions: MatchOptions = .default,
+                               topK: Int = 3, mask: UnsafeBufferPointer<UInt8>? = nil) throws -> PaletteDebugLayers {
+    guard topK >= 1, topK <= Int(CE_MATCH_MAX_HITS) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let maskBase = try validateMask(mask, width: width, height: height)
+    return try withEngineContext { ctx in
+        var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
+                           stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: maskBase)
+        var po = paletteOptions.cValue
+        var mo = matchOptions.cValue
+        var res = ce_result()
+        let rc = ce_analyze(ctx, &img, &po, &mo, &res)
+        if rc < 0 {
+            throw ColorEngineError.engine(code: rc)
+        }
+        let fullSwatches = res.swatches
+        let nSwatches = res.n_swatches
+        let analysis = analysisResult(from: &res, topK: topK)
+
+        var info = ce_palette_debug()
+        let irc = ce_palette_debug_info(ctx, &info)
+        if irc != 0 {
+            throw ColorEngineError.engine(code: irc)
+        }
+        let rw = Int(info.reduced_width), rh = Int(info.reduced_height)
+        let clusters: [ClusterDebug] = withUnsafeBytes(of: &info.clusters) { raw in
+            raw.bindMemory(to: ce_cluster_debug.self).prefix(Int(info.n_clusters)).map(ClusterDebug.init)
+        }
+        let debug = PaletteDebug(reducedWidth: rw, reducedHeight: rh, clusters: clusters,
+                                 lloydIterations: Int(info.lloyd_iterations), totalWeight: info.total_weight,
+                                 zeroWeightFraction: info.zero_weight_fraction,
+                                 centerSigmaPx: info.center_sigma_px, swatchCount: Int(info.n_swatches))
+        func layer(_ bytesPerPixel: Int, _ fn: (OpaquePointer, UnsafeMutablePointer<UInt8>?, Int) -> Int32) throws -> [UInt8] {
+            var buf = [UInt8](repeating: 0, count: rw * rh * bytesPerPixel)
+            let n = buf.withUnsafeMutableBufferPointer { fn(ctx, $0.baseAddress, $0.count) }
+            if n < 0 {
+                throw ColorEngineError.engine(code: n)
+            }
+            return buf
+        }
+        let reduced = try layer(3) { ce_debug_reduced_rgb($0, $1, $2) }
+        let weights = try layer(1) { ce_debug_weight_map($0, $1, $2) }
+        let labels = try layer(1) { ce_debug_label_map($0, $1, $2) }
+        let clusterMap = try layer(1) { ce_debug_cluster_map($0, $1, $2) }
+
+        var explanations: [MatchExplanation] = []
+        var sw = fullSwatches
+        for hit in analysis.hits {
+            var e = ce_match_explain()
+            let erc = withUnsafePointer(to: &sw) { p in
+                p.withMemoryRebound(to: ce_swatch.self, capacity: Int(CE_PALETTE_MAX_COLORS)) { q in
+                    ce_match_explain_combo(ctx, q, nSwatches, &mo, Int32(hit.comboId), &e)
+                }
+            }
+            if erc != 0 {
+                throw ColorEngineError.engine(code: erc)
+            }
+            explanations.append(MatchExplanation(e))
+        }
+        return PaletteDebugLayers(analysis: analysis, debug: debug, reducedRGB: reduced, weightMap: weights,
+                                  labelMap: labels, clusterMap: clusterMap, explanations: explanations)
+    }
+}
+
+/// Explica el score de la combinación `comboId` frente a una paleta
+/// (`ce_match_explain_combo`, sin extracción: reserva un contexto solo para la
+/// caché Lab). Con la paleta y las opciones de `analyze`, `score` es bit a bit
+/// el del hit correspondiente. Lanza `.engine(code: CE_ERR_ARG)` con 0 o más
+/// de 8 swatches, valores no finitos o `comboId` fuera de 1...348, y
+/// `.engine(code: CE_ERR_OPTS)` con opciones inválidas.
+public func explainMatch(swatches: [Swatch], options: MatchOptions = .default,
+                         comboId: Int) throws -> MatchExplanation {
+    guard !swatches.isEmpty, swatches.count <= Int(CE_PALETTE_MAX_COLORS),
+          comboId >= 1, comboId <= Int(Int32.max) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    return try withEngineContext { ctx in
+        let cs = swatches.map { ce_swatch(lab: $0.lab.cValue, rgb: ($0.r, $0.g, $0.b), weight: $0.weight) }
+        var mo = options.cValue
+        var e = ce_match_explain()
+        let rc = cs.withUnsafeBufferPointer { buf in
+            ce_match_explain_combo(ctx, buf.baseAddress, Int32(buf.count), &mo, Int32(comboId), &e)
+        }
+        if rc != 0 {
+            throw ColorEngineError.engine(code: rc)
+        }
+        return MatchExplanation(e)
+    }
+}

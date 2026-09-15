@@ -2,8 +2,9 @@
 // -> resumen Wrapped. Con acceso limitado a Fotos ofrece PhotosPicker (hasta
 // 200 fotos) y las procesa por la misma ruta; con acceso denegado, mensaje y
 // enlace a Ajustes del sistema (URL del sistema, sin red).
-// La pestaña Hoy puede presentarla la primera vez (`initial_scan_done` en
-// settings); Rejilla la enlaza con "Escanear carrete".
+// Hoy la presenta la primera vez (sin `initial_scan_done` ni
+// `scan_onboarding_skipped` en settings) con "Ahora no" para saltarla y la ofrece
+// después con "Escanear carrete"; Rejilla la enlaza con "Escanear carrete".
 import SwiftUI
 import PhotosUI
 import UIKit
@@ -28,6 +29,8 @@ struct ScanOnboardingView: View {
     var onShowGrid: (() -> Void)? = nil
     /// Arranca el escaneo al aparecer (sin pantalla de introducción).
     var autoStart: Bool = false
+    /// "Ahora no" en la introducción (Hoy, primera vez); nil = sin ese botón.
+    var onSkip: (() -> Void)? = nil
 
     @State private var stage: Stage = .intro
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -90,6 +93,20 @@ struct ScanOnboardingView: View {
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier("scan.start")
+            if let onSkip {
+                Button {
+                    onSkip()
+                } label: {
+                    Text("Ahora no")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("scan.skip")
+                Text("Puedes hacerlo más tarde desde Hoy > Carrete o la Rejilla.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
         }
         .padding()

@@ -38,7 +38,9 @@ add_library(colorengine STATIC
   Sources/CColorEngine/ce_ctx.c
   Sources/CColorEngine/ce_image.c
   Sources/CColorEngine/ce_palette.c
-  Sources/CColorEngine/ce_match.c)
+  Sources/CColorEngine/ce_match.c
+  Sources/CColorEngine/ce_mask.c
+  Sources/CColorEngine/ce_debug.c)
 target_include_directories(colorengine PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CColorEngine/include>)
 target_compile_options(colorengine PRIVATE ${CE_STRICT_FLAGS})
@@ -156,6 +158,36 @@ if(CE_BUILD_TESTS)
   endif()
   set_tests_properties(fuzz_smoke PROPERTIES TIMEOUT 120)
 
+  # ---- máscaras: regiones de ropa y piel -----------------------------------
+  # Pose sintética contra un rasterizador de referencia, invariancias exactas,
+  # simetría, recorte de cabeza, piel adaptativa (tres tonos, salvaguarda) y
+  # hash de paridad. Escribe los fixtures mask_* de los tests del CLI.
+  add_executable(test_mask tests/test_mask.c)
+  target_link_libraries(test_mask PRIVATE colorengine unity)
+  target_compile_options(test_mask PRIVATE ${CE_STRICT_FLAGS})
+  target_compile_definitions(test_mask PRIVATE CE_TEST_OUT_DIR="${CE_TEST_OUT_DIR}")
+  if(EMSCRIPTEN)
+    target_link_options(test_mask PRIVATE -sNODERAWFS=1 -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME test_mask COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_mask>)
+  else()
+    add_test(NAME test_mask COMMAND test_mask)
+  endif()
+  set_tests_properties(test_mask PROPERTIES TIMEOUT 300 FIXTURES_SETUP mask_fixtures)
+
+  # ---- capas de depuración ------------------------------------------------
+  # Label map, weight map, destino de clusters (fusión/descarte/recorte),
+  # ce_match_explain_combo bit a bit con ce_match y hash de paridad de las capas.
+  add_executable(test_debug tests/test_debug.c)
+  target_link_libraries(test_debug PRIVATE colorengine unity)
+  target_compile_options(test_debug PRIVATE ${CE_STRICT_FLAGS})
+  if(EMSCRIPTEN)
+    target_link_options(test_debug PRIVATE -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME test_debug COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_debug>)
+  else()
+    add_test(NAME test_debug COMMAND test_debug)
+  endif()
+  set_tests_properties(test_debug PROPERTIES TIMEOUT 300)
+
   # ---- capa 3 -------------------------------------------------------------
   # Match: recall exacto sobre las 348 combinaciones (bloques e imágenes),
   # desempate por id, propiedades/errores, hash y rendimiento. Escribe los
@@ -204,6 +236,21 @@ if(CE_BUILD_TESTS)
     set_tests_properties(cli_analyze_alias PROPERTIES DEPENDS cli_match_json)
     set_tests_properties(cli_match_missing_file PROPERTIES FIXTURES_REQUIRED "match_fixtures;palette_fixtures")
 
+    # Máscaras (sh + grep): batch con máscara por línea (sin máscara, con
+    # máscara, rutas con espacios entre comillas, máscara inexistente -> 4
+    # líneas, 1 error, exit 1), regions (== API byte a byte; sin caderas -> 1
+    # sin fichero), skin (salvaguarda 0) y --debug-dir (capas escritas).
+    add_test(NAME cli_batch_masks
+      COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> batch ${CE_TEST_OUT_DIR}/mask_batch_list.txt --center-sigma 0 --json > ${CE_TEST_OUT_DIR}/cli_batch_masks.jsonl 2>/dev/null; test $? -eq 1 && test $(wc -l < ${CE_TEST_OUT_DIR}/cli_batch_masks.jsonl) -eq 4 && test $(grep -c '\"error\"' ${CE_TEST_OUT_DIR}/cli_batch_masks.jsonl) -eq 1 && test $(grep -c '\"hash\"' ${CE_TEST_OUT_DIR}/cli_batch_masks.jsonl) -eq 3 && test $(grep -c '\"mask\": null' ${CE_TEST_OUT_DIR}/cli_batch_masks.jsonl) -eq 1")
+    add_test(NAME cli_regions
+      COMMAND sh -c "rm -f ${CE_TEST_OUT_DIR}/cli_regions.pgm ${CE_TEST_OUT_DIR}/cli_regions_nohips.pgm && ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> regions --size 200x400 --mask ${CE_TEST_OUT_DIR}/mask_person.pgm --pose ${CE_TEST_OUT_DIR}/mask_pose.txt --out ${CE_TEST_OUT_DIR}/cli_regions.pgm | grep -q '\"pixels\": ' && cmp ${CE_TEST_OUT_DIR}/cli_regions.pgm ${CE_TEST_OUT_DIR}/mask_expected_regions.pgm && { ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> regions --size 200x400 --mask ${CE_TEST_OUT_DIR}/mask_person.pgm --pose ${CE_TEST_OUT_DIR}/mask_pose_nohips.txt --out ${CE_TEST_OUT_DIR}/cli_regions_nohips.pgm >/dev/null 2>&1; test $? -eq 1; } && test ! -e ${CE_TEST_OUT_DIR}/cli_regions_nohips.pgm")
+    add_test(NAME cli_skin
+      COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> skin --image ${CE_TEST_OUT_DIR}/mask_person.ppm --sample ${CE_TEST_OUT_DIR}/mask_face.pgm --mask ${CE_TEST_OUT_DIR}/mask_clothes.pgm --out ${CE_TEST_OUT_DIR}/cli_skin.pgm | grep -q '^{\"excluded\": 4800, \"guard\": 0, \"mask_pixels\": 20800' && cmp ${CE_TEST_OUT_DIR}/cli_skin.pgm ${CE_TEST_OUT_DIR}/mask_expected_skin.pgm")
+    add_test(NAME cli_debug_dir
+      COMMAND sh -c "rm -rf ${CE_TEST_OUT_DIR}/cli_debug_dir && ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> match ${CE_TEST_OUT_DIR}/mask_person.ppm --mask ${CE_TEST_OUT_DIR}/mask_clothes.pgm --json --debug-dir ${CE_TEST_OUT_DIR}/cli_debug_dir > /dev/null && for f in reduced.ppm weights.pgm labels.pgm labels.ppm clusters.pgm clusters.ppm swatch_0.pgm mask.pgm debug.json; do test -s ${CE_TEST_OUT_DIR}/cli_debug_dir/$f || exit 1; done && grep -q '\"score_equals_match\": true' ${CE_TEST_OUT_DIR}/cli_debug_dir/debug.json")
+    set_tests_properties(cli_batch_masks cli_regions cli_skin cli_debug_dir PROPERTIES
+      FIXTURES_REQUIRED mask_fixtures TIMEOUT 60)
+
     # Validación completa del contrato JSON (claves, tipos, orden, exit codes,
     # JSONL del batch) con node, si está en el PATH (make doctor lo exige; en
     # WASM es además el emulador). Sin node se omite con aviso.
@@ -214,6 +261,12 @@ if(CE_BUILD_TESTS)
                 ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce>)
       set_tests_properties(cli_match_contract PROPERTIES
         FIXTURES_REQUIRED "match_fixtures;palette_fixtures" TIMEOUT 120)
+      # Máscaras y capas de depuración de extremo a extremo (contra la API).
+      add_test(NAME cli_mask_contract
+        COMMAND ${CE_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/cli_mask_check.js ${CE_TEST_OUT_DIR}
+                ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce>)
+      set_tests_properties(cli_mask_contract PROPERTIES
+        FIXTURES_REQUIRED "mask_fixtures;match_fixtures" TIMEOUT 300)
     else()
       message(WARNING "node no encontrado: se omite el test cli_match_contract")
     endif()

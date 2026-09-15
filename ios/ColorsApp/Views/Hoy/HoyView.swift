@@ -1,15 +1,19 @@
-// Pestaña Hoy (PLAN §7, versión F6): "Elegir foto" (PhotosPicker) y "Cámara"
-// (UIImagePickerController) -> CGImage con orientación EXIF -> ce_analyze en
-// segundo plano -> scan guardado -> Resultado. Debajo, los últimos scans con su
-// veredicto y el estado del escaneo del carrete (aviso mientras el runner sea
-// NoopScanRunner; progreso y contador cuando exista PhotoKitScanRunner).
+// Pestaña Hoy (PLAN §7): "Elegir foto" (PhotosPicker) y "Cámara"
+// (UIImagePickerController) -> CGImage con orientación EXIF -> recorte de sujeto
+// (SubjectKit) + ce_analyze en segundo plano -> scan guardado -> Resultado.
+// Debajo, el escaneo del carrete ("Escanear carrete", progreso y contador) y los
+// últimos scans con su veredicto. La primera vez (sin escaneo inicial hecho ni
+// saltado) presenta ScanOnboardingView con la opción "Ahora no".
 import SwiftUI
 import PhotosUI
 import UIKit
+import SubjectKit
 
 /// Ruta del NavigationStack de Hoy hacia Resultado.
 struct ResultRoute: Hashable {
     let outcome: ScanOutcome
+    /// "Ver máscara" activado al abrir (atajo de depuración).
+    var showMask = false
 }
 
 /// Ruta de depuración (-uiScreen ajustes): Ajustes empujado en la pila de Hoy.
@@ -25,6 +29,9 @@ struct HoyView: View {
     @State private var verdicts: [String: FeedbackVerdict] = [:]
     @State private var unlockedCount = 0
     @State private var debugHandled = false
+    @State private var showScanOnboarding = false
+    @State private var onboardingChecked = false
+    @Environment(\.selectTab) private var selectTab
 
     enum CaptureState: Equatable {
         case idle
@@ -41,7 +48,15 @@ struct HoyView: View {
             }
             .navigationTitle("Hoy")
             .navigationDestination(for: ResultRoute.self) { route in
-                ResultView(model: ResultViewModel(outcome: route.outcome, env: env))
+                ResultView(model: {
+                    let model = ResultViewModel(outcome: route.outcome, env: env)
+                    model.showMask = route.showMask
+                    return model
+                }())
+            }
+            .navigationDestination(for: LayersRoute.self) { route in
+                LayersInspectorView(model: LayersInspectorModel(outcome: route.outcome, dictionary: env.dictionary),
+                                    initialLayer: route.initialLayer)
             }
             .navigationDestination(for: Int.self) { comboId in
                 ComboDetailView(comboId: comboId)
@@ -64,9 +79,45 @@ struct HoyView: View {
             }
             .ignoresSafeArea()
         }
+        .sheet(isPresented: $showScanOnboarding, onDismiss: { Task { await onboardingDismissed() } }) {
+            ScanOnboardingView(onShowGrid: {
+                showScanOnboarding = false
+                selectTab(.rejilla)
+            }, onSkip: {
+                showScanOnboarding = false
+            })
+            .environmentObject(env)
+        }
         .task { await observeRecentScans() }
         .task { await observeUnlockCount() }
         .task { await handleDebugLaunch() }
+        .task { await presentOnboardingIfNeeded() }
+    }
+
+    // MARK: Escaneo inicial
+
+    /// Presentar la hoja del escaneo del carrete al abrir Hoy: solo si no se ha
+    /// hecho ni saltado, sin atajo de depuración y fuera de XCTest.
+    nonisolated static func shouldPresentOnboarding(initialScanDone: Bool, skipped: Bool, debugScreen: Bool,
+                                                    runningTests: Bool) -> Bool {
+        !initialScanDone && !skipped && !debugScreen && !runningTests
+    }
+
+    private func presentOnboardingIfNeeded() async {
+        guard !onboardingChecked else { return }
+        onboardingChecked = true
+        let done = (try? await env.settings.bool(.initialScanDone)) ?? false
+        let skipped = (try? await env.settings.bool(.scanOnboardingSkipped)) ?? false
+        if Self.shouldPresentOnboarding(initialScanDone: done, skipped: skipped, debugScreen: DebugLaunch.requested != nil,
+                                        runningTests: AppEnvironment.isRunningTests) {
+            showScanOnboarding = true
+        }
+    }
+
+    /// Al cerrar la hoja sin haber escaneado, no se vuelve a presentar sola
+    /// (queda "Escanear carrete" en la sección Carrete).
+    private func onboardingDismissed() async {
+        await HoyOnboarding.markDismissed(settings: env.settings)
     }
 
     // MARK: Secciones
@@ -124,12 +175,18 @@ struct HoyView: View {
     private var librarySection: some View {
         Section("Carrete") {
             if env.scanRunner is NoopScanRunner {
-                Label("El escaneo del carrete llega en la próxima build.", systemImage: "clock")
+                Label("El escaneo del carrete no está disponible en esta build.", systemImage: "clock")
                     .foregroundStyle(.secondary)
             } else {
                 switch env.scanProgress.phase {
                 case .idle, .finished, .failed:
-                    EmptyView()
+                    Button {
+                        showScanOnboarding = true
+                    } label: {
+                        Label("Escanear carrete", systemImage: "photo.stack")
+                    }
+                    .disabled(isWorking)
+                    .accessibilityIdentifier("hoy.scanLibrary")
                 case .requestingAccess:
                     Label("Pidiendo acceso a Fotos…", systemImage: "photo.stack")
                 case .fetching:
@@ -240,18 +297,61 @@ struct HoyView: View {
         switch screen {
         case .resultDemo:
             guard let image = SyntheticImage.blocks(comboId: DebugLaunch.demoComboId, dictionary: env.dictionary) else { return }
-            capture = .working("Demo…")
-            do {
-                let outcome = try await ScanAnalyzer.run(image: image, source: .manual, personMask: false, env: env)
-                capture = .idle
-                path.append(ResultRoute(outcome: outcome))
-            } catch {
-                capture = .failed(ErrorText.describe(error))
-            }
+            await debugAnalyze(image: image, subject: SubjectOptions(mode: .off)) { path.append(ResultRoute(outcome: $0)) }
         case .explorar(let id):
             path.append(id)
         case .ajustes:
             path.append(AjustesRoute())
+        case .resultPeople, .resultPeopleMask, .layersPeople:
+            guard let image = DebugLaunch.groupPhoto() else {
+                capture = .failed("La foto de grupo de depuración no está en el bundle (solo en Debug).")
+                return
+            }
+            await debugAnalyze(image: image, subject: nil) { outcome in
+                path.append(ResultRoute(outcome: outcome, showMask: screen == .resultPeopleMask))
+                if screen == .layersPeople {
+                    path.append(LayersRoute(outcome: outcome, initialLayer: DebugLaunch.requestedLayer))
+                }
+            }
+        case .layersDemo, .resultDemoPerson:
+            let scene = SyntheticPersonScene.make()
+            guard let image = scene.image else { return }
+            await debugAnalyze(image: image, subject: .default, people: [scene.person]) { outcome in
+                path.append(ResultRoute(outcome: outcome))
+                if screen == .layersDemo {
+                    path.append(LayersRoute(outcome: outcome, initialLayer: DebugLaunch.requestedLayer))
+                }
+            }
+        case .resultDemoPeople, .resultDemoPeopleMask:
+            let scene = SyntheticPersonScene.makeTwo()
+            guard let image = scene.image else { return }
+            await debugAnalyze(image: image, subject: .default, people: scene.people) { outcome in
+                path.append(ResultRoute(outcome: outcome, showMask: screen == .resultDemoPeopleMask))
+            }
+        }
+    }
+
+    /// Análisis de un atajo de depuración (scan .manual) y navegación.
+    private func debugAnalyze(image: CGImage, subject: SubjectOptions?, people: [PersonInstance]? = nil,
+                              then navigate: (ScanOutcome) -> Void) async {
+        capture = .working("Demo…")
+        do {
+            let outcome = try await ScanAnalyzer.run(image: image, source: .manual, subject: subject, people: people, env: env)
+            capture = .idle
+            navigate(outcome)
+        } catch {
+            capture = .failed(ErrorText.describe(error))
+        }
+    }
+}
+
+/// Estado de la presentación del escaneo inicial en Hoy.
+enum HoyOnboarding {
+    /// Tras cerrar la hoja: si el escaneo inicial no se hizo, se marca como saltado.
+    static func markDismissed(settings: SettingsRepository) async {
+        let done = (try? await settings.bool(.initialScanDone)) ?? false
+        if !done {
+            try? await settings.setBool(.scanOnboardingSkipped, true)
         }
     }
 }

@@ -1,7 +1,14 @@
 // Base de datos GRDB de la app: DatabasePool (WAL) en Application Support/
-// ColorsApp/colors.sqlite y migración v1 con las cuatro tablas sync-ready
-// (PLAN §7). Reinstalar sobre el mismo bundle ID conserva el contenedor (es lo
-// que mide LaunchCounter); los tests usan `inMemory()` o un directorio temporal.
+// ColorsApp/colors.sqlite, migración v1 con las cuatro tablas sync-ready
+// (PLAN §7) y v2 con los datos del recorte de sujeto en `scans` (SubjectKit) y
+// la conversión del ajuste heredado `person_mask`. Reinstalar sobre el mismo
+// bundle ID conserva el contenedor (es lo que mide LaunchCounter); los tests
+// usan `inMemory()` o un directorio temporal.
+//
+// Las migraciones ya publicadas NO se editan: el iPhone del usuario tiene una
+// base de datos creada por v1 (build Debug). Cada cambio de esquema es una
+// migración nueva, probada con una base de datos creada solo con v1
+// (DatabaseTests.testMigrationV1ToV2KeepsUnlocksAndFeedback).
 import Foundation
 import GRDB
 
@@ -42,10 +49,9 @@ final class AppDatabase: Sendable {
 
     static var migrator: DatabaseMigrator {
         var migrator = DatabaseMigrator()
-        #if DEBUG
-        // Solo en Debug: si el esquema cambia durante el desarrollo se recrea.
-        migrator.eraseDatabaseOnSchemaChange = true
-        #endif
+        // Nunca se borra la base de datos por un cambio de esquema, tampoco en
+        // Debug: la build del usuario es Debug y guarda sus desbloqueos y veredictos.
+        migrator.eraseDatabaseOnSchemaChange = false
         migrator.registerMigration("v1") { db in
             try db.create(table: "scans") { t in
                 t.primaryKey("id", .text)
@@ -101,7 +107,53 @@ final class AppDatabase: Sendable {
                 t.column("dirty", .integer).notNull().defaults(to: 1)
             }
         }
+        migrator.registerMigration("v2") { db in
+            try migrateV2(db, now: Date())
+        }
         return migrator
+    }
+
+    /// v2: recorte de sujeto por scan y conversión del ajuste `person_mask`.
+    ///
+    /// - `scans` gana `subject_mode` (off|allPeople|largestPerson|selectedPerson),
+    ///   `region_mode` (wholePerson|clothing), `adaptive_skin` (0/1),
+    ///   `people_count`, `person_index` (índice en las personas ordenadas por
+    ///   cobertura; NULL con allPeople/off o sin personas), `mask_steps` (JSON
+    ///   `[MaskFallback.rawValue]`) y `mask_coverage` (REAL, 0...1). Nulas en los
+    ///   scans anteriores a v2.
+    /// - `person_mask` = "true" (máscara de persona de Vision de F6) pasa a
+    ///   `subject_mode` = allPeople + `region_mode` = wholePerson, lo más parecido
+    ///   a lo que hacía; "false" o ausente deja los nuevos valores por defecto
+    ///   (sin filas: persona más grande + solo ropa + piel adaptativa). La clave
+    ///   heredada se marca borrada (borrado suave, rev + 1, dirty).
+    static func migrateV2(_ db: Database, now: Date) throws {
+        try db.alter(table: "scans") { t in
+            t.add(column: "subject_mode", .text)
+            t.add(column: "region_mode", .text)
+            t.add(column: "adaptive_skin", .integer)
+            t.add(column: "people_count", .integer)
+            t.add(column: "person_index", .integer)
+            t.add(column: "mask_steps", .text)
+            t.add(column: "mask_coverage", .real)
+        }
+        // SQL literal y no los registros de Records.swift: una migración publicada
+        // no debe depender de tipos que evolucionan.
+        guard let legacy = try String.fetchOne(db, sql: """
+            SELECT value FROM settings WHERE key = 'person_mask' AND deleted_at IS NULL
+            """) else { return }
+        if legacy == "true" || legacy == "1" {
+            for (key, value) in [("subject_mode", "allPeople"), ("region_mode", "wholePerson")] {
+                try db.execute(sql: """
+                    INSERT INTO settings (key, value, updated_at, deleted_at, rev, dirty)
+                    VALUES (?, ?, ?, NULL, 1, 1)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at,
+                        deleted_at = NULL, rev = settings.rev + 1, dirty = 1
+                    """, arguments: [key, value, now])
+            }
+        }
+        try db.execute(sql: """
+            UPDATE settings SET deleted_at = ?, updated_at = ?, rev = rev + 1, dirty = 1 WHERE key = 'person_mask'
+            """, arguments: [now, now])
     }
 
     /// Identificadores de migración aplicados (para Ajustes/diagnóstico).

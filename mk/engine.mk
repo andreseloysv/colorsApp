@@ -5,9 +5,11 @@
 #
 #   make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]
 #       compila engine/tests/fuzz_palette.c con CE_SANITIZE=ON en build-asan/ y
-#       lo ejecuta FUZZ_SECONDS segundos (dos entradas: ce_palette_extract y
-#       el parser P6/P5 de tools/ce_pnm.c). Exit != 0 si ASan/UBSan detecta
-#       algo o falla una invariante (imprime semilla y caso para reproducir).
+#       lo ejecuta FUZZ_SECONDS segundos (entradas: ce_palette_extract con las
+#       capas de depuración, el parser P6/P5 de tools/ce_pnm.c,
+#       ce_mask_clothing_regions/ce_mask_cut_head y ce_skin_model_fit/
+#       ce_mask_exclude_skin con modelos degenerados). Exit != 0 si ASan/UBSan
+#       detecta algo o falla una invariante (semilla y caso para reproducir).
 #   make bench-palette
 #       ejecuta test_palette en nativo -O2 y muestra PERF_1024_RGBA_MS (la cota
 #       de 150 ms la exige el propio test; anotar en engine/BENCHLOG.md).
@@ -20,7 +22,12 @@
 #       falta y ejecuta harness/wasm/run_parity.js (node): `ce match --json` en las
 #       dos plataformas sobre las 20 fixtures; |ΔLab|, |Δweight| y |Δscore| del
 #       top-3 <= PARITY_TOL, mismo orden de ids y mismo ambiguous; escribe
-#       harness/out/parity.json. Exit != 0 si algo difiere.
+#       harness/out/parity.json. Después, engine/tests/layers_parity.js exige
+#       las capas de depuración (`ce match --debug-dir`: reduced, weights,
+#       labels, clusters, swatch_<k>, debug.json con la explicación del top-K)
+#       y las máscaras (`ce regions`, `ce skin`, `ce cut-head`, match --mask)
+#       byte a byte idénticas en nativo y WASM (salidas en build/parity-layers).
+#       Exit != 0 si algo difiere.
 #   make parity-fixtures
 #       regenera harness/wasm/fixtures/ (20 PPM <= 128 px + manifest.json con sha256)
 #       con uv y comprueba que la regeneración es idéntica byte a byte (--check).
@@ -65,3 +72,5 @@ parity-fixtures:
 parity: parity-build $(PARITY_FIXTURES)/manifest.json
 	node $(HARNESS_WASM)/run_parity.js --native $(BUILD)/tools/ce --wasm $(BUILD_WASM)/tools/ce.js \
 	  --fixtures $(PARITY_FIXTURES) --tol $(PARITY_TOL) --top $(PARITY_TOP) --out $(ROOT)/harness/out/parity.json
+	node $(ENGINE)/tests/layers_parity.js --native $(BUILD)/tools/ce --wasm $(BUILD_WASM)/tools/ce.js \
+	  --fixtures $(PARITY_FIXTURES) --out $(BUILD)/parity-layers

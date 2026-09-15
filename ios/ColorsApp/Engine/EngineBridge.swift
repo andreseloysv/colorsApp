@@ -132,6 +132,35 @@ enum EngineBridge {
         }
     }
 
+    /// `analyze` + capas de depuración del motor (imagen reducida, peso por píxel,
+    /// swatch y cluster por píxel, clusters descartados/fusionados y la
+    /// explicación de cada hit) en un único `ce_analyze` y un único `ce_ctx`:
+    /// `analysis` es idéntico (hash incluido) al de `analyze` con los mismos
+    /// argumentos. Lo usa el inspector de capas de Resultado.
+    /// Opciones de match que usa la app (no las del motor por defecto).
+    /// La hipótesis de iluminante queda DESACTIVADA: las fotos del iPhone ya llegan
+    /// con balance de blancos y "compensar" una luz cálida inexistente convertía
+    /// rosas en azules (caso real del usuario, 2026-09-15: pantalón rosa palo +
+    /// camiseta negra -> Nº 067 azul claro + azul marino por la hipótesis A).
+    /// La hipótesis de exposición se mantiene (solo cambia la luminosidad).
+    static var appMatchOptions: MatchOptions {
+        var o = MatchOptions.default
+        o.illuminantSearch = false
+        return o
+    }
+
+    static func analyzeWithLayers(raster: Raster, paletteOptions: PaletteOptions = .default,
+                                  matchOptions: MatchOptions = .default, topK: Int = 3,
+                                  mask: [UInt8]? = nil) throws -> PaletteDebugLayers {
+        try raster.pixels.withUnsafeBufferPointer { px in
+            try withOptionalMask(mask) { m in
+                try ColorEngine.paletteDebugLayers(rgba: px, width: raster.width, height: raster.height,
+                                                   stride: raster.stride, paletteOptions: paletteOptions,
+                                                   matchOptions: matchOptions, topK: topK, mask: m)
+            }
+        }
+    }
+
     /// Solo la paleta (ce_palette_extract), sin match: "Extraer de una foto" en Explorar.
     static func extractPalette(cgImage: CGImage, maxSide: Int = defaultMaxSide,
                                options: PaletteOptions = .default, mask: CGImage? = nil) throws -> [Swatch] {

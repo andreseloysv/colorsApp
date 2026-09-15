@@ -1,7 +1,9 @@
-// Pestaña Ajustes (PLAN §7.8): máscara de persona, "Rehacer escaneo del
-// carrete", versiones (app, ce_version, dict_version, GRDB, SQLite),
-// lanzamientos, "Exportar diagnóstico" (zip por ShareLink) y "Acerca de".
+// Pestaña Ajustes (PLAN §7.8): "Recorte" (modo de personas, región y piel
+// adaptativa: SubjectKit + motor), "Desbloqueo" (umbral del escaneo del carrete),
+// "Rehacer escaneo del carrete", versiones (app, ce_version, dict_version, GRDB,
+// SQLite), lanzamientos, "Exportar diagnóstico" (zip por ShareLink) y "Acerca de".
 import SwiftUI
+import SubjectKit
 
 struct AjustesView: View {
     var body: some View {
@@ -16,8 +18,8 @@ struct AjustesView: View {
 /// en depuración, la pila de Hoy).
 struct AjustesForm: View {
     @EnvironmentObject private var env: AppEnvironment
-    @State private var personMask = false
-    @State private var maskLoaded = false
+    @State private var subject = SubjectSettings.default
+    @State private var subjectLoaded = false
     @State private var scanState: ScanState = .idle
     @State private var confirmRescan = false
     @State private var exportState: ExportState = .idle
@@ -39,7 +41,8 @@ struct AjustesForm: View {
 
     var body: some View {
         Form {
-            analysisSection
+            recorteSection
+            unlockSection
             librarySection
             diagnosticsSection
             versionsSection
@@ -52,26 +55,61 @@ struct AjustesForm: View {
             }
         }
         .task {
-            personMask = (try? await env.settings.bool(.personMask)) ?? false
-            maskLoaded = true
+            subject = (try? await env.settings.subjectSettings()) ?? .default
+            subjectLoaded = true
             migrations = (try? env.database.appliedMigrations()) ?? []
         }
-        .onChange(of: personMask) { _, value in
-            guard maskLoaded else { return }
-            Task { try? await env.settings.setBool(.personMask, value) }
+        .onChange(of: subject) { old, new in
+            guard subjectLoaded else { return }
+            Task { await AjustesForm.persist(old: old, new: new, settings: env.settings) }
         }
+    }
+
+    /// Escribe solo las claves que cambiaron.
+    static func persist(old: SubjectSettings, new: SubjectSettings, settings: SettingsRepository) async {
+        if old.mode != new.mode { try? await settings.set(.subjectMode, new.mode.rawValue) }
+        if old.region != new.region { try? await settings.set(.regionMode, new.region.rawValue) }
+        if old.adaptiveSkin != new.adaptiveSkin { try? await settings.setBool(.adaptiveSkin, new.adaptiveSkin) }
+        if old.unlockMaxScore != new.unlockMaxScore { try? await settings.setDouble(.unlockMaxScore, new.unlockMaxScore) }
     }
 
     // MARK: Secciones
 
-    private var analysisSection: some View {
+    private var recorteSection: some View {
         Section {
-            Toggle("Máscara de persona", isOn: $personMask)
-                .accessibilityIdentifier("ajustes.mask")
+            Picker("Personas", selection: $subject.mode) {
+                ForEach(SubjectSettings.settingsModes, id: \.self) { mode in
+                    Text(mode.settingsTitle).tag(mode)
+                }
+            }
+            .accessibilityIdentifier("ajustes.subjectMode")
+            Picker("Región", selection: $subject.region) {
+                ForEach(RegionMode.allCases, id: \.self) { region in
+                    Text(region.settingsTitle).tag(region)
+                }
+            }
+            .disabled(subject.mode == .off)
+            .accessibilityIdentifier("ajustes.regionMode")
+            Toggle("Excluir piel (adaptativo)", isOn: $subject.adaptiveSkin)
+                .disabled(subject.mode == .off)
+                .accessibilityIdentifier("ajustes.adaptiveSkin")
         } header: {
-            Text("Análisis")
+            Text("Recorte")
         } footer: {
-            Text("Con Vision (segmentación de personas) el motor pondera solo a la persona de la foto. Apagado por defecto; si Vision falla, la foto se analiza sin máscara.")
+            Text("Antes de buscar los colores, Vision separa a las personas de la foto en el teléfono. «Persona principal» usa la más grande (en Resultado puedes elegir otra) y «Todas las personas» las une. «Solo ropa» usa la pose para quedarse con torso, brazos y piernas. «Excluir piel» aprende el tono de piel de cada cara y quita esos píxeles, salvo que la prenda se parezca demasiado a la piel. Desactivado: se analiza la foto completa.")
+        }
+    }
+
+    private var unlockSection: some View {
+        Section {
+            Stepper(value: $subject.unlockMaxScore, in: 1...40, step: 0.5) {
+                LabeledContent("Umbral de desbloqueo", value: String(format: "%.1f", subject.unlockMaxScore))
+            }
+            .accessibilityIdentifier("ajustes.unlockMaxScore")
+        } header: {
+            Text("Desbloqueo")
+        } footer: {
+            Text("Informativo: en el escaneo del carrete, una foto desbloquea su combinación si no es ambigua y su score (ΔE00 ponderado, menor es mejor) no pasa de este valor. Por defecto 12,0.")
         }
     }
 
@@ -164,7 +202,7 @@ struct AjustesForm: View {
         } header: {
             Text("Diagnóstico")
         } footer: {
-            Text("Zip con feedback.csv, scans.csv, times.txt y copias PNG sRGB de 256 px de las fotos con veredicto. Solo se crea al pulsar el botón y lo envías tú (AirDrop, Archivos…).")
+            Text("Zip con feedback.csv, scans.csv, times.txt y, por cada foto con veredicto, una copia PNG sRGB de 256 px con sus máscaras de recorte y sus capas. Solo se crea al pulsar el botón y lo envías tú (AirDrop, Archivos…).")
         }
     }
 
@@ -206,14 +244,17 @@ struct AjustesForm: View {
     private func exportDiagnostics() async {
         exportState = .building
         let store = FeedbackImageStore.shared
-        let provider: Diagnostics.ImageProvider = { scan in
-            if let data = store.data(scanId: scan.id) { return data }
-            if let asset = scan.assetLocalId { return await PhotoLibraryImages.srgbPNG(assetLocalId: asset) }
+        let fallbackOptions = subject.subjectOptions
+        let provider: Diagnostics.PhotoProvider = { scan in
+            if let attachment = store.attachment(scanId: scan.id) { return attachment }
+            if let asset = scan.assetLocalId {
+                return await PhotoLibraryImages.attachment(assetLocalId: asset, scan: scan, fallbackOptions: fallbackOptions)
+            }
             return nil
         }
         do {
             let export = try await Diagnostics.export(scans: env.scans, feedback: env.feedback, timings: .shared,
-                                                      imageProvider: provider)
+                                                      photoProvider: provider)
             exportState = .done(export)
         } catch {
             exportState = .failed(ErrorText.describe(error))

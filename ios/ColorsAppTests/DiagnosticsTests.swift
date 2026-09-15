@@ -3,6 +3,7 @@
 // con Package.resolved, escapado CSV y TimingLog.
 import XCTest
 import ColorEngine
+import SubjectKit
 @testable import ColorsApp
 
 final class DiagnosticsTests: XCTestCase {
@@ -92,11 +93,11 @@ final class DiagnosticsTests: XCTestCase {
         let csv = try XCTUnwrap(entries.first { $0.name == "feedback.csv" }).text
         let lines = csv.split(separator: "\n").map(String.init)
         XCTAssertEqual(lines.count, 2, csv)
-        XCTAssertEqual(lines[0], "scan_id,verdict,top1,top2,top3,scores,created_at")
+        XCTAssertEqual(lines[0], "scan_id,verdict,top1,top2,top3,scores,created_at,subject_mode,region_mode,adaptive_skin,people_count,person_index")
         let row = lines[1]
         XCTAssertTrue(row.hasPrefix("\(scan.id),yes,3,102,31,"), row)
         XCTAssertTrue(row.contains("\"[1e-12,11.418745355239,17.94]\""), "scores entrecomillado: \(row)")
-        XCTAssertTrue(row.hasSuffix(",\(Diagnostics.iso(votedAt))"), row)
+        XCTAssertTrue(row.hasSuffix(",\(Diagnostics.iso(votedAt)),,,,,"), "scan sin datos de recorte: columnas vacías: \(row)")
 
         let scansCSV = try XCTUnwrap(entries.first { $0.name == "scans.csv" }).text
         XCTAssertEqual(scansCSV.split(separator: "\n").count, 2)
@@ -192,11 +193,16 @@ final class DiagnosticsTests: XCTestCase {
         XCTAssertEqual(log.text(), "")
     }
 
+    /// Sustituye a testPersonMaskHelpers (PersonMask de F6 se retiró: la máscara la
+    /// calcula SubjectKit): cobertura de SubjectKit y remuestreo de máscaras al PNG de 256 px.
     func testPersonMaskHelpers() throws {
-        XCTAssertEqual(PersonMask.coverage(of: []), 0)
-        XCTAssertEqual(PersonMask.coverage(of: [0, 0, 255, 128]), 0.5)
-        XCTAssertEqual(PersonMask.coverage(of: [0, 0, 0, 127]), 0)
-        XCTAssertFalse(PersonMask.Mask(bytes: [0], width: 1, height: 1, coverage: 0.01).isUsable)
-        XCTAssertTrue(PersonMask.Mask(bytes: [255], width: 1, height: 1, coverage: 0.5).isUsable)
+        XCTAssertEqual(MaskOps.coverage([0, 0, 255, 128], width: 2, height: 2), 0.5)
+        XCTAssertEqual(MaskOps.coverage([0, 0, 0, 127], width: 2, height: 2), 0)
+        let mask = [UInt8](repeating: 255, count: 40 * 30)
+        let small = try LayerBitmaps.resample(mask: mask, width: 40, height: 30, toWidth: 20, toHeight: 15)
+        XCTAssertEqual(small.count, 20 * 15)
+        XCTAssertTrue(small.allSatisfy { $0 == 255 })
+        XCTAssertEqual(DiagnosticsSubject.exportSize(width: 1024, height: 682).width, 256)
+        XCTAssertEqual(DiagnosticsSubject.exportSize(width: 300, height: 400).height, 256)
     }
 }
