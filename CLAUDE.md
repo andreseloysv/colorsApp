@@ -37,9 +37,13 @@ comentarios en español; identificadores, ficheros y símbolos en inglés.
 | `make bootstrap` | Reproduce el toolchain sin sudo: `brew install` de lo que falte (cmake, emscripten, uv, xcodegen), `uv sync`, `hooks`, `doctor` (`docs/SETUP.md`) |
 | `make release-week DEVICES="<udid> <udid>"` | Ritual semanal (§3 del plan): `check-protected` + gate `RELEASE_GATE=test|eval-fast|eval` (hoy `test`) + `ios-lint` + `ios-install` por UDID; sin `DEVICES` solo comprueba |
 | `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | `fuzz_palette` (paleta + parser PNM) bajo ASan/UBSan en `build-asan/`; 0 fallos exigidos |
-| `make bench-palette` | `PERF_1024_RGBA_MS` de la extracción en nativo -O2 (anotar en `engine/BENCHLOG.md`) |
+| `make bench-palette` / `bench-match` | `PERF_1024_RGBA_MS` de la extracción / `MATCH_MS`, `ANALYZE_1024_MS` y `RECALL_EXACT` del match, nativo -O2 (anotar en `engine/BENCHLOG.md`) |
+| `make parity` / `parity-fixtures` | Fase 5: `ce match --json` nativo vs WASM (node) sobre `harness/wasm/fixtures/` (20 PPM): salida byte a byte idéntica, mismo top-3 y `ambiguous`; escribe `harness/out/parity.json` / regenera las fixtures y comprueba sus sha256 |
 | `make l2` / `l2-fast` | Solo la capa 2 del harness (200 composiciones + invariancias / versión rápida) |
-| `make eval` / `eval-fast` | Scorecard completo de las capas L1–L4 / L1+L2+10 % de L3 (L1 y L2 desde la fase 2) |
+| `make l3` / `l3-fast` | Solo la capa 3 (348 × 10 sintéticos de `wada_gen` cacheados en `harness/out/synth` / 35 combinaciones): `ce batch` en columnas kL1 (oficial), kL2 y skin1, umbrales L3, holdout con `COLORSAPP_HOLDOUT_SEED`, golden-check |
+| `make golden-check` / `golden-update GOLDEN_REASON="…"` | Compara `ce palette`/`match` con `harness/golden/` a 1e-9 y mismo top-3 / regenera los goldens (ruta protegida) anotando el motivo en `harness/CHANGELOG.md` |
+| `make l4` | Runner mínimo de la capa 4 sobre `$COLORSAPP_GOLDEN_DIR` (`skipped` sin ella) |
+| `make eval` / `eval-fast` | Scorecard completo de las capas L1–L4 / L1+L2+10 % de L3 (L1 y L2 desde la fase 2, L3 desde la 3; holdout y L4 `skipped` sin sus datos) |
 | `make ios-generate` | `xcodegen generate` en `ios/` (crea `ios/Signing.xcconfig` desde la plantilla si falta) |
 | `make ios-build-sim` / `ios-build-device-nosign` | Build sin firma para simulador / dispositivo genérico |
 | `make ios-test-sim` / `ios-run-sim` | XCTest en el primer iPhone simulado / boot+install+launch y captura `harness/out/stub.png` |

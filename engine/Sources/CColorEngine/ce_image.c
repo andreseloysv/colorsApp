@@ -3,7 +3,9 @@
  * pesos por píxel (gaussiana al centro, máscara, regla de piel).
  *
  * Reglas: C11, sin I/O, sin malloc, todo en double, sin contracción FMA. La
- * única función de libm es exp (gaussiana); el resto son enteros y +, ×, ÷.
+ * única función trascendente es la exponencial de la gaussiana, tomada de
+ * ce_libm.c (ce_exp, mismos bits en nativo y WASM); el resto son enteros y
+ * +, ×, ÷.
  * Nunca se lee fuera de [pixels, pixels + height*stride): el stride y las
  * dimensiones se validan antes y las lecturas usan siempre y*stride + x*bpp
  * con x < width, y < height.
@@ -148,7 +150,7 @@ void ce_image_apply_center_weight(ce_ctx *ctx, double sigma_px)
         for (x = 0; x < rw; ++x) {
             const double dx = (double)x - cx;
             const double d2 = dx * dx + dy * dy;
-            ctx->weights[(size_t)y * (size_t)rw + (size_t)x] *= exp(-(d2 / denom));
+            ctx->weights[(size_t)y * (size_t)rw + (size_t)x] *= ce_exp(-(d2 / denom));
         }
     }
 }

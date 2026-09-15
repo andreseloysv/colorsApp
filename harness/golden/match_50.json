@@ -1,0 +1,5488 @@
+{
+ "schema": 1,
+ "kind": "matches",
+ "generated_at": "2026-09-15T06:45:00+02:00",
+ "reason": "Corrección F3/F5: match v1 (ce_match.c con hipótesis de exposición ±1 EV e iluminante A/D50/D75/F2, penalizaciones 2,0/2,0, por defecto) y libm portable ce_libm.c (bits idénticos nativo/WASM): cambian scores, top-3 y hash de los goldens; ce 0.1.0, dict fd95ac692777",
+ "ce_version": "0.1.0",
+ "dict_version": "fd95ac692777",
+ "generator_hash": "aa604e4ecd99",
+ "fixture_size": 128,
+ "fixture_seed": 20260915,
+ "tolerance": 1e-09,
+ "top_k_required": 3,
+ "n": 50,
+ "entries": [
+  {
+   "file": "f01_c003_v01.ppm",
+   "combo_id": 3,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "b73588c7c0ec9efeefdc443249dec660c378b626d1187ad5027ed7185066be69",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      94.33366871917939,
+      -3.993756616800681,
+      33.456579616509494
+     ],
+     "weight": 0.5621112796201297,
+     "rgb": [
+      255,
+      239,
+      174
+     ],
+     "hex": "#ffefae"
+    },
+    {
+     "lab": [
+      54.56402377278373,
+      23.43841512833261,
+      51.57191775424995
+     ],
+     "weight": 0.43788872037987026,
+     "rgb": [
+      187,
+      113,
+      37
+     ],
+     "hex": "#bb7125"
+    }
+   ],
+   "hits": [
+    {
+     "id": 3,
+     "score": 1.007747027406369e-12,
+     "size": 2,
+     "colors": [
+      13,
+      39
+     ]
+    },
+    {
+     "id": 102,
+     "score": 11.418745355239,
+     "size": 2,
+     "colors": [
+      41,
+      67
+     ]
+    },
+    {
+     "id": 31,
+     "score": 17.94174087010372,
+     "size": 2,
+     "colors": [
+      17,
+      39
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "1916605accb98536"
+  },
+  {
+   "file": "f02_c007_v08.ppm",
+   "combo_id": 7,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "e9747bb6cda05de071482ece05abeb06672de777b2cdea56573e8ddb8c230961",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      99.1407736301555,
+      -3.913112167440891,
+      -1.3586011538769815
+     ],
+     "weight": 0.5210234695542466,
+     "rgb": [
+      243,
+      255,
+      255
+     ],
+     "hex": "#f3ffff"
+    },
+    {
+     "lab": [
+      72.69759557563641,
+      29.124592104922296,
+      77.50722175070236
+     ],
+     "weight": 0.47897653044575345,
+     "rgb": [
+      255,
+      155,
+      0
+     ],
+     "hex": "#ff9b00"
+    }
+   ],
+   "hits": [
+    {
+     "id": 7,
+     "score": 20.995721992271385,
+     "size": 2,
+     "colors": [
+      63,
+      88
+     ]
+    },
+    {
+     "id": 132,
+     "score": 24.503076958445135,
+     "size": 3,
+     "colors": [
+      38,
+      47,
+      71
+     ]
+    },
+    {
+     "id": 129,
+     "score": 25.473325080342402,
+     "size": 3,
+     "colors": [
+      56,
+      69,
+      113
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "affa6b84276a8e5c"
+  },
+  {
+   "file": "f03_c012_v02.ppm",
+   "combo_id": 12,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "fed4ee1a7c7e1d6c1bbfcb24327daa343bce6d003e1807772cb7ea90c3e55968",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      54.74074358548447,
+      -28.979604422218205,
+      -12.270656544146421
+     ],
+     "weight": 0.5420050865888846,
+     "rgb": [
+      15,
+      145,
+      151
+     ],
+     "hex": "#0f9197"
+    },
+    {
+     "lab": [
+      69.93580428339911,
+      4.359116952628005,
+      32.8385096305089
+     ],
+     "weight": 0.4579949134111156,
+     "rgb": [
+      199,
+      166,
+      111
+     ],
+     "hex": "#c7a66f"
+    }
+   ],
+   "hits": [
+    {
+     "id": 12,
+     "score": 0.5828554688088567,
+     "size": 2,
+     "colors": [
+      50,
+      119
+     ]
+    },
+    {
+     "id": 178,
+     "score": 16.675050768589394,
+     "size": 3,
+     "colors": [
+      41,
+      112,
+      119
+     ]
+    },
+    {
+     "id": 148,
+     "score": 17.320830167605827,
+     "size": 3,
+     "colors": [
+      58,
+      60,
+      117
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "9649f555f8b989ba"
+  },
+  {
+   "file": "f04_c017_v07.ppm",
+   "combo_id": 17,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "201608a922223242b3ed4b569ee0bfa094353362c4756133429425797a459689",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      66.03740198597738,
+      -43.93629888040179,
+      1.3226118395498903
+     ],
+     "weight": 0.5219234392588346,
+     "rgb": [
+      4,
+      181,
+      157
+     ],
+     "hex": "#04b59d"
+    },
+    {
+     "lab": [
+      54.142561292896985,
+      54.17953294207416,
+      21.827044542705547
+     ],
+     "weight": 0.47807656074116534,
+     "rgb": [
+      219,
+      83,
+      95
+     ],
+     "hex": "#db535f"
+    }
+   ],
+   "hits": [
+    {
+     "id": 17,
+     "score": 0.9295545422358333,
+     "size": 2,
+     "colors": [
+      12,
+      99
+     ]
+    },
+    {
+     "id": 21,
+     "score": 14.567790492434359,
+     "size": 2,
+     "colors": [
+      7,
+      99
+     ]
+    },
+    {
+     "id": 260,
+     "score": 15.73912501374915,
+     "size": 4,
+     "colors": [
+      10,
+      48,
+      88,
+      99
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "e64a7a8941b36865"
+  },
+  {
+   "file": "f05_c018_v01.ppm",
+   "combo_id": 18,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "05fed63d107ec6785a9ec011abc94b56bb8513761cda2400ee54f3e5e4dff7ec",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      74.44288685450209,
+      10.514551476527133,
+      9.053885468173895
+     ],
+     "weight": 0.7061855999311989,
+     "rgb": [
+      209,
+      176,
+      167
+     ],
+     "hex": "#d1b0a7"
+    },
+    {
+     "lab": [
+      20.125558659453247,
+      30.1937230589831,
+      -18.447837531814603
+     ],
+     "weight": 0.29381440006880105,
+     "rgb": [
+      78,
+      29,
+      76
+     ],
+     "hex": "#4e1d4c"
+    }
+   ],
+   "hits": [
+    {
+     "id": 18,
+     "score": 1.729609864706868e-12,
+     "size": 2,
+     "colors": [
+      3,
+      152
+     ]
+    },
+    {
+     "id": 56,
+     "score": 15.958906298977645,
+     "size": 2,
+     "colors": [
+      134,
+      149
+     ]
+    },
+    {
+     "id": 238,
+     "score": 17.289516918964747,
+     "size": 3,
+     "colors": [
+      49,
+      151,
+      156
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "591773438915841f"
+  },
+  {
+   "file": "f06_c022_v06.ppm",
+   "combo_id": 22,
+   "v": 6,
+   "variant": "illuminant_D75",
+   "sha256": "2f6da297926bb087a90389e27068b5002c6678dccbc9634b3d5ac68f34276c26",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      93.51882751979782,
+      -18.373320109268953,
+      88.37018347748193
+     ],
+     "weight": 0.6246898782299269,
+     "rgb": [
+      248,
+      243,
+      31
+     ],
+     "hex": "#f8f31f"
+    },
+    {
+     "lab": [
+      29.43390833598241,
+      15.13005480279972,
+      -46.331354627080714
+     ],
+     "weight": 0.3753101217700731,
+     "rgb": [
+      21,
+      66,
+      142
+     ],
+     "hex": "#15428e"
+    }
+   ],
+   "hits": [
+    {
+     "id": 22,
+     "score": 2.0932962181152024,
+     "size": 2,
+     "colors": [
+      54,
+      126
+     ]
+    },
+    {
+     "id": 289,
+     "score": 16.404315691363948,
+     "size": 4,
+     "colors": [
+      55,
+      91,
+      127,
+      130
+     ]
+    },
+    {
+     "id": 168,
+     "score": 19.459713425449888,
+     "size": 3,
+     "colors": [
+      55,
+      128,
+      145
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "5b44696f7da596ed"
+  },
+  {
+   "file": "f07_c032_v05.ppm",
+   "combo_id": 32,
+   "v": 5,
+   "variant": "illuminant_F2",
+   "sha256": "d5bf2eb7a7cbf5c4150ab7c1660011c2a6f4672078b26db3ee4940f3d4f248ae",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      71.67810012218338,
+      22.870794658134464,
+      47.40696021060265
+     ],
+     "weight": 0.594004289578628,
+     "rgb": [
+      237,
+      158,
+      89
+     ],
+     "hex": "#ed9e59"
+    },
+    {
+     "lab": [
+      73.46518349894532,
+      -28.097765509967562,
+      70.68462544906954
+     ],
+     "weight": 0.40599571042137195,
+     "rgb": [
+      166,
+      192,
+      25
+     ],
+     "hex": "#a6c019"
+    }
+   ],
+   "hits": [
+    {
+     "id": 32,
+     "score": 2.321315317512709,
+     "size": 2,
+     "colors": [
+      49,
+      92
+     ]
+    },
+    {
+     "id": 132,
+     "score": 18.46533045983965,
+     "size": 3,
+     "colors": [
+      38,
+      47,
+      71
+     ]
+    },
+    {
+     "id": 305,
+     "score": 19.981054673177486,
+     "size": 4,
+     "colors": [
+      44,
+      56,
+      70,
+      87
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "4c30e09ab457ed36"
+  },
+  {
+   "file": "f08_c047_v02.ppm",
+   "combo_id": 47,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "be653edc0194a6b85eed15cad0884c932b20eb0e582ec2f85020fd44ea65c3d6",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      71.76083984648231,
+      10.053681362983852,
+      -2.065377377936005
+     ],
+     "weight": 0.604285523100068,
+     "rgb": [
+      193,
+      170,
+      180
+     ],
+     "hex": "#c1aab4"
+    },
+    {
+     "lab": [
+      50.05280203779232,
+      44.746626242965064,
+      29.879774071687795
+     ],
+     "weight": 0.39571447689993205,
+     "rgb": [
+      197,
+      83,
+      71
+     ],
+     "hex": "#c55347"
+    }
+   ],
+   "hits": [
+    {
+     "id": 47,
+     "score": 0.319266996848128,
+     "size": 2,
+     "colors": [
+      18,
+      134
+     ]
+    },
+    {
+     "id": 35,
+     "score": 13.603728797453297,
+     "size": 2,
+     "colors": [
+      4,
+      28
+     ]
+    },
+    {
+     "id": 97,
+     "score": 14.074127335920647,
+     "size": 2,
+     "colors": [
+      1,
+      18
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "38278cb5df8c41e1"
+  },
+  {
+   "file": "f09_c051_v06.ppm",
+   "combo_id": 51,
+   "v": 6,
+   "variant": "illuminant_D75",
+   "sha256": "62be18eefd6f1a3cbd1fa6ddbad6f03828c1d7eeb857a20dc20ec8afe1a34002",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      45.75869782234094,
+      6.529440260130414,
+      -51.55540921688249
+     ],
+     "weight": 0.5524671830103581,
+     "rgb": [
+      0,
+      110,
+      195
+     ],
+     "hex": "#006ec3"
+    },
+    {
+     "lab": [
+      38.01571289366302,
+      49.23761780802718,
+      19.994171920593608
+     ],
+     "weight": 0.44753281698964176,
+     "rgb": [
+      164,
+      45,
+      60
+     ],
+     "hex": "#a42d3c"
+    }
+   ],
+   "hits": [
+    {
+     "id": 51,
+     "score": 3.1792741160072993,
+     "size": 2,
+     "colors": [
+      28,
+      121
+     ]
+    },
+    {
+     "id": 39,
+     "score": 16.56771424103888,
+     "size": 2,
+     "colors": [
+      22,
+      123
+     ]
+    },
+    {
+     "id": 48,
+     "score": 21.323923923474077,
+     "size": 2,
+     "colors": [
+      24,
+      123
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "a6401b05444521f8"
+  },
+  {
+   "file": "f10_c057_v01.ppm",
+   "combo_id": 57,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "bf26197d21bd6a17de790e29b1f710d65695bc19fe2811d559dbf24952b8ad2e",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      35.87666069460428,
+      25.63194846408845,
+      -0.5173720143752725
+     ],
+     "weight": 0.5798704038822999,
+     "rgb": [
+      122,
+      68,
+      86
+     ],
+     "hex": "#7a4456"
+    },
+    {
+     "lab": [
+      28.135634438131667,
+      -4.8028427711966355,
+      -6.408969290243749
+     ],
+     "weight": 0.4201295961177001,
+     "rgb": [
+      52,
+      69,
+      76
+     ],
+     "hex": "#34454c"
+    }
+   ],
+   "hits": [
+    {
+     "id": 57,
+     "score": 2.9467399260465563e-13,
+     "size": 2,
+     "colors": [
+      147,
+      157
+     ]
+    },
+    {
+     "id": 187,
+     "score": 18.416469534192746,
+     "size": 3,
+     "colors": [
+      123,
+      134,
+      139
+     ]
+    },
+    {
+     "id": 183,
+     "score": 20.042051765818357,
+     "size": 3,
+     "colors": [
+      144,
+      145,
+      150
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "5f25cccc44a6051f"
+  },
+  {
+   "file": "f11_c059_v04.ppm",
+   "combo_id": 59,
+   "v": 4,
+   "variant": "illuminant_A",
+   "sha256": "b42e418e96aa624e818172a9153b4350e69d8cca9331047d847be2489bfd320e",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      66.24124219156853,
+      21.464047127349396,
+      71.39091684045937
+     ],
+     "weight": 0.5315221185779028,
+     "rgb": [
+      223,
+      144,
+      0
+     ],
+     "hex": "#df9000"
+    },
+    {
+     "lab": [
+      64.23142588577076,
+      52.51622709937448,
+      48.654433474076576
+     ],
+     "weight": 0.4684778814220971,
+     "rgb": [
+      255,
+      111,
+      71
+     ],
+     "hex": "#ff6f47"
+    }
+   ],
+   "hits": [
+    {
+     "id": 59,
+     "score": 11.798246493218446,
+     "size": 2,
+     "colors": [
+      8,
+      71
+     ]
+    },
+    {
+     "id": 153,
+     "score": 19.040577875067967,
+     "size": 3,
+     "colors": [
+      8,
+      60,
+      70
+     ]
+    },
+    {
+     "id": 87,
+     "score": 20.844022352650633,
+     "size": 2,
+     "colors": [
+      1,
+      70
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "b23f805a69e50e88"
+  },
+  {
+   "file": "f12_c061_v07.ppm",
+   "combo_id": 61,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "8b91a1adc614bb2665b9d1ba11b254b0f64f580540e1aaa9ef79cf278e51d48f",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      81.14839999617601,
+      -18.935957230304002,
+      61.355981135333444
+     ],
+     "weight": 0.6086389772695935,
+     "rgb": [
+      202,
+      209,
+      80
+     ],
+     "hex": "#cad150"
+    },
+    {
+     "lab": [
+      18.549548317255756,
+      33.587248252355955,
+      -16.777361612506596
+     ],
+     "weight": 0.39136102273040646,
+     "rgb": [
+      79,
+      21,
+      70
+     ],
+     "hex": "#4f1546"
+    }
+   ],
+   "hits": [
+    {
+     "id": 61,
+     "score": 1.1564123482016653,
+     "size": 2,
+     "colors": [
+      91,
+      151
+     ]
+    },
+    {
+     "id": 289,
+     "score": 15.538814664452651,
+     "size": 4,
+     "colors": [
+      55,
+      91,
+      127,
+      130
+     ]
+    },
+    {
+     "id": 50,
+     "score": 19.501017084408815,
+     "size": 2,
+     "colors": [
+      41,
+      152
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "6f587f53611d4bed"
+  },
+  {
+   "file": "f13_c076_v07.ppm",
+   "combo_id": 76,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "450734cde1c3121b7c40ef9a9bbc9de4fe234febe6b798b00b60bd56c5149ebf",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      66.788008458609,
+      -1.6356313421260664,
+      2.933318049138355
+     ],
+     "weight": 0.5645711340357732,
+     "rgb": [
+      162,
+      163,
+      157
+     ],
+     "hex": "#a2a39d"
+    },
+    {
+     "lab": [
+      94.04362987988647,
+      -3.4235427556426137,
+      32.77464866905468
+     ],
+     "weight": 0.38073001587151095,
+     "rgb": [
+      255,
+      238,
+      175
+     ],
+     "hex": "#ffeeaf"
+    },
+    {
+     "lab": [
+      66.38955201041279,
+      2.0728219854336896,
+      -0.07949633922036893
+     ],
+     "weight": 0.05469885009271591,
+     "rgb": [
+      165,
+      160,
+      162
+     ],
+     "hex": "#a5a0a2"
+    }
+   ],
+   "hits": [
+    {
+     "id": 76,
+     "score": 2.525296451199673,
+     "size": 2,
+     "colors": [
+      39,
+      156
+     ]
+    },
+    {
+     "id": 169,
+     "score": 8.988511054062974,
+     "size": 3,
+     "colors": [
+      1,
+      39,
+      156
+     ]
+    },
+    {
+     "id": 11,
+     "score": 13.424585007853992,
+     "size": 2,
+     "colors": [
+      41,
+      155
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "cddba035a8646532"
+  },
+  {
+   "file": "f14_c085_v07.ppm",
+   "combo_id": 85,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "ffa848bc5237dba84237bdddd3de0d790dc21e67273a33bf32f98bc88e0403a6",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      52.78090803473753,
+      38.05131108370272,
+      49.099996831017606
+     ],
+     "weight": 0.6151261578698356,
+     "rgb": [
+      200,
+      96,
+      40
+     ],
+     "hex": "#c86028"
+    },
+    {
+     "lab": [
+      44.310674917567624,
+      -14.934284585324002,
+      -25.066913233048567
+     ],
+     "weight": 0.3848738421301645,
+     "rgb": [
+      2,
+      114,
+      146
+     ],
+     "hex": "#027292"
+    }
+   ],
+   "hits": [
+    {
+     "id": 85,
+     "score": 1.6237192569399812,
+     "size": 2,
+     "colors": [
+      14,
+      122
+     ]
+    },
+    {
+     "id": 244,
+     "score": 11.748372362876328,
+     "size": 4,
+     "colors": [
+      4,
+      14,
+      95,
+      122
+     ]
+    },
+    {
+     "id": 1,
+     "score": 13.283520091356863,
+     "size": 2,
+     "colors": [
+      65,
+      117
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "66abb14d51bf9d4d"
+  },
+  {
+   "file": "f15_c086_v09.ppm",
+   "combo_id": 86,
+   "v": 9,
+   "variant": "distractor",
+   "sha256": "c030a7fc7798084e7d011ec3217e250afe026885e55be55c8a944cd218996343",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      65.75442063480322,
+      -44.29787331592805,
+      1.9095088645618263
+     ],
+     "weight": 0.4509596956822212,
+     "rgb": [
+      0,
+      180,
+      155
+     ],
+     "hex": "#00b49b"
+    },
+    {
+     "lab": [
+      54.56402377278378,
+      23.438415128332444,
+      51.57191775424999
+     ],
+     "weight": 0.2936533371714868,
+     "rgb": [
+      187,
+      113,
+      37
+     ],
+     "hex": "#bb7125"
+    },
+    {
+     "lab": [
+      85.64525604134111,
+      -16.38886670378964,
+      71.29731473800254
+     ],
+     "weight": 0.25538696714629194,
+     "rgb": [
+      223,
+      220,
+      67
+     ],
+     "hex": "#dfdc43"
+    }
+   ],
+   "hits": [
+    {
+     "id": 86,
+     "score": 9.00138906979236,
+     "size": 2,
+     "colors": [
+      13,
+      99
+     ]
+    },
+    {
+     "id": 138,
+     "score": 15.312767394401057,
+     "size": 3,
+     "colors": [
+      47,
+      55,
+      116
+     ]
+    },
+    {
+     "id": 291,
+     "score": 20.277936944292584,
+     "size": 4,
+     "colors": [
+      91,
+      99,
+      114,
+      115
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "83a4ac5ed5690df9"
+  },
+  {
+   "file": "f16_c101_v07.ppm",
+   "combo_id": 101,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "361c1cd44c7fd52105a1f569f508329e46e27dff33dc3a9a5704ff1cbe4148ab",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      28.604927363586707,
+      11.546126658141437,
+      -40.66798867844274
+     ],
+     "weight": 0.6310722720519811,
+     "rgb": [
+      27,
+      65,
+      131
+     ],
+     "hex": "#1b4183"
+    },
+    {
+     "lab": [
+      76.67088438094099,
+      15.115648909725003,
+      4.787719024632523
+     ],
+     "weight": 0.3689277279480188,
+     "rgb": [
+      220,
+      179,
+      181
+     ],
+     "hex": "#dcb3b5"
+    }
+   ],
+   "hits": [
+    {
+     "id": 101,
+     "score": 1.5966568834715238,
+     "size": 2,
+     "colors": [
+      2,
+      126
+     ]
+    },
+    {
+     "id": 116,
+     "score": 16.537309134640296,
+     "size": 2,
+     "colors": [
+      2,
+      142
+     ]
+    },
+    {
+     "id": 56,
+     "score": 18.27093837709365,
+     "size": 2,
+     "colors": [
+      134,
+      149
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "5a516896d82c120a"
+  },
+  {
+   "file": "f17_c102_v08.ppm",
+   "combo_id": 102,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "6221a3ea15cd6bc586a5128d930e324d13f10b624d23139055a94a7cc0af5eae",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      39.55418209818017,
+      27.420704435583033,
+      47.20959879622381
+     ],
+     "weight": 0.55246718301036,
+     "rgb": [
+      147,
+      73,
+      7
+     ],
+     "hex": "#934907"
+    },
+    {
+     "lab": [
+      64.72763108314697,
+      0.8436577538548651,
+      25.797820961915452
+     ],
+     "weight": 0.44753281698964,
+     "rgb": [
+      175,
+      155,
+      111
+     ],
+     "hex": "#af9b6f"
+    }
+   ],
+   "hits": [
+    {
+     "id": 102,
+     "score": 6.924324816973748,
+     "size": 2,
+     "colors": [
+      41,
+      67
+     ]
+    },
+    {
+     "id": 3,
+     "score": 13.717398835763646,
+     "size": 2,
+     "colors": [
+      13,
+      39
+     ]
+    },
+    {
+     "id": 222,
+     "score": 19.546757966357138,
+     "size": 3,
+     "colors": [
+      59,
+      61,
+      67
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "aff279ad348743b4"
+  },
+  {
+   "file": "f18_c126_v02.ppm",
+   "combo_id": 126,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "44fd95a4f485d6c69c5abaa94543e86f445eba1a9dd4cb94f293a07c51e8e057",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      29.395076696466962,
+      12.590811435290943,
+      -41.97341954808175
+     ],
+     "weight": 0.43709675162755635,
+     "rgb": [
+      29,
+      67,
+      135
+     ],
+     "hex": "#1d4387"
+    },
+    {
+     "lab": [
+      84.97528616642334,
+      1.2050357544679002,
+      27.353967482005235
+     ],
+     "weight": 0.3646275856257405,
+     "rgb": [
+      234,
+      210,
+      161
+     ],
+     "hex": "#ead2a1"
+    },
+    {
+     "lab": [
+      76.38160704375989,
+      4.648426530902949,
+      62.81743840637054
+     ],
+     "weight": 0.19827566274670322,
+     "rgb": [
+      228,
+      183,
+      66
+     ],
+     "hex": "#e4b742"
+    }
+   ],
+   "hits": [
+    {
+     "id": 126,
+     "score": 0.6204399514171097,
+     "size": 3,
+     "colors": [
+      41,
+      59,
+      126
+     ]
+    },
+    {
+     "id": 42,
+     "score": 14.717918438345444,
+     "size": 2,
+     "colors": [
+      59,
+      149
+     ]
+    },
+    {
+     "id": 60,
+     "score": 18.310658439690506,
+     "size": 2,
+     "colors": [
+      39,
+      129
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "276597d9db8583c1"
+  },
+  {
+   "file": "f19_c128_v02.ppm",
+   "combo_id": 128,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "201fd2d6ea976a22c79aee7331c9fb5d4bc008b49bde3034409d411b034b9c8a",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      53.596945806613846,
+      26.08710642180827,
+      -23.841894037809354
+     ],
+     "weight": 0.4438088640443641,
+     "rgb": [
+      153,
+      113,
+      169
+     ],
+     "hex": "#9971a9"
+    },
+    {
+     "lab": [
+      80.07144802630759,
+      24.075306360565232,
+      7.257988203689289
+     ],
+     "weight": 0.3060419857417831,
+     "rgb": [
+      247,
+      182,
+      186
+     ],
+     "hex": "#f7b6ba"
+    },
+    {
+     "lab": [
+      75.01705373602847,
+      -30.915234432067386,
+      -5.478367283345251
+     ],
+     "weight": 0.2501491502138527,
+     "rgb": [
+      101,
+      201,
+      194
+     ],
+     "hex": "#65c9c2"
+    }
+   ],
+   "hits": [
+    {
+     "id": 128,
+     "score": 0.7315502014425082,
+     "size": 3,
+     "colors": [
+      1,
+      116,
+      138
+     ]
+    },
+    {
+     "id": 43,
+     "score": 14.522199401662922,
+     "size": 2,
+     "colors": [
+      1,
+      139
+     ]
+    },
+    {
+     "id": 20,
+     "score": 20.605390273985556,
+     "size": 2,
+     "colors": [
+      115,
+      135
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "733fe50caa10d6a9"
+  },
+  {
+   "file": "f20_c133_v07.ppm",
+   "combo_id": 133,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "e0e464a6b577a094792adfd57a302cb647beebed2c93035461ff01a745e45639",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      65.94876984425069,
+      -44.05211461631744,
+      1.6654826454644476
+     ],
+     "weight": 0.408364532506842,
+     "rgb": [
+      5,
+      180,
+      156
+     ],
+     "hex": "#05b49c"
+    },
+    {
+     "lab": [
+      29.846733657739243,
+      39.49776993034901,
+      25.50756248082096
+     ],
+     "weight": 0.3241456375117447,
+     "rgb": [
+      130,
+      37,
+      33
+     ],
+     "hex": "#822521"
+    },
+    {
+     "lab": [
+      64.94467800142364,
+      -4.516969304354866,
+      53.70650918245809
+     ],
+     "weight": 0.26748982998141324,
+     "rgb": [
+      177,
+      158,
+      56
+     ],
+     "hex": "#b19e38"
+    }
+   ],
+   "hits": [
+    {
+     "id": 133,
+     "score": 1.059913181315836,
+     "size": 3,
+     "colors": [
+      33,
+      71,
+      99
+     ]
+    },
+    {
+     "id": 58,
+     "score": 12.284446569192397,
+     "size": 2,
+     "colors": [
+      32,
+      99
+     ]
+    },
+    {
+     "id": 304,
+     "score": 17.571114317042014,
+     "size": 4,
+     "colors": [
+      32,
+      46,
+      73,
+      100
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "a696645164f9a8fc"
+  },
+  {
+   "file": "f21_c134_v03.ppm",
+   "combo_id": 134,
+   "v": 3,
+   "variant": "shading",
+   "sha256": "c2da6f3cf46de5dc0e0189c9af4bd0bfe583bb6f11c3af787b8c2e5528d8d47e",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      24.809847744015023,
+      35.650904531964535,
+      -30.137063084632494
+     ],
+     "weight": 0.4475328169896411,
+     "rgb": [
+      88,
+      36,
+      105
+     ],
+     "hex": "#582469"
+    },
+    {
+     "lab": [
+      67.20029429922943,
+      46.27990684598696,
+      9.150013548337979
+     ],
+     "weight": 0.3541915202636559,
+     "rgb": [
+      244,
+      128,
+      149
+     ],
+     "hex": "#f48095"
+    },
+    {
+     "lab": [
+      55.16258750967766,
+      26.089380308111963,
+      -23.842190562262505
+     ],
+     "weight": 0.19827566274670302,
+     "rgb": [
+      158,
+      117,
+      174
+     ],
+     "hex": "#9e75ae"
+    }
+   ],
+   "hits": [
+    {
+     "id": 134,
+     "score": 1.137788183640583,
+     "size": 3,
+     "colors": [
+      8,
+      138,
+      150
+     ]
+    },
+    {
+     "id": 90,
+     "score": 14.152139937179953,
+     "size": 2,
+     "colors": [
+      8,
+      139
+     ]
+    },
+    {
+     "id": 331,
+     "score": 20.248931158217356,
+     "size": 4,
+     "colors": [
+      23,
+      130,
+      138,
+      149
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "170f0c382baf43c9"
+  },
+  {
+   "file": "f22_c143_v08.ppm",
+   "combo_id": 143,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "9733190602dec336a1f26766bd95719e66c744ae444d43d67caeca60f2f00102",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      61.00967265078844,
+      1.962191894987475,
+      -42.46998760848037
+     ],
+     "weight": 0.4153560668045635,
+     "rgb": [
+      90,
+      150,
+      222
+     ],
+     "hex": "#5a96de"
+    },
+    {
+     "lab": [
+      88.09468419231139,
+      -2.272876978918592,
+      4.171053364342492
+     ],
+     "weight": 0.32544023228300933,
+     "rgb": [
+      220,
+      222,
+      213
+     ],
+     "hex": "#dcded5"
+    },
+    {
+     "lab": [
+      81.82486739201862,
+      24.91922525107221,
+      -13.389828770658841
+     ],
+     "weight": 0.2592037009124272,
+     "rgb": [
+      239,
+      188,
+      229
+     ],
+     "hex": "#efbce5"
+    }
+   ],
+   "hits": [
+    {
+     "id": 143,
+     "score": 8.51397167166552,
+     "size": 3,
+     "colors": [
+      121,
+      136,
+      156
+     ]
+    },
+    {
+     "id": 324,
+     "score": 23.789834688458093,
+     "size": 4,
+     "colors": [
+      29,
+      120,
+      139,
+      154
+     ]
+    },
+    {
+     "id": 187,
+     "score": 23.908551735497667,
+     "size": 3,
+     "colors": [
+      123,
+      134,
+      139
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "21ceae058ae5485c"
+  },
+  {
+   "file": "f23_c144_v00.ppm",
+   "combo_id": 144,
+   "v": 0,
+   "variant": "clean",
+   "sha256": "bb7e8c055fd1db6d630c13dcc9c6840302535168a2d96a188ec40ed838097184",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      63.05479243293639,
+      44.4702691998698,
+      63.8036926577618
+     ],
+     "weight": 0.5210234695542445,
+     "rgb": [
+      243,
+      116,
+      32
+     ],
+     "hex": "#f37420"
+    },
+    {
+     "lab": [
+      45.47601416389854,
+      53.04364329285477,
+      -3.985519412057758
+     ],
+     "weight": 0.2638953771187375,
+     "rgb": [
+      183,
+      63,
+      116
+     ],
+     "hex": "#b73f74"
+    },
+    {
+     "lab": [
+      5.739710086380828,
+      -0.5595794665235743,
+      -0.877842053377903
+     ],
+     "weight": 0.21508115332701788,
+     "rgb": [
+      17,
+      19,
+      20
+     ],
+     "hex": "#111314"
+    }
+   ],
+   "hits": [
+    {
+     "id": 144,
+     "score": 1.8261759612917148e-13,
+     "size": 3,
+     "colors": [
+      24,
+      63,
+      158
+     ]
+    },
+    {
+     "id": 46,
+     "score": 9.645920939518387,
+     "size": 2,
+     "colors": [
+      63,
+      158
+     ]
+    },
+    {
+     "id": 269,
+     "score": 20.86356033076612,
+     "size": 4,
+     "colors": [
+      13,
+      35,
+      139,
+      158
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "1edb2cf42a696d62"
+  },
+  {
+   "file": "f24_c148_v09.ppm",
+   "combo_id": 148,
+   "v": 9,
+   "variant": "distractor",
+   "sha256": "b9335fbe08e88e25dc809f5dafdc8776ea2f3b40bc7e87de446a1389dd2021e2",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      31.89914395407129,
+      41.36337798996293,
+      41.81505633184159
+     ],
+     "weight": 0.36519655141576113,
+     "rgb": [
+      140,
+      39,
+      6
+     ],
+     "hex": "#8c2706"
+    },
+    {
+     "lab": [
+      74.37336616408635,
+      -0.06907273290668314,
+      61.78281966109019
+     ],
+     "weight": 0.2862264399239222,
+     "rgb": [
+      214,
+      180,
+      62
+     ],
+     "hex": "#d6b43e"
+    },
+    {
+     "lab": [
+      77.87037500921502,
+      15.54734711721184,
+      78.19717248514615
+     ],
+     "weight": 0.20659058176131,
+     "rgb": [
+      252,
+      179,
+      21
+     ],
+     "hex": "#fcb315"
+    },
+    {
+     "lab": [
+      55.66768838109616,
+      -25.96576918101573,
+      -18.755010502525483
+     ],
+     "weight": 0.1419864268990066,
+     "rgb": [
+      0,
+      147,
+      165
+     ],
+     "hex": "#0093a5"
+    }
+   ],
+   "hits": [
+    {
+     "id": 249,
+     "score": 17.40274534508438,
+     "size": 4,
+     "colors": [
+      32,
+      53,
+      58,
+      124
+     ]
+    },
+    {
+     "id": 148,
+     "score": 18.301821341468003,
+     "size": 3,
+     "colors": [
+      58,
+      60,
+      117
+     ]
+    },
+    {
+     "id": 124,
+     "score": 18.632143173766373,
+     "size": 3,
+     "colors": [
+      35,
+      59,
+      93
+     ]
+    }
+   ],
+   "ambiguous": 1,
+   "hash": "88bd56ae7e76dfdb"
+  },
+  {
+   "file": "f25_c159_v00.ppm",
+   "combo_id": 159,
+   "v": 0,
+   "variant": "clean",
+   "sha256": "08d21c656777fb0c24d679a1222f097fea39da40c329eb906d941eada1e632fd",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      73.69181504169144,
+      9.264346755003372,
+      -19.108335623635853
+     ],
+     "weight": 0.4370967516275558,
+     "rgb": [
+      181,
+      177,
+      216
+     ],
+     "hex": "#b5b1d8"
+    },
+    {
+     "lab": [
+      60.56769012122848,
+      10.853696906219346,
+      54.867945115441096
+     ],
+     "weight": 0.29647733058116066,
+     "rgb": [
+      188,
+      137,
+      43
+     ],
+     "hex": "#bc892b"
+    },
+    {
+     "lab": [
+      77.40511523633778,
+      -24.938488061278296,
+      -9.559166282295251
+     ],
+     "weight": 0.26642591779128355,
+     "rgb": [
+      120,
+      205,
+      208
+     ],
+     "hex": "#78cdd0"
+    }
+   ],
+   "hits": [
+    {
+     "id": 159,
+     "score": 5.93096200316077e-13,
+     "size": 3,
+     "colors": [
+      69,
+      115,
+      133
+     ]
+    },
+    {
+     "id": 8,
+     "score": 18.602809716466265,
+     "size": 2,
+     "colors": [
+      66,
+      133
+     ]
+    },
+    {
+     "id": 65,
+     "score": 18.877576320376303,
+     "size": 2,
+     "colors": [
+      68,
+      115
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "48a6a8db6a5f288b"
+  },
+  {
+   "file": "f26_c165_v07.ppm",
+   "combo_id": 165,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "8e87ec9745dac0b117c71c98fee212c16a763eaacd1766153976d750b8880897",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      65.16755597643649,
+      52.14240008852902,
+      12.146004597179363
+     ],
+     "weight": 0.6603453659843039,
+     "rgb": [
+      247,
+      116,
+      139
+     ],
+     "hex": "#f7748b"
+    },
+    {
+     "lab": [
+      32.336903760728966,
+      21.517096624801,
+      -0.6937325227574622
+     ],
+     "weight": 0.2022136734383783,
+     "rgb": [
+      107,
+      63,
+      78
+     ],
+     "hex": "#6b3f4e"
+    },
+    {
+     "lab": [
+      79.10801631577115,
+      13.892593403480728,
+      9.446327355773645
+     ],
+     "weight": 0.13744096057731783,
+     "rgb": [
+      228,
+      186,
+      179
+     ],
+     "hex": "#e4bab3"
+    }
+   ],
+   "hits": [
+    {
+     "id": 165,
+     "score": 7.3934553720021405,
+     "size": 3,
+     "colors": [
+      2,
+      9,
+      37
+     ]
+    },
+    {
+     "id": 248,
+     "score": 17.613180991187026,
+     "size": 4,
+     "colors": [
+      8,
+      69,
+      133,
+      146
+     ]
+    },
+    {
+     "id": 224,
+     "score": 18.76400110142241,
+     "size": 3,
+     "colors": [
+      9,
+      124,
+      147
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "a4779cfa0113892b"
+  },
+  {
+   "file": "f27_c167_v07.ppm",
+   "combo_id": 167,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "2f4611b61469b34983ed21949391dccf7f562f17013eb437921cf9b1ef7ba477",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      30.46975173537256,
+      -5.3225321003006085,
+      -27.14020590575219
+     ],
+     "weight": 0.3637261016456228,
+     "rgb": [
+      0,
+      76,
+      114
+     ],
+     "hex": "#004c72"
+    },
+    {
+     "lab": [
+      72.86863273796584,
+      -0.9595611146713514,
+      21.43162216479429
+     ],
+     "weight": 0.31977614489176803,
+     "rgb": [
+      192,
+      178,
+      140
+     ],
+     "hex": "#c0b28c"
+    },
+    {
+     "lab": [
+      81.04864875263756,
+      -5.913747533877505,
+      -17.693618615473802
+     ],
+     "weight": 0.20877155593176594,
+     "rgb": [
+      169,
+      206,
+      234
+     ],
+     "hex": "#a9ceea"
+    },
+    {
+     "lab": [
+      74.03578169346883,
+      -2.307293472683719,
+      1.3658588646285568
+     ],
+     "weight": 0.10772619753084325,
+     "rgb": [
+      179,
+      183,
+      179
+     ],
+     "hex": "#b3b7b3"
+    }
+   ],
+   "hits": [
+    {
+     "id": 167,
+     "score": 9.860860015193104,
+     "size": 3,
+     "colors": [
+      53,
+      111,
+      128
+     ]
+    },
+    {
+     "id": 67,
+     "score": 18.902791351527533,
+     "size": 2,
+     "colors": [
+      120,
+      129
+     ]
+    },
+    {
+     "id": 49,
+     "score": 20.623303402543588,
+     "size": 2,
+     "colors": [
+      111,
+      121
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "c9e37c6a9792ff24"
+  },
+  {
+   "file": "f28_c179_v09.ppm",
+   "combo_id": 179,
+   "v": 9,
+   "variant": "distractor",
+   "sha256": "2f4ddfff623d86fbd783d127e7f63b4b1208ff929049010723b621c26e363a44",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      52.172744037532084,
+      66.49704136374329,
+      -43.345209926525015
+     ],
+     "weight": 0.3651965514157608,
+     "rgb": [
+      197,
+      69,
+      200
+     ],
+     "hex": "#c545c8"
+    },
+    {
+     "lab": [
+      73.27593017073607,
+      23.082678939333356,
+      50.41211233353995
+     ],
+     "weight": 0.35591416475957965,
+     "rgb": [
+      243,
+      162,
+      87
+     ],
+     "hex": "#f3a257"
+    },
+    {
+     "lab": [
+      50.90651827707234,
+      59.510822884354944,
+      49.22380410352357
+     ],
+     "weight": 0.1768085351731236,
+     "rgb": [
+      221,
+      64,
+      39
+     ],
+     "hex": "#dd4027"
+    },
+    {
+     "lab": [
+      29.067305816452674,
+      12.59474858071216,
+      -41.971457460288505
+     ],
+     "weight": 0.10208074865153592,
+     "rgb": [
+      28,
+      66,
+      134
+     ],
+     "hex": "#1c4286"
+    }
+   ],
+   "hits": [
+    {
+     "id": 179,
+     "score": 12.02503573614863,
+     "size": 3,
+     "colors": [
+      17,
+      47,
+      126
+     ]
+    },
+    {
+     "id": 130,
+     "score": 19.77981446550672,
+     "size": 3,
+     "colors": [
+      13,
+      28,
+      149
+     ]
+    },
+    {
+     "id": 164,
+     "score": 21.524355822186344,
+     "size": 3,
+     "colors": [
+      17,
+      60,
+      149
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "b4757c94ca81be14"
+  },
+  {
+   "file": "f29_c188_v05.ppm",
+   "combo_id": 188,
+   "v": 5,
+   "variant": "illuminant_F2",
+   "sha256": "c1b46abedd97aafe741fc64c2697201e37d4e50c651e171eef53334c22868e2e",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      63.76122291515175,
+      -6.515300022304659,
+      39.24153555185892
+     ],
+     "weight": 0.46847788142209434,
+     "rgb": [
+      166,
+      156,
+      83
+     ],
+     "hex": "#a69c53"
+    },
+    {
+     "lab": [
+      78.94773375443742,
+      -19.321257664340006,
+      35.06302215044514
+     ],
+     "weight": 0.38053502578585907,
+     "rgb": [
+      183,
+      204,
+      129
+     ],
+     "hex": "#b7cc81"
+    },
+    {
+     "lab": [
+      69.2931769758391,
+      1.1310682400373917,
+      7.353735847183306
+     ],
+     "weight": 0.1509870927920466,
+     "rgb": [
+      177,
+      168,
+      156
+     ],
+     "hex": "#b1a89c"
+    }
+   ],
+   "hits": [
+    {
+     "id": 188,
+     "score": 2.3880887451681643,
+     "size": 3,
+     "colors": [
+      96,
+      113,
+      114
+     ]
+    },
+    {
+     "id": 29,
+     "score": 17.884061303285502,
+     "size": 2,
+     "colors": [
+      75,
+      113
+     ]
+    },
+    {
+     "id": 44,
+     "score": 19.18482700741195,
+     "size": 2,
+     "colors": [
+      101,
+      120
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "260b2c7bb0dae4c8"
+  },
+  {
+   "file": "f30_c196_v01.ppm",
+   "combo_id": 196,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "d382b4d1c5f7cd356683b33daaf8a59d37e19ff954dd90e3727eac570099a1f4",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      72.01406699888868,
+      -17.0644261183025,
+      58.37097093502822
+     ],
+     "weight": 0.419065777061575,
+     "rgb": [
+      178,
+      183,
+      62
+     ],
+     "hex": "#b2b73e"
+    },
+    {
+     "lab": [
+      39.61384509593079,
+      27.796903421951708,
+      -41.21197400392421
+     ],
+     "weight": 0.3351351714757357,
+     "rgb": [
+      100,
+      80,
+      161
+     ],
+     "hex": "#6450a1"
+    },
+    {
+     "lab": [
+      82.32643006592455,
+      -11.03513785146687,
+      -12.67152057226264
+     ],
+     "weight": 0.24579905146268935,
+     "rgb": [
+      167,
+      212,
+      228
+     ],
+     "hex": "#a7d4e4"
+    }
+   ],
+   "hits": [
+    {
+     "id": 196,
+     "score": 4.866003504614036e-13,
+     "size": 3,
+     "colors": [
+      70,
+      111,
+      142
+     ]
+    },
+    {
+     "id": 156,
+     "score": 22.47171147790516,
+     "size": 3,
+     "colors": [
+      58,
+      114,
+      149
+     ]
+    },
+    {
+     "id": 93,
+     "score": 23.66313534122527,
+     "size": 2,
+     "colors": [
+      71,
+      112
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "262735aae2745ab3"
+  },
+  {
+   "file": "f31_c199_v05.ppm",
+   "combo_id": 199,
+   "v": 5,
+   "variant": "illuminant_F2",
+   "sha256": "ba1a3a18e55187c00d70012d76810148ff9e100c3fa45b36bd92872f04afa6da",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      27.97859707551044,
+      6.267575319342633,
+      -26.034892817661216
+     ],
+     "weight": 0.5629032483724462,
+     "rgb": [
+      48,
+      65,
+      106
+     ],
+     "hex": "#30416a"
+    },
+    {
+     "lab": [
+      47.081890983311645,
+      40.06272003554612,
+      34.82185831073018
+     ],
+     "weight": 0.29351702003935615,
+     "rgb": [
+      183,
+      80,
+      55
+     ],
+     "hex": "#b75037"
+    },
+    {
+     "lab": [
+      47.76822610708777,
+      8.102088281228104,
+      35.27574872420093
+     ],
+     "weight": 0.14357973158819773,
+     "rgb": [
+      143,
+      107,
+      53
+     ],
+     "hex": "#8f6b35"
+    }
+   ],
+   "hits": [
+    {
+     "id": 199,
+     "score": 2.3141256774782244,
+     "size": 3,
+     "colors": [
+      20,
+      80,
+      126
+     ]
+    },
+    {
+     "id": 28,
+     "score": 16.767445644777254,
+     "size": 2,
+     "colors": [
+      84,
+      131
+     ]
+    },
+    {
+     "id": 233,
+     "score": 17.1149449969232,
+     "size": 3,
+     "colors": [
+      28,
+      72,
+      127
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "b02b77c5799fb5a9"
+  },
+  {
+   "file": "f32_c207_v08.ppm",
+   "combo_id": 207,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "75731c45cf9c04ac0e06074e2c423e8a2b48d1d83a8f5b2fb116a8db999f33cd",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      11.094871963569485,
+      -0.6718156076500198,
+      -1.0079839207640773
+     ],
+     "weight": 0.47897653044575655,
+     "rgb": [
+      28,
+      30,
+      31
+     ],
+     "hex": "#1c1e1f"
+    },
+    {
+     "lab": [
+      99.42249827301487,
+      -2.6167350769399356,
+      -0.9129560731368837
+     ],
+     "weight": 0.36249119357309073,
+     "rgb": [
+      247,
+      255,
+      255
+     ],
+     "hex": "#f7ffff"
+    },
+    {
+     "lab": [
+      66.6712838100539,
+      21.44488151000634,
+      21.346815096605077
+     ],
+     "weight": 0.15853227598115274,
+     "rgb": [
+      211,
+      147,
+      125
+     ],
+     "hex": "#d3937d"
+    }
+   ],
+   "hits": [
+    {
+     "id": 207,
+     "score": 10.607886558574092,
+     "size": 3,
+     "colors": [
+      78,
+      88,
+      158
+     ]
+    },
+    {
+     "id": 221,
+     "score": 12.116662221992183,
+     "size": 3,
+     "colors": [
+      28,
+      154,
+      158
+     ]
+    },
+    {
+     "id": 69,
+     "score": 13.572255348388941,
+     "size": 2,
+     "colors": [
+      156,
+      158
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "53c21f95efa740e5"
+  },
+  {
+   "file": "f33_c216_v01.ppm",
+   "combo_id": 216,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "a7d23bb92e77a57e72975f5e5f1ad1cfb3cf49ecccc797ff65656c53a58da99d",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      5.739710086380825,
+      -0.5595794665235743,
+      -0.8778420533778086
+     ],
+     "weight": 0.3969239280656879,
+     "rgb": [
+      17,
+      19,
+      20
+     ],
+     "hex": "#111314"
+    },
+    {
+     "lab": [
+      57.98509483663416,
+      -36.04572744288975,
+      16.09413181815633
+     ],
+     "weight": 0.3894210531401463,
+     "rgb": [
+      72,
+      155,
+      110
+     ],
+     "hex": "#489b6e"
+    },
+    {
+     "lab": [
+      56.06677395635229,
+      56.647782756435895,
+      56.07623643297863
+     ],
+     "weight": 0.21365501879416574,
+     "rgb": [
+      235,
+      83,
+      36
+     ],
+     "hex": "#eb5324"
+    }
+   ],
+   "hits": [
+    {
+     "id": 216,
+     "score": 2.1390318403679506e-13,
+     "size": 3,
+     "colors": [
+      15,
+      102,
+      158
+     ]
+    },
+    {
+     "id": 256,
+     "score": 12.920955965132615,
+     "size": 4,
+     "colors": [
+      48,
+      63,
+      103,
+      158
+     ]
+    },
+    {
+     "id": 155,
+     "score": 14.712711218337628,
+     "size": 3,
+     "colors": [
+      15,
+      100,
+      131
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "0aad1f61cf7f252b"
+  },
+  {
+   "file": "f34_c224_v05.ppm",
+   "combo_id": 224,
+   "v": 5,
+   "variant": "illuminant_F2",
+   "sha256": "9f4b5f4b6be28d32a57b88620381c6b01a50fa9222cd3169acb7eb6f0e1c79ab",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      36.11579931621051,
+      28.678934980081838,
+      13.329375538126499
+     ],
+     "weight": 0.47180944839093986,
+     "rgb": [
+      132,
+      65,
+      65
+     ],
+     "hex": "#844141"
+    },
+    {
+     "lab": [
+      64.42430621947611,
+      55.681508279126824,
+      27.743482451949596
+     ],
+     "weight": 0.40599571042137295,
+     "rgb": [
+      255,
+      109,
+      110
+     ],
+     "hex": "#ff6d6e"
+    },
+    {
+     "lab": [
+      45.04810712321752,
+      -5.853054457822138,
+      9.295184810875112
+     ],
+     "weight": 0.12219484118768731,
+     "rgb": [
+      103,
+      109,
+      91
+     ],
+     "hex": "#676d5b"
+    }
+   ],
+   "hits": [
+    {
+     "id": 224,
+     "score": 2.8518961892764563,
+     "size": 3,
+     "colors": [
+      9,
+      124,
+      147
+     ]
+    },
+    {
+     "id": 165,
+     "score": 17.412423222039948,
+     "size": 3,
+     "colors": [
+      2,
+      9,
+      37
+     ]
+    },
+    {
+     "id": 280,
+     "score": 17.548312769020477,
+     "size": 4,
+     "colors": [
+      12,
+      107,
+      135,
+      147
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "165ab918e1639249"
+  },
+  {
+   "file": "f35_c242_v01.ppm",
+   "combo_id": 242,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "6fefda23d803b934081307a60b03f6abd9a6c53d2b8232c64c6931bb9d223515",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      66.80481969221263,
+      46.429471166642536,
+      9.237259293536626
+     ],
+     "weight": 0.30557476582207665,
+     "rgb": [
+      243,
+      127,
+      148
+     ],
+     "hex": "#f37f94"
+    },
+    {
+     "lab": [
+      45.855293421949746,
+      34.647774348201985,
+      43.05477129733352
+     ],
+     "weight": 0.2814097732797637,
+     "rgb": [
+      174,
+      82,
+      36
+     ],
+     "hex": "#ae5224"
+    },
+    {
+     "lab": [
+      42.95427989580356,
+      -37.62893638626533,
+      19.317527478173325
+     ],
+     "weight": 0.2212205880329148,
+     "rgb": [
+      26,
+      116,
+      68
+     ],
+     "hex": "#1a7444"
+    },
+    {
+     "lab": [
+      5.73971008638086,
+      -0.5595794665236159,
+      -0.877842053377853
+     ],
+     "weight": 0.19179487286524474,
+     "rgb": [
+      17,
+      19,
+      20
+     ],
+     "hex": "#111314"
+    }
+   ],
+   "hits": [
+    {
+     "id": 242,
+     "score": 3.265501530417047e-13,
+     "size": 4,
+     "colors": [
+      8,
+      19,
+      105,
+      158
+     ]
+    },
+    {
+     "id": 256,
+     "score": 18.312960146024025,
+     "size": 4,
+     "colors": [
+      48,
+      63,
+      103,
+      158
+     ]
+    },
+    {
+     "id": 216,
+     "score": 18.782979049271194,
+     "size": 3,
+     "colors": [
+      15,
+      102,
+      158
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "f58de718c690b419"
+  },
+  {
+   "file": "f36_c246_v06.ppm",
+   "combo_id": 246,
+   "v": 6,
+   "variant": "illuminant_D75",
+   "sha256": "82e7162575b0a3b49ca8807d1d9575ce298ba64f2fbf1af08219e79cbc507c29",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      80.1798502732183,
+      23.875335813635267,
+      0.9153715346588376
+     ],
+     "weight": 0.3651965514157611,
+     "rgb": [
+      243,
+      183,
+      198
+     ],
+     "hex": "#f3b7c6"
+    },
+    {
+     "lab": [
+      41.64062162105288,
+      39.206543419318116,
+      36.810821512261036
+     ],
+     "weight": 0.299537728127635,
+     "rgb": [
+      166,
+      67,
+      39
+     ],
+     "hex": "#a64327"
+    },
+    {
+     "lab": [
+      82.88233638991626,
+      9.721069883827038,
+      37.61938484212255
+     ],
+     "weight": 0.2060829836096271,
+     "rgb": [
+      247,
+      198,
+      136
+     ],
+     "hex": "#f7c688"
+    },
+    {
+     "lab": [
+      93.12409217924743,
+      -4.648545964460404,
+      14.679014488683407
+     ],
+     "weight": 0.12918273684697687,
+     "rgb": [
+      238,
+      237,
+      207
+     ],
+     "hex": "#eeedcf"
+    }
+   ],
+   "hits": [
+    {
+     "id": 246,
+     "score": 2.227246211983899,
+     "size": 4,
+     "colors": [
+      1,
+      27,
+      38,
+      45
+     ]
+    },
+    {
+     "id": 97,
+     "score": 19.416433133490642,
+     "size": 2,
+     "colors": [
+      1,
+      18
+     ]
+    },
+    {
+     "id": 206,
+     "score": 20.936324726206543,
+     "size": 3,
+     "colors": [
+      1,
+      47,
+      66
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "1f814795772aff5b"
+  },
+  {
+   "file": "f37_c253_v09.ppm",
+   "combo_id": 253,
+   "v": 9,
+   "variant": "distractor",
+   "sha256": "464725872033049d3071534689e3889ffbf211b4bb070aa46aa11683fbd76c34",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      51.1794615702168,
+      29.0543795918054,
+      -39.07674916926575
+     ],
+     "weight": 0.3651965514157602,
+     "rgb": [
+      136,
+      107,
+      189
+     ],
+     "hex": "#886bbd"
+    },
+    {
+     "lab": [
+      28.13563443813166,
+      -4.8028427711966915,
+      -6.408969290243904
+     ],
+     "weight": 0.22555325579200217,
+     "rgb": [
+      52,
+      69,
+      76
+     ],
+     "hex": "#34454c"
+    },
+    {
+     "lab": [
+      18.36995873706136,
+      34.265703878015195,
+      -16.373180244754494
+     ],
+     "weight": 0.16454340322500693,
+     "rgb": [
+      80,
+      19,
+      69
+     ],
+     "hex": "#501345"
+    },
+    {
+     "lab": [
+      68.7011790558397,
+      35.366658383354455,
+      48.75596678530428
+     ],
+     "weight": 0.16270114271921962,
+     "rgb": [
+      246,
+      140,
+      80
+     ],
+     "hex": "#f68c50"
+    },
+    {
+     "lab": [
+      92.10099872004108,
+      -14.403175847322482,
+      78.18134523351736
+     ],
+     "weight": 0.08200564684801091,
+     "rgb": [
+      248,
+      237,
+      67
+     ],
+     "hex": "#f8ed43"
+    }
+   ],
+   "hits": [
+    {
+     "id": 253,
+     "score": 8.933330944880852,
+     "size": 4,
+     "colors": [
+      55,
+      62,
+      151,
+      157
+     ]
+    },
+    {
+     "id": 103,
+     "score": 21.471670448897246,
+     "size": 2,
+     "colors": [
+      66,
+      152
+     ]
+    },
+    {
+     "id": 33,
+     "score": 23.271878197478657,
+     "size": 2,
+     "colors": [
+      13,
+      157
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "9481852e0bc34e29"
+  },
+  {
+   "file": "f38_c267_v07.ppm",
+   "combo_id": 267,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "759c5394464b9507045fafcc5119ffb456dac0332bec2476d038b41914153a7a",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      55.58071949436056,
+      -34.211690949308604,
+      -5.719521995011278
+     ],
+     "weight": 0.30230092846254397,
+     "rgb": [
+      4,
+      149,
+      142
+     ],
+     "hex": "#04958e"
+    },
+    {
+     "lab": [
+      45.609123208275605,
+      2.9746432409356154,
+      -47.22734257764254
+     ],
+     "weight": 0.2578579502050358,
+     "rgb": [
+      5,
+      111,
+      187
+     ],
+     "hex": "#056fbb"
+    },
+    {
+     "lab": [
+      72.33702275036744,
+      25.11485875582475,
+      72.625589473292
+     ],
+     "weight": 0.24717100128321184,
+     "rgb": [
+      248,
+      157,
+      27
+     ],
+     "hex": "#f89d1b"
+    },
+    {
+     "lab": [
+      79.99083441790732,
+      11.203870348391154,
+      51.809992026760476
+     ],
+     "weight": 0.19267012004920833,
+     "rgb": [
+      246,
+      188,
+      100
+     ],
+     "hex": "#f6bc64"
+    }
+   ],
+   "hits": [
+    {
+     "id": 267,
+     "score": 1.906203715029633,
+     "size": 4,
+     "colors": [
+      46,
+      61,
+      100,
+      121
+     ]
+    },
+    {
+     "id": 148,
+     "score": 19.24156982919477,
+     "size": 3,
+     "colors": [
+      58,
+      60,
+      117
+     ]
+    },
+    {
+     "id": 312,
+     "score": 19.714741105780035,
+     "size": 4,
+     "colors": [
+      19,
+      61,
+      94,
+      123
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "a9b6d4c898f3ca9a"
+  },
+  {
+   "file": "f39_c276_v08.ppm",
+   "combo_id": 276,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "508ce5027872a1eef303f5cbc7e5bb22eea2191ad45acfdd59c4a56be9541507",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      2.904826381333237,
+      -0.5296038295080074,
+      -0.1866028784836549
+     ],
+     "weight": 0.3112604981395934,
+     "rgb": [
+      9,
+      11,
+      11
+     ],
+     "hex": "#090b0b"
+    },
+    {
+     "lab": [
+      60.36130732451907,
+      -27.781096487541017,
+      44.64784491677914
+     ],
+     "weight": 0.3039530854014422,
+     "rgb": [
+      121,
+      157,
+      62
+     ],
+     "hex": "#799d3e"
+    },
+    {
+     "lab": [
+      66.25605512731929,
+      11.49322035684397,
+      16.57035034191232
+     ],
+     "weight": 0.24120668487076574,
+     "rgb": [
+      192,
+      153,
+      132
+     ],
+     "hex": "#c09984"
+    },
+    {
+     "lab": [
+      49.76608382534815,
+      46.95698606349541,
+      9.714589712633991
+     ],
+     "weight": 0.14357973158819864,
+     "rgb": [
+      193,
+      81,
+      104
+     ],
+     "hex": "#c15168"
+    }
+   ],
+   "hits": [
+    {
+     "id": 276,
+     "score": 7.493922496290049,
+     "size": 4,
+     "colors": [
+      8,
+      42,
+      90,
+      158
+     ]
+    },
+    {
+     "id": 256,
+     "score": 23.82314609204731,
+     "size": 4,
+     "colors": [
+      48,
+      63,
+      103,
+      158
+     ]
+    },
+    {
+     "id": 323,
+     "score": 24.798928625072506,
+     "size": 4,
+     "colors": [
+      45,
+      70,
+      84,
+      158
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "87f514e87a3dae38"
+  },
+  {
+   "file": "f40_c284_v07.ppm",
+   "combo_id": 284,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "344cfee7a2cf8fc46a8ed993dd6232532b37e9ddea0c56f6d646ff92807d7c1b",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      57.341028340599884,
+      47.99981781976934,
+      27.454058497559004
+     ],
+     "weight": 0.37563247443870157,
+     "rgb": [
+      223,
+      99,
+      93
+     ],
+     "hex": "#df635d"
+    },
+    {
+     "lab": [
+      66.0001078770904,
+      -43.45990628958289,
+      0.7178642880333638
+     ],
+     "weight": 0.3189924996971181,
+     "rgb": [
+      7,
+      180,
+      158
+     ],
+     "hex": "#07b49e"
+    },
+    {
+     "lab": [
+      31.229101926570987,
+      -22.547270107817916,
+      -0.4616129215692912
+     ],
+     "weight": 0.15871193576218032,
+     "rgb": [
+      16,
+      83,
+      74
+     ],
+     "hex": "#10534a"
+    },
+    {
+     "lab": [
+      88.20479122026522,
+      -6.3717300476364835,
+      86.00178913511974
+     ],
+     "weight": 0.14666309010200004,
+     "rgb": [
+      252,
+      221,
+      20
+     ],
+     "hex": "#fcdd14"
+    }
+   ],
+   "hits": [
+    {
+     "id": 284,
+     "score": 1.906765672577654,
+     "size": 4,
+     "colors": [
+      11,
+      56,
+      99,
+      125
+     ]
+    },
+    {
+     "id": 17,
+     "score": 16.94049936770434,
+     "size": 2,
+     "colors": [
+      12,
+      99
+     ]
+    },
+    {
+     "id": 21,
+     "score": 20.283814732059234,
+     "size": 2,
+     "colors": [
+      7,
+      99
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "a022fee2b4646c80"
+  },
+  {
+   "file": "f41_c287_v05.ppm",
+   "combo_id": 287,
+   "v": 5,
+   "variant": "illuminant_F2",
+   "sha256": "1f207b6555c23784b640983845b0d435d9bae19a265a4ef45a731abe3317c947",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      76.85276324576414,
+      -20.99009938628282,
+      14.63074891239311
+     ],
+     "weight": 0.5012719914255501,
+     "rgb": [
+      159,
+      200,
+      162
+     ],
+     "hex": "#9fc8a2"
+    },
+    {
+     "lab": [
+      73.89346078509415,
+      7.4365250394228255,
+      65.10795996934175
+     ],
+     "weight": 0.23980003024562388,
+     "rgb": [
+      225,
+      174,
+      53
+     ],
+     "hex": "#e1ae35"
+    },
+    {
+     "lab": [
+      81.9779463254218,
+      -7.095124530197506,
+      13.733863754604661
+     ],
+     "weight": 0.14357973158819828,
+     "rgb": [
+      201,
+      207,
+      178
+     ],
+     "hex": "#c9cfb2"
+    },
+    {
+     "lab": [
+      66.7880717909705,
+      49.782662272848114,
+      29.715506432001206
+     ],
+     "weight": 0.11534824674062756,
+     "rgb": [
+      255,
+      122,
+      112
+     ],
+     "hex": "#ff7a70"
+    }
+   ],
+   "hits": [
+    {
+     "id": 287,
+     "score": 2.6619405083892125,
+     "size": 4,
+     "colors": [
+      8,
+      57,
+      111,
+      115
+     ]
+    },
+    {
+     "id": 65,
+     "score": 13.726616477790103,
+     "size": 2,
+     "colors": [
+      68,
+      115
+     ]
+    },
+    {
+     "id": 230,
+     "score": 16.97656254781106,
+     "size": 3,
+     "colors": [
+      7,
+      87,
+      114
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "74ebc69d03b7fd20"
+  },
+  {
+   "file": "f42_c289_v01.ppm",
+   "combo_id": 289,
+   "v": 1,
+   "variant": "shapes",
+   "sha256": "338a6da003afc47ac1d2ac74cb69fd630cd780f54a4588d547f85e647989b1c8",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      80.90957542914195,
+      -20.19519801681374,
+      61.255174638205844
+     ],
+     "weight": 0.3232236720045858,
+     "rgb": [
+      199,
+      209,
+      79
+     ],
+     "hex": "#c7d14f"
+    },
+    {
+     "lab": [
+      30.367939679874777,
+      8.149545018008187,
+      -22.20067072220564
+     ],
+     "weight": 0.2716931428634983,
+     "rgb": [
+      64,
+      69,
+      106
+     ],
+     "hex": "#40456a"
+    },
+    {
+     "lab": [
+      8.558940397932155,
+      22.007151786883437,
+      -28.3147928027509
+     ],
+     "weight": 0.2582055631753757,
+     "rgb": [
+      30,
+      14,
+      63
+     ],
+     "hex": "#1e0e3f"
+    },
+    {
+     "lab": [
+      92.10099872004028,
+      -14.403175847321592,
+      78.18134523351672
+     ],
+     "weight": 0.14687762195654025,
+     "rgb": [
+      248,
+      237,
+      67
+     ],
+     "hex": "#f8ed43"
+    }
+   ],
+   "hits": [
+    {
+     "id": 289,
+     "score": 4.4634879093668793e-13,
+     "size": 4,
+     "colors": [
+      55,
+      91,
+      127,
+      130
+     ]
+    },
+    {
+     "id": 61,
+     "score": 16.218266829062372,
+     "size": 2,
+     "colors": [
+      91,
+      151
+     ]
+    },
+    {
+     "id": 83,
+     "score": 18.012685398351472,
+     "size": 2,
+     "colors": [
+      52,
+      127
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "35ab20e13d226e84"
+  },
+  {
+   "file": "f43_c291_v04.ppm",
+   "combo_id": 291,
+   "v": 4,
+   "variant": "illuminant_A",
+   "sha256": "1c49fde3f0bfa93ca421525bb8f4cb4a30e291e943943e792124b52784e573b3",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      78.61583932936063,
+      -2.3821731023151993,
+      58.50823859928735
+     ],
+     "weight": 0.3352657204566032,
+     "rgb": [
+      222,
+      193,
+      81
+     ],
+     "hex": "#dec151"
+    },
+    {
+     "lab": [
+      76.21179727685065,
+      -7.63294486342786,
+      41.500871865911584
+     ],
+     "weight": 0.3076797129808156,
+     "rgb": [
+      200,
+      190,
+      110
+     ],
+     "hex": "#c8be6e"
+    },
+    {
+     "lab": [
+      81.02917532407918,
+      10.378694618978724,
+      83.03405754289334
+     ],
+     "weight": 0.248411128810061,
+     "rgb": [
+      255,
+      191,
+      0
+     ],
+     "hex": "#ffbf00"
+    },
+    {
+     "lab": [
+      64.50069610569105,
+      -25.152849262397858,
+      42.057312576046954
+     ],
+     "weight": 0.1086434377525203,
+     "rgb": [
+      136,
+      167,
+      78
+     ],
+     "hex": "#88a74e"
+    }
+   ],
+   "hits": [
+    {
+     "id": 291,
+     "score": 4.597385076277551,
+     "size": 4,
+     "colors": [
+      91,
+      99,
+      114,
+      115
+     ]
+    },
+    {
+     "id": 111,
+     "score": 17.033832542699454,
+     "size": 2,
+     "colors": [
+      39,
+      90
+     ]
+    },
+    {
+     "id": 96,
+     "score": 17.592776242975916,
+     "size": 2,
+     "colors": [
+      59,
+      76
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "c5e734c4405f351d"
+  },
+  {
+   "file": "f44_c292_v08.ppm",
+   "combo_id": 292,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "2e2fe30cab25654990282e3b0a53f1bb69bdb23dbc77c34b403c994d39cc9003",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      95.74332251124206,
+      -4.948396276837963,
+      26.204584949073052
+     ],
+     "weight": 0.38061561831982504,
+     "rgb": [
+      253,
+      244,
+      192
+     ],
+     "hex": "#fdf4c0"
+    },
+    {
+     "lab": [
+      90.60622850812643,
+      0.20574576975224135,
+      30.422469551383568
+     ],
+     "weight": 0.22366990478024287,
+     "rgb": [
+      250,
+      226,
+      170
+     ],
+     "hex": "#fae2aa"
+    },
+    {
+     "lab": [
+      94.27711352490819,
+      0.7701332766806845,
+      14.911329104849491
+     ],
+     "weight": 0.21373316116071295,
+     "rgb": [
+      252,
+      237,
+      210
+     ],
+     "hex": "#fcedd2"
+    },
+    {
+     "lab": [
+      99.66299548050303,
+      -2.3865199680317417,
+      6.684061055797419
+     ],
+     "weight": 0.1819813157392192,
+     "rgb": [
+      255,
+      255,
+      241
+     ],
+     "hex": "#fffff1"
+    }
+   ],
+   "hits": [
+    {
+     "id": 111,
+     "score": 15.895226661078741,
+     "size": 2,
+     "colors": [
+      39,
+      90
+     ]
+    },
+    {
+     "id": 292,
+     "score": 16.729943561355658,
+     "size": 4,
+     "colors": [
+      39,
+      44,
+      50,
+      53
+     ]
+    },
+    {
+     "id": 11,
+     "score": 17.0795987729554,
+     "size": 2,
+     "colors": [
+      41,
+      155
+     ]
+    }
+   ],
+   "ambiguous": 1,
+   "hash": "0675684ffbcf084c"
+  },
+  {
+   "file": "f45_c305_v08.ppm",
+   "combo_id": 305,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "a35fe7027ae81b9485324168b18aa34b6957fab28bbfbbfd45e8ef2265334496",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      95.98637027284697,
+      -19.789312549405484,
+      75.9013952783688
+     ],
+     "weight": 0.5105143534928822,
+     "rgb": [
+      250,
+      251,
+      85
+     ],
+     "hex": "#fafb55"
+    },
+    {
+     "lab": [
+      99.42249827301492,
+      -2.616735076939991,
+      -0.9129560731368837
+     ],
+     "weight": 0.37413739976649035,
+     "rgb": [
+      247,
+      255,
+      255
+     ],
+     "hex": "#f7ffff"
+    },
+    {
+     "lab": [
+      95.91174649578713,
+      -6.2544613603098265,
+      31.013600877329893
+     ],
+     "weight": 0.11534824674062734,
+     "rgb": [
+      254,
+      245,
+      183
+     ],
+     "hex": "#fef5b7"
+    }
+   ],
+   "hits": [
+    {
+     "id": 150,
+     "score": 18.152362837446027,
+     "size": 3,
+     "colors": [
+      42,
+      70,
+      88
+     ]
+    },
+    {
+     "id": 93,
+     "score": 20.238872131558676,
+     "size": 2,
+     "colors": [
+      71,
+      112
+     ]
+    },
+    {
+     "id": 45,
+     "score": 21.387379596064967,
+     "size": 2,
+     "colors": [
+      42,
+      55
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "ed204f76fc926987"
+  },
+  {
+   "file": "f46_c319_v02.ppm",
+   "combo_id": 319,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "c293aacc0b8f7a06965ef7fb2836d689603cde99a2ab0651da05e100bebc98e4",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      54.23543630572984,
+      23.44000831376388,
+      51.573461313300434
+     ],
+     "weight": 0.37033309269323594,
+     "rgb": [
+      186,
+      112,
+      36
+     ],
+     "hex": "#ba7024"
+    },
+    {
+     "lab": [
+      72.18383351661062,
+      25.445372073316253,
+      72.6523066930875
+     ],
+     "weight": 0.3227478068075408,
+     "rgb": [
+      247,
+      157,
+      26
+     ],
+     "hex": "#f79d1a"
+    },
+    {
+     "lab": [
+      86.99587673891607,
+      -5.759720932105375,
+      86.30822369587706
+     ],
+     "weight": 0.19827566274670302,
+     "rgb": [
+      249,
+      217,
+      7
+     ],
+     "hex": "#f9d907"
+    },
+    {
+     "lab": [
+      44.74138758599423,
+      -29.149388475665493,
+      23.81461381300538
+     ],
+     "weight": 0.10864343775252021,
+     "rgb": [
+      66,
+      117,
+      65
+     ],
+     "hex": "#427541"
+    }
+   ],
+   "hits": [
+    {
+     "id": 319,
+     "score": 1.0694965090630928,
+     "size": 4,
+     "colors": [
+      13,
+      56,
+      61,
+      106
+     ]
+    },
+    {
+     "id": 222,
+     "score": 12.991970673141513,
+     "size": 3,
+     "colors": [
+      59,
+      61,
+      67
+     ]
+    },
+    {
+     "id": 3,
+     "score": 20.16065460799458,
+     "size": 2,
+     "colors": [
+      13,
+      39
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "40a3b0252ddaa34b"
+  },
+  {
+   "file": "f47_c325_v08.ppm",
+   "combo_id": 325,
+   "v": 8,
+   "variant": "exposure",
+   "sha256": "8036c473b043d06c5753aeb57e73e1f1440186b894baae09129eaa315de38bb4",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      10.310584051439662,
+      -10.611152742867947,
+      -0.8567083175135715
+     ],
+     "weight": 0.29914280188957737,
+     "rgb": [
+      7,
+      32,
+      29
+     ],
+     "hex": "#07201d"
+    },
+    {
+     "lab": [
+      56.919328880567264,
+      3.860924048594116,
+      53.65791405478979
+     ],
+     "weight": 0.28649656568287635,
+     "rgb": [
+      167,
+      132,
+      35
+     ],
+     "hex": "#a78423"
+    },
+    {
+     "lab": [
+      39.41543763758786,
+      45.88184455208433,
+      19.312315986579097
+     ],
+     "weight": 0.23237931668832718,
+     "rgb": [
+      164,
+      54,
+      64
+     ],
+     "hex": "#a43640"
+    },
+    {
+     "lab": [
+      69.45915744790379,
+      -2.090837536831036,
+      31.651928990783773
+     ],
+     "weight": 0.1819813157392192,
+     "rgb": [
+      186,
+      169,
+      112
+     ],
+     "hex": "#baa970"
+    }
+   ],
+   "hits": [
+    {
+     "id": 325,
+     "score": 4.318670559568736,
+     "size": 4,
+     "colors": [
+      12,
+      40,
+      59,
+      132
+     ]
+    },
+    {
+     "id": 166,
+     "score": 15.782182599098178,
+     "size": 3,
+     "colors": [
+      7,
+      40,
+      132
+     ]
+    },
+    {
+     "id": 149,
+     "score": 20.856370457858457,
+     "size": 3,
+     "colors": [
+      58,
+      63,
+      132
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "6bb9089c936dca4b"
+  },
+  {
+   "file": "f48_c326_v07.ppm",
+   "combo_id": 326,
+   "v": 7,
+   "variant": "jpeg",
+   "sha256": "723ced1461a3127aeb849b358b6bf972ac82a792647d7bb01dd70c2508223603",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      94.07220302200787,
+      -1.7015787000145943,
+      21.003069309812414
+     ],
+     "weight": 0.3793820111337097,
+     "rgb": [
+      251,
+      238,
+      198
+     ],
+     "hex": "#fbeec6"
+    },
+    {
+     "lab": [
+      78.31086234173286,
+      -27.384257533909835,
+      43.21646814319414
+     ],
+     "weight": 0.23716186645428344,
+     "rgb": [
+      170,
+      206,
+      111
+     ],
+     "hex": "#aace6f"
+    },
+    {
+     "lab": [
+      74.69696150404043,
+      -40.40286954887164,
+      55.51753077199765
+     ],
+     "weight": 0.22111715349442237,
+     "rgb": [
+      139,
+      201,
+      74
+     ],
+     "hex": "#8bc94a"
+    },
+    {
+     "lab": [
+      57.349319529717704,
+      56.464544079664805,
+      48.94566074916302
+     ],
+     "weight": 0.1623389689175846,
+     "rgb": [
+      238,
+      87,
+      54
+     ],
+     "hex": "#ee5736"
+    }
+   ],
+   "hits": [
+    {
+     "id": 326,
+     "score": 3.454806256001733,
+     "size": 4,
+     "colors": [
+      38,
+      64,
+      90,
+      92
+     ]
+    },
+    {
+     "id": 111,
+     "score": 14.562507167964105,
+     "size": 2,
+     "colors": [
+      39,
+      90
+     ]
+    },
+    {
+     "id": 115,
+     "score": 14.882896433135976,
+     "size": 2,
+     "colors": [
+      40,
+      64
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "cf087dc51e080203"
+  },
+  {
+   "file": "f49_c346_v04.ppm",
+   "combo_id": 346,
+   "v": 4,
+   "variant": "illuminant_A",
+   "sha256": "65bb8124c8c11ba4902c982bdfaa71b7d7fb434559094976cbd34f97fcf7d296",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      47.35360693765646,
+      61.516352825922105,
+      34.6471956737615
+     ],
+     "weight": 0.4594786143899733,
+     "rgb": [
+      210,
+      50,
+      58
+     ],
+     "hex": "#d2323a"
+    },
+    {
+     "lab": [
+      84.85062713973089,
+      6.156718323816978,
+      56.37823221082976
+     ],
+     "weight": 0.2233594836314729,
+     "rgb": [
+      254,
+      205,
+      103
+     ],
+     "hex": "#fecd67"
+    },
+    {
+     "lab": [
+      81.02917532407896,
+      10.378694618978223,
+      83.03405754289311
+     ],
+     "weight": 0.21508115332701797,
+     "rgb": [
+      255,
+      191,
+      0
+     ],
+     "hex": "#ffbf00"
+    },
+    {
+     "lab": [
+      51.1244770630487,
+      6.9273952058572785,
+      36.771421009249536
+     ],
+     "weight": 0.10208074865153594,
+     "rgb": [
+      151,
+      116,
+      58
+     ],
+     "hex": "#97743a"
+    }
+   ],
+   "hits": [
+    {
+     "id": 346,
+     "score": 4.520826824028521,
+     "size": 4,
+     "colors": [
+      24,
+      87,
+      91,
+      95
+     ]
+    },
+    {
+     "id": 124,
+     "score": 19.271411507304336,
+     "size": 3,
+     "colors": [
+      35,
+      59,
+      93
+     ]
+    },
+    {
+     "id": 71,
+     "score": 20.342200197579498,
+     "size": 2,
+     "colors": [
+      29,
+      49
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "cb512581f75a9b56"
+  },
+  {
+   "file": "f50_c348_v02.ppm",
+   "combo_id": 348,
+   "v": 2,
+   "variant": "texture",
+   "sha256": "aa61da64cb7489157b4cd0e32e264b1110b187dbc03cabac49433880c971a904",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      77.58769292085425,
+      -8.91561584516191,
+      23.821857138837185
+     ],
+     "weight": 0.2781350368045549,
+     "rgb": [
+      192,
+      195,
+      147
+     ],
+     "hex": "#c0c393"
+    },
+    {
+     "lab": [
+      18.508720220039567,
+      34.26458729861248,
+      -16.374079602165235
+     ],
+     "weight": 0.2744044931800994,
+     "rgb": [
+      80,
+      19,
+      69
+     ],
+     "hex": "#501345"
+    },
+    {
+     "lab": [
+      45.63502161585318,
+      -29.150274875467748,
+      23.816872223065943
+     ],
+     "weight": 0.23237931668832745,
+     "rgb": [
+      68,
+      120,
+      67
+     ],
+     "hex": "#447843"
+    },
+    {
+     "lab": [
+      19.010075179407455,
+      -8.698242536713995,
+      7.96460689406409
+     ],
+     "weight": 0.21508115332701822,
+     "rgb": [
+      37,
+      49,
+      34
+     ],
+     "hex": "#253122"
+    }
+   ],
+   "hits": [
+    {
+     "id": 348,
+     "score": 0.3466306616433812,
+     "size": 4,
+     "colors": [
+      52,
+      106,
+      109,
+      151
+     ]
+    },
+    {
+     "id": 202,
+     "score": 23.59767613045323,
+     "size": 3,
+     "colors": [
+      87,
+      114,
+      157
+     ]
+    },
+    {
+     "id": 61,
+     "score": 26.64187906238493,
+     "size": 2,
+     "colors": [
+      91,
+      151
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "fd7063904d1e7056"
+  }
+ ]
+}

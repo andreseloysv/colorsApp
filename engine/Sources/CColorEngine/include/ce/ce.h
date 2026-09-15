@@ -1,5 +1,5 @@
 /*
- * ce.h — API pública del motor de color de colorsApp (capas 1 y 2; capa 3 declarada).
+ * ce.h — API pública del motor de color de colorsApp (capas 1, 2 y 3).
  *
  * Matemática de color pura en C11: sin I/O, sin reserva dinámica de memoria,
  * sin dependencias más allá de <math.h>. Todo en double. El mismo código se
@@ -147,6 +147,37 @@ void ce_bradford_matrix(ce_illuminant from, ce_illuminant to, double m[9]);
 ce_xyz ce_xyz_adapt(ce_xyz xyz, const double m[9]);
 
 /* ------------------------------------------------------------------------
+ * libm portable (ce_libm.c): los mismos bits en nativo y en WASM
+ *
+ * El motor no llama a las funciones trascendentes de <math.h> (que difieren
+ * entre la libm de Apple y la de musl/Emscripten en el último bit) sino a
+ * estas copias de musl 1.2.6 compiladas con el propio motor, sin FMA. Con
+ * FP_CONTRACT OFF todo lo demás son +, −, ×, ÷, sqrt y bits IEEE 754, así que
+ * Lab, ΔE00, pesos, scores y hashes son bit a bit idénticos en Apple
+ * arm64/x86_64 y WASM. Semántica de C11 (NaN, ±inf, ±0, subnormales);
+ * error < 1 ulp (pow/exp 0,54 ulp; cbrt 0,67 ulp; sin/cos/atan2 ~0,5-1 ulp),
+ * así que los resultados exactamente representables (2^10, cbrt(27), exp(0))
+ * salen exactos.
+ * ---------------------------------------------------------------------- */
+
+/** Raíz cúbica (musl cbrt). */
+double ce_cbrt(double x);
+
+/** x^y (musl pow; camino sin FMA). */
+double ce_pow(double x, double y);
+
+/** e^x (musl exp). */
+double ce_exp(double x);
+
+/** atan2(y, x) en radianes, (-pi, pi] (musl atan2). */
+double ce_atan2(double y, double x);
+
+/** Seno y coseno en radianes, con reducción de argumento exacta para
+ *  cualquier |x| finito (musl sin/cos). */
+double ce_sin(double x);
+double ce_cos(double x);
+
+/* ------------------------------------------------------------------------
  * Diccionario de Sanzo Wada embebido (ce_dict.c + ce_dict_data.h generado)
  *
  * Solo sRGB8 en las tablas; el Lab de cada color se calcula con
@@ -193,7 +224,7 @@ int ce_dict_combo(int id, uint8_t *size, uint8_t colors[CE_DICT_COMBO_MAX]);
 
 /* ========================================================================
  * Capa 2: contexto, imagen y extracción de paleta (ce_ctx.c, ce_image.c,
- * ce_palette.c). Capa 3 (ce_match / ce_analyze): declarada, stubs hasta F3.
+ * ce_palette.c). Capa 3: match contra el diccionario (ce_match.c).
  *
  * Reglas comunes: el motor no reserva memoria (el contexto lo aporta el
  * llamante), no tiene estáticos mutables ni RNG, nunca aborta y nunca lee
@@ -209,8 +240,8 @@ typedef enum ce_status {
     CE_ERR_DIMS = -3,            /**< width/height fuera de [1, CE_IMAGE_MAX_SIDE] */
     CE_ERR_STRIDE = -4,          /**< stride_bytes < width*bpp o height*stride > INT_MAX */
     CE_ERR_FORMAT = -5,          /**< ce_pixel_format desconocido */
-    CE_ERR_OPTS = -6,            /**< opción fuera de rango o NaN (ver ce_palette_opts) */
-    CE_ERR_NOT_IMPLEMENTED = -7  /**< ce_match / ce_analyze hasta la fase 3 */
+    CE_ERR_OPTS = -6,            /**< opción fuera de rango o NaN (ce_palette_opts, ce_match_opts) */
+    CE_ERR_NOT_IMPLEMENTED = -7  /**< reservado (ninguna función lo devuelve desde la fase 3) */
 } ce_status;
 
 /** Lado máximo (píxeles) de la imagen de entrada. */
@@ -221,6 +252,8 @@ typedef enum ce_status {
 #define CE_PALETTE_K_MAX 64
 /** Máximo de swatches devueltos (opts.max_colors <= 8; == capacidad de ce_result). */
 #define CE_PALETTE_MAX_COLORS 8
+/** Máximo de candidatos del match (top_k <= 10; == capacidad de ce_result.hits). */
+#define CE_MATCH_MAX_HITS 10
 
 /** Contexto de trabajo opaco: memoria reservada por el llamante (ce_ctx_size,
  *  ce_ctx_init). Un contexto por tarea; no es compartible entre hilos. */
@@ -281,28 +314,55 @@ typedef struct ce_palette_opts {
     int skin_rule;
 } ce_palette_opts;
 
-/** Opciones del match (fase 3). kL, kC, kH de ΔE00; coverage_lambda pondera
- *  la cobertura de la combinación; ambiguous_gap marca `ambiguous` cuando
- *  score[1] - score[0] < gap. Valores iniciales: 1, 1, 1, 0.5, 1.0. */
+/** Paso de la rejilla de exposición de ce_match (EV) y cota de exposure_ev_max. */
+#define CE_MATCH_EV_STEP 0.5
+#define CE_MATCH_EV_MAX_LIMIT 4.0
+
+/** Opciones del match (ce_match_opts_default: kL 1, kC 1, kH 1,
+ *  coverage_lambda 1.0, ambiguous_gap 1.0, exposure_ev_max 1.0,
+ *  exposure_penalty 2.0, illuminant_search 1, illuminant_penalty 2.0). Las
+ *  opciones reales deben ser finitas (NaN o ±inf => CE_ERR_OPTS):
+ *  - kL, kC, kH: factores paramétricos de ΔE00 (<= 0 se trata como 1.0, como
+ *    en ce_de2000_k; kL = 2 es el modo "textiles").
+ *  - coverage_lambda (λ >= 0; negativo => CE_ERR_OPTS): peso del término de
+ *    cobertura, ver ce_match. λ = 0 puntúa solo el ajuste de la paleta.
+ *  - ambiguous_gap: `ambiguous` = 1 cuando hay >= 2 hits y
+ *    score[1] - score[0] < gap; <= 0 => nunca ambiguo.
+ *  - exposure_ev_max (en [0, CE_MATCH_EV_MAX_LIMIT]; fuera => CE_ERR_OPTS):
+ *    hipótesis de exposición k · CE_MATCH_EV_STEP EV con |k · paso| <= máx
+ *    (ganancia 2^EV en XYZ lineal aplicada a los swatches); 0 = solo la
+ *    identidad. exposure_penalty (>= 0): ΔE añadido por EV de desviación.
+ *  - illuminant_search (0 o 1; otro => CE_ERR_OPTS): 1 añade las hipótesis
+ *    "la foto se tomó bajo A, D50, D75 o F2 sin balance de blancos" (Bradford
+ *    X -> D65 sobre los swatches), combinadas con las de exposición.
+ *    illuminant_penalty (>= 0): ΔE añadido a cada hipótesis con X != D65.
+ *  Con exposure_ev_max = 0 e illuminant_search = 0 el score es exactamente el
+ *  de la fase 3 (match v0). Calibrado en L3 (ver engine/README.md). */
 typedef struct ce_match_opts {
     double kL;
     double kC;
     double kH;
     double coverage_lambda;
     double ambiguous_gap;
+    double exposure_ev_max;
+    double exposure_penalty;
+    int illuminant_search;
+    double illuminant_penalty;
 } ce_match_opts;
 
-/** Un candidato del match: id de combinación (1..348) y su score (menor = mejor). */
+/** Un candidato del match: id de combinación (1..348) y su score (menor = mejor, >= 0). */
 typedef struct ce_hit {
     uint16_t combo_id;
     double score;
 } ce_hit;
 
-/** Resultado completo de ce_analyze. */
+/** Resultado completo de ce_analyze: paleta (n_swatches >= 1), los
+ *  CE_MATCH_MAX_HITS mejores candidatos (n_hits) y `ambiguous`. Las posiciones
+ *  no usadas quedan a cero. */
 typedef struct ce_result {
     ce_swatch swatches[CE_PALETTE_MAX_COLORS];
     int n_swatches;
-    ce_hit hits[10];
+    ce_hit hits[CE_MATCH_MAX_HITS];
     int n_hits;
     int ambiguous;
 } ce_result;
@@ -320,7 +380,9 @@ ce_ctx *ce_ctx_init(void *mem, size_t size);
  *  center_sigma 0.35, merge_de 5.0, min_weight 0.05, skin_rule 0. */
 void ce_palette_opts_default(ce_palette_opts *o);
 
-/** Opciones de match por defecto (ver ce_match_opts). */
+/** Opciones de match por defecto: kL 1, kC 1, kH 1, coverage_lambda 1.0,
+ *  ambiguous_gap 1.0, exposure_ev_max 1.0, exposure_penalty 2.0,
+ *  illuminant_search 1, illuminant_penalty 2.0 (ver ce_match_opts). */
 void ce_match_opts_default(ce_match_opts *o);
 
 /** Dimensiones de la imagen reducida: factor entero f = ceil(max(w,h)/max_side),
@@ -360,11 +422,45 @@ int ce_reduced_dims(int width, int height, int max_side, int *rw, int *rh);
 int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *o,
                        ce_swatch *out, int cap);
 
-/** Fase 3. Hoy devuelve CE_ERR_NOT_IMPLEMENTED sin tocar las salidas. */
+/**
+ * Capa 3: puntúa las 348 combinaciones del diccionario (sin poda) frente a
+ * los `n` swatches `sw` (1..CE_PALETTE_MAX_COLORS; Lab finito, peso finito
+ * >= 0, se usan tal cual: la paleta ya suma 1) y escribe en `out` los `top_k`
+ * (1..CE_MATCH_MAX_HITS) mejores. Score de una combinación C = {c_j} bajo una
+ * hipótesis de adaptación h (ganancia de exposición 2^EV en XYZ lineal y/o
+ * Bradford X -> D65, aplicadas a los swatches; ver ce_match_opts):
+ *
+ *   score_h = Σ_i w_i · min_j ΔE00(h(s_i), c_j) + λ · (1/|C|) · Σ_j min_i ΔE00(c_j, h(s_i))
+ *           + exposure_penalty · |EV| + illuminant_penalty · [X != D65]
+ *   score   = min_h score_h        (la identidad siempre está y va primero)
+ *
+ * con ΔE00 = ce_de2000_k(kL, kC, kH) sobre la caché Lab del contexto y
+ * λ = coverage_lambda. Con exposure_ev_max = 0 e illuminant_search = 0 queda
+ * la fórmula de la fase 3 (match v0), bit a bit. Menor es mejor; orden por
+ * score ascendente y desempate por id ascendente (comparación exacta de
+ * doubles; con ce_libm.c los scores son bit a bit idénticos en nativo y WASM).
+ * Si `ambiguous` no es NULL recibe 1 cuando hay >= 2 hits y out[1].score -
+ * out[0].score < ambiguous_gap, 0 en otro caso. `o` NULL usa
+ * ce_match_opts_default.
+ *
+ * Devuelve el número de hits escritos (== top_k, porque hay 348 candidatos) o
+ * un código negativo sin escribir nada: CE_ERR_ARG (punteros nulos, n fuera
+ * de 1..8, top_k fuera de 1..10, Lab o peso no finito o peso negativo),
+ * CE_ERR_CTX, CE_ERR_OPTS (opción NaN/±inf, λ < 0, exposure_ev_max fuera de
+ * [0, CE_MATCH_EV_MAX_LIMIT], penalización < 0, illuminant_search != 0/1).
+ * Nunca aborta.
+ */
 int ce_match(const ce_ctx *ctx, const ce_swatch *sw, int n, const ce_match_opts *o,
              ce_hit *out, int top_k, int *ambiguous);
 
-/** Fase 3. Hoy devuelve CE_ERR_NOT_IMPLEMENTED sin tocar las salidas. */
+/**
+ * Capa 3: ce_palette_extract (cap CE_PALETTE_MAX_COLORS) + ce_match (top_k
+ * CE_MATCH_MAX_HITS) en un solo contexto. `po`/`mo` NULL usan los valores por
+ * defecto. Devuelve n_hits (> 0) y rellena `out` por completo (posiciones no
+ * usadas a cero), o un código negativo sin escribir nada: los de
+ * ce_palette_extract (imagen, opciones de paleta) y CE_ERR_ARG / CE_ERR_CTX /
+ * CE_ERR_OPTS (opciones de match, validadas antes de extraer).
+ */
 int ce_analyze(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *po,
                const ce_match_opts *mo, ce_result *out);
 
@@ -375,12 +471,16 @@ int ce_analyze(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *po,
 int ce_dict_nearest_color(ce_lab lab, double *de);
 
 /** FNV-1a de 64 bits sobre los bytes de (L, a, b, weight) de cada swatch, en
- *  orden. Solo para comparar ejecuciones en la MISMA plataforma (los bits de
- *  libm difieren entre nativo y WASM). */
+ *  orden. Desde la fase 5 (ce_libm.c) el motor produce los mismos bits en
+ *  nativo y en WASM, así que el hash es comparable entre plataformas y entre
+ *  ejecuciones (`make parity` lo exige igual en las 20 fixtures). */
 uint64_t ce_swatch_hash(const ce_swatch *sw, int n);
 
-/** FNV-1a de un ce_result: ce_swatch_hash de sus swatches, luego (combo_id,
- *  score) de cada hit y `ambiguous`. Misma plataforma solamente. */
+/** FNV-1a de un ce_result: ce_swatch_hash de sus n_swatches swatches, luego
+ *  (combo_id, score) de cada uno de sus n_hits hits y `ambiguous`. Igual que
+ *  ce_swatch_hash, idéntico en nativo y WASM sobre los mismos píxeles. El CLI
+ *  (`ce match --top K`) y el wrapper Swift lo calculan con n_hits = K, es
+ *  decir, sobre lo que devuelven. */
 uint64_t ce_result_hash(const ce_result *r);
 
 #ifdef __cplusplus

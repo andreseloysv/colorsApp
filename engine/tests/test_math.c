@@ -461,7 +461,223 @@ static void test_inverse_consistency(void)
     }
 }
 
-/* 8. Hash de determinismo cruzado (se imprime para comparar nativo vs wasm). */
+/* ------------------------------------------------------------------------
+ * 8. libm portable (ce_libm.c): semántica, precisión y mismos bits en todas
+ *    las plataformas (fase 5)
+ * ---------------------------------------------------------------------- */
+
+/* Distancia en ulps entre dos doubles finitos: los bits IEEE 754 se llevan a
+ * un entero con orden total (los negativos se reflejan) y se resta. 0 si son
+ * idénticos; +0 y -0 distan 0. */
+static double ulp_distance(double a, double b)
+{
+    int64_t ia, ib;
+    uint64_t d;
+    memcpy(&ia, &a, sizeof ia);
+    memcpy(&ib, &b, sizeof ib);
+    if (ia < 0) ia = INT64_MIN - ia;
+    if (ib < 0) ib = INT64_MIN - ib;
+    /* La resta se hace en entero (sin pasar por double, que perdería los bits
+     * bajos de valores ~2^62); en unsigned no desborda: |ia - ib| < 2^64. */
+    d = (ia >= ib) ? (uint64_t)ia - (uint64_t)ib : (uint64_t)ib - (uint64_t)ia;
+    return (double)d;
+}
+
+/* LCG propio de esta sección (independiente del orden de los tests). */
+static uint64_t g_libm_lcg;
+
+static double libm_uniform(double lo, double hi)
+{
+    g_libm_lcg = g_libm_lcg * 6364136223846793005ULL + 1442695040888963407ULL;
+    return lo + (hi - lo) * ((double)(g_libm_lcg >> 11) * (1.0 / 9007199254740992.0));
+}
+
+#define LIBM_FUNCS 6
+#define LIBM_CASES 3000
+static const char *const LIBM_NAMES[LIBM_FUNCS] = {"cbrt", "pow", "exp", "atan2", "sin", "cos"};
+
+/* Caso `i` de la función `k`, determinista (reinicia el LCG con (k, i)):
+ * dominios del motor (Lab, curva sRGB, gaussiana, ángulos de ΔE00) y valores
+ * generales, incluidos los caminos de reducción de argumento medio y grande. */
+static void libm_case(int k, int i, double *x, double *y)
+{
+    g_libm_lcg = 0x9E3779B97F4A7C15ULL * (uint64_t)(k * 100003 + i + 1);
+    *y = 0.0;
+    switch (k) {
+    case 0: /* cbrt: X/Xn de Lab (0..1.2) y general */
+        *x = (i & 1) ? libm_uniform(0.0, 1.2) : libm_uniform(-1e6, 1e6);
+        break;
+    case 1: /* pow: curva sRGB (exponentes 2.4 y 1/2.4 en [0, 1]) y general */
+        if (i % 3 == 0) { *x = libm_uniform(0.0, 1.0); *y = 2.4; }
+        else if (i % 3 == 1) { *x = libm_uniform(0.0, 1.0); *y = 1.0 / 2.4; }
+        else { *x = libm_uniform(0.01, 50.0); *y = libm_uniform(-6.0, 6.0); }
+        break;
+    case 2: /* exp: gaussiana del centro y Δθ de ΔE00 (argumentos <= 0) y general */
+        *x = (i & 1) ? libm_uniform(-60.0, 0.0) : libm_uniform(-700.0, 700.0);
+        break;
+    case 3: /* atan2: (a', b) de Lab */
+        *y = libm_uniform(-130.0, 130.0);
+        *x = libm_uniform(-130.0, 130.0);
+        break;
+    default: /* sin/cos: ángulos de ΔE00 (|x| <= ~26 rad), medios y grandes */
+        if (i % 4 == 3) *x = libm_uniform(-1e9, 1e9);        /* reducción grande */
+        else if (i % 4 == 2) *x = libm_uniform(-1e6, 1e6);   /* reducción media */
+        else *x = libm_uniform(-30.0, 30.0);
+        break;
+    }
+}
+
+static double libm_eval(int k, double x, double y)
+{
+    switch (k) {
+    case 0: return ce_cbrt(x);
+    case 1: return ce_pow(x, y);
+    case 2: return ce_exp(x);
+    case 3: return ce_atan2(y, x);
+    case 4: return ce_sin(x);
+    default: return ce_cos(x);
+    }
+}
+
+static double libm_eval_system(int k, double x, double y)
+{
+    switch (k) {
+    case 0: return cbrt(x);
+    case 1: return pow(x, y);
+    case 2: return exp(x);
+    case 3: return atan2(y, x);
+    case 4: return sin(x);
+    default: return cos(x);
+    }
+}
+
+/* Cota de ulps entre ce_libm (musl, < 1 ulp) y la libm del sistema (Apple:
+ * ~correctamente redondeada; en WASM es la propia musl y la distancia es 0).
+ * Medido en Apple M4 Pro / clang 21: máximo 1 ulp en las seis funciones. */
+#define LIBM_MAX_ULP 2.0
+
+/* Valores especiales y resultados exactamente representables (error < 1 ulp
+ * implica exactitud cuando el valor verdadero es un double). */
+static void test_libm_special_values(void)
+{
+    const double pi = 3.14159265358979323846;
+    const double inf = INFINITY;
+    const double nan_v = NAN;
+
+    /* cbrt */
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, ce_cbrt(0.0));
+    TEST_ASSERT_TRUE(ce_cbrt(-0.0) == 0.0 && signbit(ce_cbrt(-0.0)));
+    TEST_ASSERT_TRUE(ce_cbrt(27.0) == 3.0);
+    TEST_ASSERT_TRUE(ce_cbrt(-8.0) == -2.0);
+    TEST_ASSERT_TRUE(ce_cbrt(0.001) == 0.1);
+    TEST_ASSERT_TRUE(ce_cbrt(inf) == inf && ce_cbrt(-inf) == -inf);
+    TEST_ASSERT_TRUE(isnan(ce_cbrt(nan_v)));
+    TEST_ASSERT_TRUE(ulp_distance(ce_cbrt(0x1p-1074), cbrt(0x1p-1074)) <= LIBM_MAX_ULP); /* subnormal */
+
+    /* pow */
+    TEST_ASSERT_TRUE(ce_pow(2.0, 10.0) == 1024.0);
+    TEST_ASSERT_TRUE(ce_pow(10.0, 2.0) == 100.0);
+    TEST_ASSERT_TRUE(ce_pow(-2.0, 3.0) == -8.0);
+    TEST_ASSERT_TRUE(ce_pow(4.0, 0.5) == 2.0);
+    TEST_ASSERT_TRUE(ce_pow(nan_v, 0.0) == 1.0 && ce_pow(1.0, nan_v) == 1.0);
+    TEST_ASSERT_TRUE(isnan(ce_pow(-8.0, 1.0 / 3.0)) && isnan(ce_pow(-2.0, 0.5)));
+    TEST_ASSERT_TRUE(ce_pow(0.0, -1.0) == inf && ce_pow(-0.0, -1.0) == -inf);
+    TEST_ASSERT_TRUE(ce_pow(0.0, 0.5) == 0.0 && ce_pow(0.0, 2.4) == 0.0);
+    TEST_ASSERT_TRUE(ce_pow(2.0, 1024.0) == inf && ce_pow(2.0, -1075.0) == 0.0);
+    TEST_ASSERT_TRUE(ce_pow(2.0, -1074.0) == 0x1p-1074); /* subnormal exacto */
+    TEST_ASSERT_TRUE(ce_pow(1.0, 2.4) == 1.0 && ce_pow(0.5, 1.0) == 0.5);
+    TEST_ASSERT_TRUE(ce_pow(inf, -1.0) == 0.0 && ce_pow(-inf, 3.0) == -inf && ce_pow(0.5, inf) == 0.0);
+
+    /* exp */
+    TEST_ASSERT_TRUE(ce_exp(0.0) == 1.0 && ce_exp(-0.0) == 1.0);
+    TEST_ASSERT_TRUE(ce_exp(-inf) == 0.0 && ce_exp(inf) == inf && isnan(ce_exp(nan_v)));
+    TEST_ASSERT_TRUE(ce_exp(710.0) == inf && ce_exp(-746.0) == 0.0);
+    TEST_ASSERT_TRUE(ce_exp(-745.0) > 0.0 && ce_exp(-745.0) < 1e-323); /* subnormal */
+    TEST_ASSERT_TRUE(ulp_distance(ce_exp(1.0), 2.718281828459045) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(ulp_distance(ce_exp(-0.5), 0.6065306597126334) <= LIBM_MAX_ULP);
+
+    /* atan2 */
+    TEST_ASSERT_TRUE(ce_atan2(0.0, 1.0) == 0.0 && ce_atan2(-0.0, 1.0) == 0.0 && signbit(ce_atan2(-0.0, 1.0)));
+    TEST_ASSERT_TRUE(ce_atan2(0.0, -1.0) == pi && ce_atan2(-0.0, -1.0) == -pi);
+    TEST_ASSERT_TRUE(ce_atan2(1.0, 0.0) == pi / 2 && ce_atan2(-1.0, 0.0) == -pi / 2);
+    TEST_ASSERT_TRUE(ce_atan2(inf, inf) == pi / 4 && ce_atan2(-inf, -inf) == -3 * pi / 4);
+    TEST_ASSERT_TRUE(ce_atan2(1.0, inf) == 0.0 && ce_atan2(1.0, -inf) == pi);
+    TEST_ASSERT_TRUE(isnan(ce_atan2(nan_v, 1.0)) && isnan(ce_atan2(1.0, nan_v)));
+    TEST_ASSERT_TRUE(ulp_distance(ce_atan2(1.0, 1.0), pi / 4) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(ulp_distance(ce_atan2(-3.0, 4.0), -0.6435011087932844) <= LIBM_MAX_ULP);
+
+    /* sin / cos */
+    TEST_ASSERT_TRUE(ce_sin(0.0) == 0.0 && ce_sin(-0.0) == 0.0 && signbit(ce_sin(-0.0)));
+    TEST_ASSERT_TRUE(ce_cos(0.0) == 1.0 && ce_cos(-0.0) == 1.0);
+    TEST_ASSERT_TRUE(isnan(ce_sin(inf)) && isnan(ce_cos(-inf)) && isnan(ce_sin(nan_v)) && isnan(ce_cos(nan_v)));
+    TEST_ASSERT_TRUE(ulp_distance(ce_sin(pi), 1.2246467991473532e-16) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(ulp_distance(ce_cos(pi), -1.0) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(ulp_distance(ce_sin(pi / 6), 0.49999999999999994) <= LIBM_MAX_ULP);
+    /* Reducción de argumento grande (camino __rem_pio2_large): el valor
+     * clásico sin(1e22) = -0.8522008497671888... */
+    TEST_ASSERT_DOUBLE_WITHIN(1e-12, -0.8522008497671888, ce_sin(1e22));
+    TEST_ASSERT_TRUE(ulp_distance(ce_sin(1e22), sin(1e22)) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(ulp_distance(ce_cos(1e22), cos(1e22)) <= LIBM_MAX_ULP);
+    TEST_ASSERT_TRUE(fabs(ce_sin(1e300)) <= 1.0 && fabs(ce_cos(1e300)) <= 1.0);
+    TEST_ASSERT_DOUBLE_WITHIN(1e-15, 1.0, ce_sin(1e300) * ce_sin(1e300) + ce_cos(1e300) * ce_cos(1e300));
+}
+
+/* Precisión frente a la libm del sistema en LIBM_CASES casos por función. */
+static void test_libm_vs_system(void)
+{
+    double worst[LIBM_FUNCS] = {0, 0, 0, 0, 0, 0};
+    int worst_i[LIBM_FUNCS] = {0, 0, 0, 0, 0, 0};
+    int k, i, identical = 0, total = 0;
+    for (k = 0; k < LIBM_FUNCS; ++k) {
+        for (i = 0; i < LIBM_CASES; ++i) {
+            double x, y, a, b, d;
+            libm_case(k < 5 ? k : 4, i, &x, &y);
+            a = libm_eval(k, x, y);
+            b = libm_eval_system(k, x, y);
+            ++total;
+            if (isnan(a) || isnan(b) || isinf(a) || isinf(b)) {
+                TEST_ASSERT_TRUE_MESSAGE((isnan(a) && isnan(b)) || a == b, "ce_libm y libm difieren en NaN/inf");
+                ++identical;
+                continue;
+            }
+            d = ulp_distance(a, b);
+            if (d == 0.0) ++identical;
+            if (d > worst[k]) { worst[k] = d; worst_i[k] = i; }
+        }
+    }
+    for (k = 0; k < LIBM_FUNCS; ++k) {
+        double x, y;
+        libm_case(k < 5 ? k : 4, worst_i[k], &x, &y);
+        printf("LIBM_VS_SYSTEM %-5s max %g ulp (caso %d: x=%.17g y=%.17g)\n", LIBM_NAMES[k], worst[k], worst_i[k], x, y);
+        TEST_ASSERT_TRUE_MESSAGE(worst[k] <= LIBM_MAX_ULP, "ce_libm se aleja de la libm del sistema mas de LIBM_MAX_ULP");
+    }
+    printf("LIBM_VS_SYSTEM identicos %d/%d\n", identical, total);
+}
+
+/* Golden de bits: FNV-1a de los resultados de las seis funciones sobre los
+ * mismos casos. Debe salir IGUAL en nativo, ASan/UBSan y WASM: es lo que
+ * garantiza que el motor calcula los mismos bits en todas las plataformas.
+ * Valor fijado con la primera ejecución nativa (Apple M4 Pro, clang 21) y
+ * confirmado en WASM (emcc 6.0.9 + node 24). */
+#define CE_LIBM_GOLDEN_HASH 0xe2a522f84cbcb366ULL
+
+static void test_libm_golden_hash(void)
+{
+    uint64_t h = 0xcbf29ce484222325ULL;
+    int k, i;
+    for (k = 0; k < LIBM_FUNCS; ++k) {
+        for (i = 0; i < LIBM_CASES; ++i) {
+            double x, y, r;
+            libm_case(k < 5 ? k : 4, i, &x, &y);
+            r = libm_eval(k, x, y);
+            h = fnv1a_update(h, &r, sizeof r);
+        }
+    }
+    printf("HASH_LIBM=%016" PRIx64 " (golden %016" PRIx64 ")\n", h, (uint64_t)CE_LIBM_GOLDEN_HASH);
+    TEST_ASSERT_EQUAL_HEX64_MESSAGE(CE_LIBM_GOLDEN_HASH, h, "ce_libm no reproduce el golden de bits (nativo y WASM deben coincidir)");
+}
+
+/* 9. Hash de determinismo cruzado (se imprime para comparar nativo vs wasm). */
 static void test_print_hashes(void)
 {
     printf("HASH_GOLDEN_BITS=%016" PRIx64 "\n", g_hash_bits);
@@ -482,6 +698,9 @@ int main(void)
     RUN_TEST(test_inverse_consistency);
     RUN_TEST(test_de2000_properties);
     RUN_TEST(test_roundtrip_exhaustive);
+    RUN_TEST(test_libm_special_values);
+    RUN_TEST(test_libm_vs_system);
+    RUN_TEST(test_libm_golden_hash);
     RUN_TEST(test_print_hashes);
     return UNITY_END();
 }

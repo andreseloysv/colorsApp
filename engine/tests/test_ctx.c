@@ -9,7 +9,9 @@
  *   válido con el tamaño exacto; dos contextos independientes.
  * - Opciones por defecto y códigos de error de ce_palette_extract
  *   (CE_ERR_ARG, CE_ERR_CTX, CE_ERR_DIMS, CE_ERR_FORMAT, CE_ERR_STRIDE,
- *   CE_ERR_OPTS) sin escribir en la salida; stubs de la fase 3.
+ *   CE_ERR_OPTS) sin escribir en la salida; errores de argumentos de la capa
+ *   3 (ce_match / ce_analyze) y ce_result_hash (la batería completa de la
+ *   capa 3 vive en test_match.c).
  */
 #include "ce/ce.h"
 #include "unity.h"
@@ -87,7 +89,12 @@ static void test_opts_default(void)
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.kL);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.kC);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.kH);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, m.coverage_lambda);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.ambiguous_gap);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, m.exposure_ev_max);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, m.exposure_penalty);
+    TEST_ASSERT_EQUAL_INT(1, m.illuminant_search);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, m.illuminant_penalty);
     /* NULL no revienta. */
     ce_palette_opts_default(NULL);
     ce_match_opts_default(NULL);
@@ -220,14 +227,15 @@ static void test_extract_errors(void)
     free(mem);
 }
 
-/* 5. Stubs de la fase 3: CE_ERR_NOT_IMPLEMENTED, sin tocar las salidas. */
-static void test_phase3_stubs(void)
+/* 5. Capa 3: errores de argumentos sin tocar las salidas; un swatch a cero
+ *    (Lab 0, peso 0) es una entrada válida; ce_result_hash. */
+static void test_match_arg_errors(void)
 {
     const size_t size = ce_ctx_size();
     void *mem = alloc_ctx_mem(size);
     ce_ctx *ctx = ce_ctx_init(mem, size);
     ce_result res;
-    ce_hit hits[10];
+    ce_hit hits[CE_MATCH_MAX_HITS];
     ce_swatch sw[1];
     ce_match_opts mo;
     int ambiguous = 42;
@@ -235,10 +243,18 @@ static void test_phase3_stubs(void)
     memset(hits, 0x77, sizeof hits);
     memset(sw, 0, sizeof sw);
     ce_match_opts_default(&mo);
-    TEST_ASSERT_EQUAL_INT(CE_ERR_NOT_IMPLEMENTED, ce_match(ctx, sw, 1, &mo, hits, 3, &ambiguous));
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_match(NULL, sw, 1, &mo, hits, 3, &ambiguous));
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_match(ctx, sw, 0, &mo, hits, 3, &ambiguous));
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_match(ctx, sw, 1, &mo, hits, CE_MATCH_MAX_HITS + 1, &ambiguous));
     TEST_ASSERT_EQUAL_INT(42, ambiguous);
-    TEST_ASSERT_EQUAL_INT(CE_ERR_NOT_IMPLEMENTED, ce_analyze(ctx, NULL, NULL, NULL, &res));
+    TEST_ASSERT_EQUAL_UINT8(0x77, ((unsigned char *)hits)[0]);
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_analyze(ctx, NULL, NULL, NULL, &res));
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_analyze(NULL, NULL, NULL, NULL, &res));
     TEST_ASSERT_EQUAL_UINT8(0x77, ((unsigned char *)&res)[0]);
+    /* Entrada válida mínima: 3 hits ordenados, ambiguous 0|1. */
+    TEST_ASSERT_EQUAL_INT(3, ce_match(ctx, sw, 1, &mo, hits, 3, &ambiguous));
+    TEST_ASSERT_TRUE(ambiguous == 0 || ambiguous == 1);
+    TEST_ASSERT_TRUE(hits[0].score <= hits[1].score && hits[1].score <= hits[2].score);
     /* ce_result_hash es determinista y sensible al contenido. */
     memset(&res, 0, sizeof res);
     res.n_swatches = 1;
@@ -286,7 +302,7 @@ int main(void)
     RUN_TEST(test_ctx_init_validation);
     RUN_TEST(test_opts_default);
     RUN_TEST(test_extract_errors);
-    RUN_TEST(test_phase3_stubs);
+    RUN_TEST(test_match_arg_errors);
     RUN_TEST(test_reduced_dims);
     return UNITY_END();
 }

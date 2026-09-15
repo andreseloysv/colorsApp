@@ -1,0 +1,272 @@
+{
+ "schema": 1,
+ "kind": "wasm_parity_fixtures",
+ "generator": "harness/wasm/make_fixtures.py",
+ "dict_version": "fd95ac692777",
+ "wada_gen_hash": "aa604e4ecd99",
+ "max_side": 128,
+ "top_k": 3,
+ "tolerance": 1e-09,
+ "n": 20,
+ "entries": [
+  {
+   "file": "p01_gray_uniform.ppm",
+   "note": "gris uniforme (128,128,128): un swatch, a = b ~ 0",
+   "args": [],
+   "width": 128,
+   "height": 128,
+   "sha256": "86a5455d0818ce268bbc999afcb7fca5987caa5618b58e64c26bc89e1771ce8a"
+  },
+  {
+   "file": "p02_gray_ramp_128x40.ppm",
+   "note": "rampa de grises 20..235, 128x40 (no cuadrada): swatches acromáticos fusionados",
+   "args": [],
+   "width": 128,
+   "height": 40,
+   "sha256": "53716b27c816fe92c80bacb5eb12cd74ab36991dd15e675cf716edd3da33650c"
+  },
+  {
+   "file": "p03_black_lambda0.ppm",
+   "note": "Black (color 158, en 23 combinaciones) con --coverage-lambda 0: empate a 0, orden por id",
+   "args": [
+    "--coverage-lambda",
+    "0"
+   ],
+   "colors": [
+    158
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "39a83ed5bbb6a5c76db3fcf5a4d7585735b5db34612667c6e8ae3df34ac8a1bf"
+  },
+  {
+   "file": "p04_isabella_vs_maple.ppm",
+   "note": "Isabella Color (50) 45 % + Maple (51) 45 % (ΔE00 2,68, se fusionan) + color 150 10 %",
+   "args": [],
+   "colors": [
+    50,
+    51,
+    150
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "10d2d86c9e205b88700a8a7c59c041ab307cbcb54231c825cb5a55c2cda91c7d"
+  },
+  {
+   "file": "p05_peacock_vs_greenblue.ppm",
+   "note": "Peacock Blue (118) vs Green Blue (119), ΔE00 1,01, con los otros dos colores de la combinación 131",
+   "args": [],
+   "colors": [
+    118,
+    119,
+    13,
+    65
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "3767a653b8b55ae315a06af88b1eed8ddd695a0b0b658570fde44cfaba1e9ce6"
+  },
+  {
+   "file": "p06_carmine_vs_pompeian_gap30.ppm",
+   "note": "Carmine Red (28) vs Pompeian Red (29), ΔE00 1,80, anidados; --ambiguous-gap 30 fuerza ambiguous = 1",
+   "args": [
+    "--ambiguous-gap",
+    "30"
+   ],
+   "colors": [
+    28,
+    29,
+    4
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "79b8ebf87b3dcf19cb667e9347ac776245cf048df5cc5aed821c45be4c81f9d9"
+  },
+  {
+   "file": "p07_c004_stripes_sigma0.ppm",
+   "note": "combinación 4 exacta en franjas, --center-sigma 0: sumas enteras, score 0 exacto",
+   "args": [
+    "--center-sigma",
+    "0"
+   ],
+   "combo_id": 4,
+   "colors": [
+    50,
+    150
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "c0e7901ff8152de31a5a308a07245dfb5d0f5ca824f061e5a2b616b16b5059c7"
+  },
+  {
+   "file": "p08_c012_nested.ppm",
+   "note": "combinación 12 (Isabella Color + Green Blue) anidada, peso al centro",
+   "args": [],
+   "combo_id": 12,
+   "colors": [
+    50,
+    119
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "cad6d6f968ab0df0ffd6e649f9933a647b7a2cce6a47f2e265bd20441e400ab6"
+  },
+  {
+   "file": "p09_c241_lshape.ppm",
+   "note": "combinación 241 (4 colores) en L",
+   "args": [],
+   "combo_id": 241,
+   "colors": [
+    17,
+    39,
+    50,
+    124
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "b113fd99fd6ef1cfe839364d4e0803d856b6d31ca693a6a5e804b8d62ea52d95"
+  },
+  {
+   "file": "p10_c292_ellipses_kL2.ppm",
+   "note": "combinación 292 (4 colores) en elipses, --kL 2",
+   "args": [
+    "--kL",
+    "2"
+   ],
+   "combo_id": 292,
+   "colors": [
+    39,
+    44,
+    50,
+    53
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "21916202778927d1fbad094a264f42852fbdedae3ae30380fc5cc4b6947c81df"
+  },
+  {
+   "file": "p11_c282_stripes_noise2.ppm",
+   "note": "combinación 282 (con Maple) en franjas + ruido σ = 2",
+   "args": [],
+   "combo_id": 282,
+   "colors": [
+    12,
+    51,
+    114,
+    136
+   ],
+   "width": 128,
+   "height": 128,
+   "sha256": "90f8c48cbcfbd0eb40005dd0ff0e53420f60e1cd997ba229363367c02d07050d"
+  },
+  {
+   "file": "p12_compose_seed7.ppm",
+   "note": "synth.compose seed 7 (franjas, tres colores aleatorios fuera del diccionario)",
+   "args": [],
+   "width": 128,
+   "height": 128,
+   "sha256": "af3b635ffd2005a569471a75aebcb457533507691b19f371aca4c1aa06e008df"
+  },
+  {
+   "file": "p13_compose_seed13_noise3.ppm",
+   "note": "synth.compose seed 13 (anidado, 40/35/25) + ruido σ = 3",
+   "args": [],
+   "width": 128,
+   "height": 128,
+   "sha256": "bbe8362d5a07cde6916971c19755461e39ca5f650c461f8bcb70568b13cecb27"
+  },
+  {
+   "file": "p14_wada_c100_v2_texture.ppm",
+   "note": "wada_gen combo 100 v2: textura opensimplex ±6 L*",
+   "args": [],
+   "combo_id": 100,
+   "colors": [
+    72,
+    140
+   ],
+   "variant": "texture",
+   "width": 128,
+   "height": 128,
+   "sha256": "3b4917ffa9d31e267cfefdd770272f33ae34280689f68dd987fce5e3480d807f"
+  },
+  {
+   "file": "p15_wada_c200_v4_illumA.ppm",
+   "note": "wada_gen combo 200 v4: Bradford D65 -> A",
+   "args": [],
+   "combo_id": 200,
+   "colors": [
+    28,
+    52,
+    97
+   ],
+   "variant": "illuminant_A",
+   "width": 128,
+   "height": 128,
+   "sha256": "b8faf77cf6a607a096291cf4e628481e998d2d8dac0154f67629ca69522861f6"
+  },
+  {
+   "file": "p16_wada_c300_v7_jpeg.ppm",
+   "note": "wada_gen combo 300 v7: JPEG (q por semilla)",
+   "args": [],
+   "combo_id": 300,
+   "colors": [
+    7,
+    46,
+    87,
+    115
+   ],
+   "variant": "jpeg",
+   "width": 128,
+   "height": 128,
+   "sha256": "db5aa9fdbfea7eb01d2195df25b507ea4d54af7a41bae7e3b187eaf500c3840b"
+  },
+  {
+   "file": "p17_wada_c348_v9_distractor.ppm",
+   "note": "wada_gen combo 348 v9: distractor 40 %",
+   "args": [],
+   "combo_id": 348,
+   "colors": [
+    52,
+    106,
+    109,
+    151
+   ],
+   "variant": "distractor",
+   "width": 128,
+   "height": 128,
+   "sha256": "dea075e082f1f9a68c4b52bbb188ea59d96f4ad579fd0094a24327b4eeca2116"
+  },
+  {
+   "file": "p18_primaries.ppm",
+   "note": "primarios y secundarios sRGB puros en 6 bloques (bordes del gamut, |a|, |b| ~ 100)",
+   "args": [],
+   "width": 128,
+   "height": 128,
+   "sha256": "f48d9d3c21e77f7feb6feaa8eba4cd6e1e899ad3504510966e099815ec6212f8"
+  },
+  {
+   "file": "p19_near_black_white_64.ppm",
+   "note": "negro, casi negro (1, 3, 11: alrededor del umbral 0,04045 de sRGB) y casi blanco, 64x64",
+   "args": [],
+   "width": 64,
+   "height": 64,
+   "sha256": "2fbcf263aa50ecf66840ccd17489165d4d606f5e6adfc14f845699b03ef621bc"
+  },
+  {
+   "file": "p20_tiny_3x2_six_colors.ppm",
+   "note": "3x2 píxeles con 6 colores del diccionario distintos (k_init 6 > max_colors 5: recorte y renormalización)",
+   "args": [],
+   "colors": [
+    7,
+    46,
+    87,
+    115,
+    50,
+    150
+   ],
+   "width": 3,
+   "height": 2,
+   "sha256": "cea0051d324926dc2b63deb3214ae1b6d17bb95481323bd5050bac5d49f2c295"
+  }
+ ]
+}

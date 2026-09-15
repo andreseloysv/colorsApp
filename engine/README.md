@@ -1,4 +1,4 @@
-# Motor de color (capas 1 y 2: matemática de color y extracción de paleta)
+# Motor de color (capas 1, 2 y 3: matemática de color, extracción de paleta y match)
 
 Librería C11 sin I/O, sin `malloc` y sin dependencias (solo `<math.h>`), con
 todo en `double`. La misma fuente compila a nativo (iOS/macOS vía Swift Package
@@ -11,13 +11,20 @@ o CMake) y a WebAssembly (Emscripten). Cubre:
   348 combinaciones de Wada, solo sRGB8; el Lab lo calcula el motor.
 - **Capa 2** (`ce_ctx.c`, `ce_image.c`, `ce_palette.c`): contexto reservado por
   el llamante y extracción determinista de la paleta dominante (ver más abajo).
-- **Capa 3** (`ce_match`, `ce_analyze`): declarada en `ce.h`; stubs que devuelven
-  `CE_ERR_NOT_IMPLEMENTED` hasta la fase 3.
+- **Capa 3** (`ce_match.c`): match de la paleta contra las 348 combinaciones
+  (`ce_match`) y análisis completo imagen → paleta → match (`ce_analyze`), ver
+  más abajo.
+- **libm portable** (`ce_libm.c`, fase 5): `ce_cbrt`, `ce_pow`, `ce_exp`,
+  `ce_atan2`, `ce_sin` y `ce_cos` copiados de musl 1.2.6 (sin FMA) y
+  compilados con el motor en todas las plataformas: Lab, ΔE00, pesos, scores y
+  hashes son **bit a bit idénticos** en nativo y WASM (ver «Determinismo nativo
+  vs WASM» y «Paridad nativo/WASM»).
 
 API pública: `Sources/CColorEngine/include/ce/ce.h` (documentada en español).
 Wrapper Swift: `Sources/ColorEngine/ColorEngine.swift` (`Lab`, `srgbToLab`,
 `labToSrgb8`, `deltaE2000`, `deltaE76`, `Swatch`, `PaletteOptions`,
-`extractPalette`, `nearestDictionaryColor`).
+`extractPalette`, `nearestDictionaryColor`, `MatchOptions`, `Hit`,
+`AnalysisResult`, `analyze`, accesores `dictionary*`).
 
 ## Compilar y probar
 
@@ -33,6 +40,9 @@ Desde la raíz del repo (todas las rutas del `Makefile` son relativas a él):
 | `make swift-test`  | `swift test` del paquete (XCTest)                                  |
 | `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | Fuzz loop propio de la capa 2 bajo ASan/UBSan en `build-asan/` (`mk/engine.mk`) |
 | `make bench-palette` | Imprime `PERF_1024_RGBA_MS` de `test_palette` (nativo -O2); anotar en `BENCHLOG.md` |
+| `make bench-match` | Imprime `MATCH_MS`, `ANALYZE_1024_MS` y el recall exacto de `test_match` (nativo -O2) |
+| `make parity [PARITY_TOP=10]` | Paridad nativo/WASM: `ce match --json` de `build/` y `build-wasm/` sobre las 20 fixtures de `harness/wasm/fixtures/` (`harness/wasm/run_parity.js`); ver «Paridad nativo/WASM» |
+| `make parity-fixtures` | Regenera `harness/wasm/fixtures/` (20 PPM ≤ 128 px + `manifest.json`) con `uv` y comprueba que es idéntico byte a byte |
 | `make clean`       | Borra `build*/` y `engine/.build`                                  |
 
 Requisitos: cmake ≥ 3.20, clang, Emscripten (`emcc`, `emcmake`, node), Xcode
@@ -49,6 +59,9 @@ ce de2000 < pares.txt                # líneas "L1 a1 b1 L2 a2 b2" -> ΔE00
 ce convert < colores.txt             # líneas "R G B" -> "L a b" (%.15e)
 ce dict --version | --list | --id 12 # diccionario embebido
 ce palette foto.ppm --json           # paleta dominante (capa 2), ver abajo
+ce match foto.ppm --top 3 --json     # paleta + match contra el diccionario (capa 3)
+ce analyze foto.ppm --json           # alias exacto de match
+ce batch lista.txt --json            # JSONL: una línea por imagen de la lista
 ```
 
 Opciones CMake: `CE_BUILD_TESTS` (ON), `CE_BUILD_CLI` (ON), `CE_SANITIZE`
@@ -105,8 +118,8 @@ Si el peso total es 0 (máscara toda a 0, sigma minúscula) devuelve 1 swatch
 con el color medio sin ponderar de la imagen reducida y `weight` 1. Errores:
 códigos negativos de `ce_status` documentados en `ce.h` (`CE_ERR_ARG`,
 `CE_ERR_CTX`, `CE_ERR_DIMS`, `CE_ERR_STRIDE`, `CE_ERR_FORMAT`, `CE_ERR_OPTS`;
-`CE_ERR_NOT_IMPLEMENTED` para `ce_match`/`ce_analyze`), sin escribir en la
-salida y sin abortar nunca. `ce_dict_nearest_color` (sin contexto) da el
+`CE_ERR_NOT_IMPLEMENTED` queda reservado: desde la fase 3 no lo devuelve
+ninguna función), sin escribir en la salida y sin abortar nunca. `ce_dict_nearest_color` (sin contexto) da el
 índice del color del diccionario más cercano por ΔE00 (empates al índice
 menor). `ce_swatch_hash` / `ce_result_hash`: FNV-1a de 64 bits sobre los bits
 de (L, a, b, weight) de cada swatch; solo comparable en la misma plataforma
@@ -142,7 +155,7 @@ replica `ce_palette_opts_default`. Nada de lógica de color en Swift.
 - `tests/test_ctx.c` (6): presupuesto ≤ 2 MiB y múltiplo de 16; rechazos de
   `ce_ctx_init` (NULL, tamaño corto, desalineado a 8); opciones por defecto;
   todos los códigos de error de `ce_palette_extract` sin escribir en la salida;
-  stubs de la fase 3; `ce_reduced_dims`.
+  errores de argumentos de `ce_match`/`ce_analyze`; `ce_reduced_dims`.
 - `tests/test_palette.c` (14): (a) 200×200 con bloques 50/30/20 (ΔE00 mutuo
   > 15) → 3 swatches exactos, peso ± 0.02; (b) barajado de píxeles en modo
   uniforme → `memcmp` idéntico (bandas y ruido); (c) dos ejecuciones y dos
@@ -173,8 +186,239 @@ mejor de 5; cota `CE_PERF_GATE_MS` = 150 solo en nativo -O2 sin sanitizers):
 WASM (node 24); con `k_init` 64 y 8 colores, 6,2 ms nativo. Historial en
 `BENCHLOG.md`.
 
+## Capa 3: match contra el diccionario (`ce_match.c`)
+
+**Score.** Para una combinación C = {c_j} (Lab de la caché del contexto) y
+los swatches s_i de peso w_i (tal cual llegan: la paleta ya suma 1), bajo una
+hipótesis de adaptación h aplicada a los swatches (ver «Hipótesis»):
+
+```
+score_h(C) = Σ_i w_i · min_j ΔE00(h(s_i), c_j)  +  λ · (1/|C|) · Σ_j min_i ΔE00(c_j, h(s_i))
+           + exposure_penalty · |EV_h| + illuminant_penalty · [X_h ≠ D65]
+score(C)   = min_h score_h(C)
+```
+
+El primer término mide cuánto se aleja cada swatch de su color más cercano de
+C (ajuste); el segundo, cuánto se aleja cada color de C de su swatch más
+cercano (cobertura: penaliza las combinaciones con colores que la foto no
+tiene). ΔE00 es `ce_de2000_k(kL, kC, kH)`. Menor es mejor. `ce_match`
+evalúa las 348 combinaciones **sin poda** bajo cada hipótesis: 8 × 159 ΔE00
+por hipótesis (una vez por swatch y color, 16 KiB de pila) y después solo
+mínimos y sumas; el mejor score de cada combinación se guarda en una tabla de
+348 doubles y de ahí salen los `top_k` (1..`CE_MATCH_MAX_HITS` = 10) mejores
+por score ascendente con **desempate por id ascendente** (comparación exacta
+de doubles), y `ambiguous` = 1 si hay ≥ 2 hits y `score[1] − score[0] <
+ambiguous_gap`.
+
+**Hipótesis** (match v1, corrección de F3/F5; ADR-009). ΔE00 no es invariante
+a un cambio global de exposición ni a un iluminante sin balance de blancos,
+las dos degradaciones de L3 que el match v0 fallaba (exposure @1 22 %,
+illuminant @3 68 %) y que ningún ajuste de kL/kC/λ/σ arreglaba (barrido en
+`BENCHLOG.md`). El motor prueba un conjunto fijo de hipótesis sobre los
+swatches (Lab → XYZ → transformación → Lab, todo con las funciones del motor):
+la **identidad** (siempre, y evaluada la primera: gana los empates);
+**exposición** g = 2^EV en XYZ lineal con EV = k · 0,5 y |EV| ≤
+`exposure_ev_max` (1,0 ⇒ −1, −0,5, +0,5, +1 EV); **iluminante** «la foto se
+tomó bajo A, D50, D75 o F2 sin balance de blancos», es decir, Bradford X → D65
+(`illuminant_search` = 1); y sus combinaciones (5 × 5 = 25 hipótesis por
+defecto). Cada hipótesis suma una penalización lineal (2,0 ΔE por EV, 2,0 ΔE
+por iluminante ≠ D65) para que una foto limpia siga ganando con la identidad.
+Con `exposure_ev_max` = 0 e `illuminant_search` = 0 el score es **bit a bit**
+el de la fase 3 (match v0), que el scorecard conserva como columna informativa
+`noadapt`. Los iluminantes hipotéticos son los estándar CIE del motor y
+coinciden con los que usa el generador de L3 (A, F2, D75): la mejora en
+`illuminant` es en parte tautológica y la prueba real es L4 (fotos); el barrido
+con rejillas que **no** contienen ±1 EV ni F2/D75 (`BENCHLOG.md`) sigue
+pasando los umbrales, así que el mecanismo no está ajustado a los parámetros
+exactos del generador.
+
+**Opciones** (`ce_match_opts_default`: kL 1, kC 1, kH 1, `coverage_lambda`
+1.0, `ambiguous_gap` 1.0, `exposure_ev_max` 1.0, `exposure_penalty` 2.0,
+`illuminant_search` 1, `illuminant_penalty` 2.0). Las opciones reales deben
+ser finitas (NaN o ±inf ⇒ `CE_ERR_OPTS`); λ < 0, `exposure_ev_max` fuera de
+[0, `CE_MATCH_EV_MAX_LIMIT` = 4], penalización < 0 o `illuminant_search` ∉
+{0, 1} ⇒ `CE_ERR_OPTS`; kL/kC/kH ≤ 0 se tratan como 1.0 (como
+`ce_de2000_k`); gap ≤ 0 ⇒ nunca ambiguo. Swatches: Lab finito y peso finito
+≥ 0 (si no, `CE_ERR_ARG`); `n` en 1..8 y `top_k` en 1..10 (`CE_ERR_ARG`);
+contexto sin `ce_ctx_init` ⇒ `CE_ERR_CTX`. Ningún error escribe en las
+salidas. Propiedades: score ≥ 0 y finito; con λ = 0 todas las combinaciones
+que contienen exactamente un swatch empatan a 0 y gana la de **menor id**, no
+la más pequeña (en el Vol. 1 coinciden para todos los colores, pero es una
+propiedad del desempate, no del score).
+
+**`ce_analyze`** = `ce_palette_extract` (cap 8) + `ce_match` (top 10) en el
+mismo contexto; valida las opciones de match antes de extraer, así que ningún
+error escribe en `out`; en éxito rellena `ce_result` por completo (posiciones
+no usadas a cero, campos escritos uno a uno: el resultado es comparable byte a
+byte) y devuelve `n_hits`. `ce_result_hash`: FNV-1a 64 de los bits de
+(L, a, b, weight) de los swatches, (combo_id, score) de los hits y
+`ambiguous`; solo determinismo run-a-run en la misma plataforma.
+
+**Paridad nativo/WASM.** Desde la fase 5 el motor lleva su propia libm
+(`ce_libm.c`), así que Lab, scores, `ambiguous` y `hash` son **bit a bit
+idénticos** en nativo y WASM: sobre las 20 fixtures de `make parity` la
+salida JSON de `ce match` es byte a byte la misma en las dos plataformas
+(|Δ| = 0 en Lab, pesos y scores; hash igual en 20/20), ver la sección
+«Paridad nativo/WASM» más abajo. El contrato de 1e-9 se mantiene como
+tolerancia de respaldo para otras plataformas.
+
+**CLI** (contrato fijo que consume `oracle/tests/test_l3_match.py`):
+
+```
+ce match <imagen.ppm> [opciones de palette: --mask, --raw, --center-sigma, --max-colors,
+         --min-weight, --merge-de, --k-init, --max-iters, --max-side, --skin-rule]
+         [--top K] [--kL F] [--kC F] [--kH F] [--coverage-lambda F] [--ambiguous-gap F]
+         [--exposure-ev-max F] [--exposure-penalty F] [--illuminant-search 0|1]
+         [--illuminant-penalty F] [--json]
+ce analyze ...            alias exacto (misma salida byte a byte)
+ce batch <lista.txt> [mismas opciones] [--json]
+```
+
+`--json` escribe `{"engine","dict_version","file","width","height",
+"reduced_width","reduced_height","opts":{"palette":{…},"match":{kL, kC, kH,
+coverage_lambda, ambiguous_gap, exposure_ev_max, exposure_penalty,
+illuminant_search, illuminant_penalty, "top":K}},
+"swatches":[…como ce palette…],"hits":[{"id","score","size","colors":[…]}…],
+"ambiguous":0|1,"hash"}` con scores en `%.17g`; `--top K` en 1..10 (defecto
+3) y `hash` = `ce_result_hash` del resultado truncado a los K hits impresos
+(así `--top 3` y `--top 10` dan hashes distintos; el wrapper Swift calcula el
+mismo hash con su `topK`). `ce batch` lee una ruta por línea (vacías, `#` y
+CR ignorados) y escribe una línea JSON por imagen (JSONL) con los mismos
+campos; un fichero ilegible o un error del motor produce
+`{"file":…,"error":…}` y el proceso continúa; `--mask`/`--raw` se aplican a
+todas. Salida: 0 ok, 1 error del motor (en batch: si alguna imagen falló), 2
+uso o fichero inválido (en batch, solo la lista). Sin `--json`: tabla de
+swatches, hits con tamaño y colores, y `ambiguous`.
+
+**Swift.** `analyze(rgba:width:height:stride:paletteOptions:matchOptions:topK:)
+throws -> AnalysisResult` (`swatches`, `hits: [Hit]`, `ambiguous`, `hash`
+con `n_hits = topK`); `MatchOptions.default` replica `ce_match_opts_default`;
+`topK` fuera de 1...10 lanza `.engine(code: CE_ERR_ARG)`. Accesores del
+diccionario sin lógica (`dictionaryVersion`, `dictionaryComboCount`,
+`dictionaryCombo(id:)`, `dictionaryColorRGB/Lab/Name(index:)`).
+
+**Tests** (`tests/test_match.c`, 8; en nativo, ASan/UBSan y WASM):
+
+1. Recall exacto: 348 imágenes 120×120 de bandas verticales con proporciones
+   iguales de los colores sRGB8 exactos de cada combinación → `ce_analyze`
+   (uniforme) da `hits[0].id == id` en **348/348**, la paleta recupera todos
+   los colores (348/348; el ΔE00 intra-combinación mínimo es 5,16 > `merge_de`
+   5 y ningún par comparte bin de 5 bits), **0 ambiguas** con gap 1.0 (0 con
+   0.5 y 2.0; 2 con 5.0), gap mínimo top-1/top-2 = 4,38. Score 0 exacto en
+   206/348 (WASM: 195/348); el resto ≤ 1,6e-14 por el redondeo de la media
+   ponderada de Lloyd (`(w·L)/w`), no por el match.
+1b. Hipótesis de adaptación (`test_adaptation_hypotheses`): las 348 paletas
+   exactas degradadas como en L3 (−1 EV, +1 EV, iluminante A, F2, D75 y
+   A − 0,5 EV, con `ce_bradford_matrix` D65 → X y ganancia en XYZ) → con las
+   hipótesis por defecto recall@1 **348/348 en los seis casos**; con la
+   búsqueda apagada (match v0) 102, 150, 27, 234, 348 y 26; el mejor score
+   con hipótesis nunca es mayor que sin ellas (mínimo sobre un
+   superconjunto). `test_adaptation_opts_validation`: NaN, negativos,
+   `exposure_ev_max` > 4 e `illuminant_search` ∉ {0, 1} ⇒ `CE_ERR_OPTS` sin
+   escribir; rejilla máxima (17 ganancias × 5 iluminantes) con penalizaciones
+   0 sigue dando score 0 e id correcto a la paleta exacta; con la búsqueda
+   apagada las penalizaciones no influyen.
+2. Paletas exactas (`ce_dict_color_lab`, pesos iguales): score **0 exacto** y
+   `hits[0].id == id` en 348/348; segundo score mínimo 4,38 (no hay conjuntos
+   de colores duplicados). Empate artificial: λ = 0 y un swatch igual al color
+   158 (presente en 23 combinaciones) → los 10 hits puntúan 0 exacto y salen
+   por id ascendente; prefijos idénticos con `top_k` 1 y 2.
+3. Propiedades: 60 paletas aleatorias (LCG del test) → score ≥ 0 finito, orden
+   total, determinismo bit a bit, kL/kC/kH ≤ 0 ≡ 1.0, kL = 2 y λ = 0 no suben
+   el mejor score; todos los errores (`ARG`, `CTX`, `OPTS`, NaN/±inf en cada
+   opción, λ < 0, swatch no finito o peso negativo, `top_k` 0/11, `n` 0/9) sin
+   escribir en `out` ni en `ambiguous`; semántica del gap (0, negativo, 1e9,
+   igual a la diferencia ⇒ no ambiguo; un hit ⇒ nunca).
+4. `ce_result_hash`: dos análisis idénticos (mismo y distinto contexto) →
+   `memcmp` idéntico y mismo hash; otra imagen → otro hash; truncar `n_hits`
+   cambia el hash.
+5. Rendimiento (cotas solo en nativo -O2): `MATCH_MS` < 2 y
+   `ANALYZE_1024_MS` < 10 (ver abajo).
+6. Fixtures `match_{1,100,348}.ppm` y `batch_list.txt` (3 rutas + una
+   inexistente + vacía + comentario) para los tests del CLI: `cli_match_json`,
+   `cli_analyze_alias` (`cmp`), `cli_match_missing_file` (exit 2),
+   `cli_batch_jsonl` (exit 1, 4 líneas, 1 `error`, 3 `hash`) y
+   `cli_match_contract` (`tests/cli_match_check.js` con node: claves y orden
+   exactos del contrato, tipos, rangos, pesos, orden de hits, `--top`, alias,
+   determinismo, códigos 1/2, JSONL del batch, hash batch == hash match,
+   opciones de hipótesis propagadas y validadas; 409 comprobaciones).
+
+**Rendimiento** (Apple M4 Pro; `make bench-match`): con las 25 hipótesis por
+defecto `MATCH_MS` = 1,23 ms nativo -O2 (5 swatches × 348 combinaciones,
+mejor de 200; media 1,32), 2,09 ms con ASan/UBSan, 1,49 ms en WASM (cota
+`CE_MATCH_GATE_MS` = 5 en nativo); `ANALYZE_1024_MS` = 3,8 ms nativo, 8,6 ms
+ASan, 4,4 ms WASM (cota 10 ms). El match v0 (una hipótesis) costaba 0,047 ms
+nativo con `ce_libm.c` (0,034 con la libm de Apple). Historial en
+`BENCHLOG.md`.
+
+## Paridad nativo/WASM (`make parity`, fase 5)
+
+`make parity` compila solo el target `ce` en `build/` (clang) y en `build-wasm/`
+(`emcmake`, las mismas flags que `make test-wasm`) y ejecuta
+`harness/wasm/run_parity.js` (node) sobre las 20 fixtures de
+`harness/wasm/fixtures/`: PPM ≤ 128 px generadas de forma determinista por
+`harness/wasm/make_fixtures.py` (`uv`; `make parity-fixtures` las regenera y
+comprueba con `--check` que los sha256 no cambian; el script verifica el
+sha256 de cada PPM contra `manifest.json` antes de ejecutar nada y sale con 2
+si no cuadran). Para cada fixture lanza `ce match <ppm> --json --top 3 [args
+del manifest]` en las dos plataformas (mismo cwd y misma ruta relativa, así el
+campo `file` coincide) y exige: mismo número de swatches con |ΔL|, |Δa|, |Δb|
+y |Δweight| ≤ 1e-9; mismos ids del top-3 en el mismo orden con |Δscore| ≤
+1e-9; mismo `ambiguous`; y, con dos ejecuciones por lado, salida byte a byte
+idéntica (determinismo run-a-run). `rgb`, los hits 4..K (`PARITY_TOP=10`) y
+`hash` se comparan solo a título informativo. Escribe `harness/out/parity.json`
+y sale con 1 si algo difiere.
+
+Fixtures (cabecera de `make_fixtures.py`): gris uniforme; rampa de grises
+128×40; un solo color del diccionario (Black, en 23 combinaciones) con
+`--coverage-lambda 0` (23 empates a 0 → orden por id, idéntico en ambas); los
+tres pares casi indistinguibles del diccionario, que la paleta fusiona
+(Isabella Color/Maple ΔE00 2,68; Peacock Blue/Green Blue 1,01; Carmine
+Red/Pompeian Red 1,80, este con `--ambiguous-gap 30`); combinaciones exactas
+en franjas (`--center-sigma 0`), anidado, L y elipses (`--kL 2`); ruido
+gaussiano; colores fuera del diccionario (`synth.compose`); textura,
+iluminante A, JPEG y distractor de `wada_gen`; primarios sRGB puros; casi
+negro/casi blanco 64×64; y 3×2 píxeles con 6 colores.
+
+**Resultado medido (2026-09-15; Apple M4 Pro, clang 21 / emcc 6.0.9 + node
+24.21) con `ce_libm.c`: 20/20 fixtures bit-exactas.** La salida JSON de
+`ce match --json --top 3` es byte a byte idéntica en las dos plataformas en
+las 20 fixtures (también con `PARITY_TOP=10`): 61 swatches con Lab, peso y
+rgb idénticos (183/183 componentes Lab bit-idénticas), 60 hits con el mismo
+id y el mismo score bit a bit, mismo `ambiguous` (1 en 5 fixtures con el
+match v1), `hash` igual en 20/20, determinismo run-a-run en ambos lados.
+`run_parity.js` exige ahora esa bit-exactitud además del contrato de 1e-9
+(`--no-bitexact` la rebaja a informativo para diagnosticar una plataforma
+nueva); `make parity` sale 0 en ~5 s con las builds calientes.
+
+| Magnitud | máx. medido | contrato |
+|---|---|---|
+| ΔL / Δa / Δb / Δweight | 0 / 0 / 0 / 0 | 1e-9 |
+| Δscore (hits 1..10) | 0 | 1e-9 |
+| salida JSON nativo vs WASM | idéntica 20/20 | idéntica (bit-exactitud) |
+| `hash` | igual 20/20 | igual |
+
+**Historia (mismo día, antes de `ce_libm.c`).** Con la libm del sistema, 19/20
+fixtures quedaban a ≤ 4,1e-14 en scores pero `p02_gray_ramp_128x40` llegaba
+a 2,4e-8 (hits 4..10: 9,3e-8), con el mismo orden y el mismo `ambiguous`. La
+causa, verificada: un swatch gris salía con `a = b = 0` exactos en nativo y
+`a = 2,1e-14, b = −8,3e-15` en WASM (cbrt/pow de musl frente a la libm de
+Apple), y CIEDE2000 no es Lipschitz en C' = 0 (ΔH' y el término R_T crecen
+como √C', h' = atan2(b, a) es arbitrario; medido ΔE(a) − ΔE(0) ≈ 3,6e-3·√a,
+idéntico en ambas plataformas para la misma entrada). Ninguna decisión
+cambiaba (gap mínimo entre hits 3,9e-3), pero el contrato de 1e-9 se rompía.
+La solución adoptada es la prevista en PLAN §5 y ADR-003: `ce_libm.c` con las
+seis funciones trascendentes de musl compiladas con el motor (sin FMA), que
+elimina la diferencia de raíz en lugar de añadir una tolerancia en ΔE00. La
+alternativa barata descartada (regla de Sharma con tolerancia, C' < ε ⇒
+h' = 0) habría dejado el `hash` distinto por plataforma y una discontinuidad
+de hasta ~1e-2 ΔE en C' = ε para tonos azules.
+
 ## Tests (`tests/test_math.c`, Unity)
 
+0. libm portable (fase 5): `test_libm_special_values`, `test_libm_vs_system`
+   (≤ 2 ulp frente a la libm del sistema) y `test_libm_golden_hash`
+   (`HASH_LIBM` igual en nativo, ASan y WASM); ver «Determinismo nativo vs WASM».
 1. Los 34 pares de Sharma, Wu y Dalal (`tests/data/ciede2000testdata.txt`),
    tolerancia 1e-4, en ambos órdenes.
 2. Blanco (255,255,255) → L = 100, a = b = 0 (±1e-9); negro → 0 (±1e-12).
@@ -233,31 +477,45 @@ el objeto compilado por SPM (0 instrucciones `fmadd`). Prohibido `-ffast-math`,
 Las operaciones IEEE básicas (+, −, ×, ÷, √) son bit-exactas entre Apple
 arm64 y WASM. Las trascendentes de libm no: Apple usa su libm y Emscripten la
 de musl, y `pow`, `cbrt`, `atan2`, `sin`, `cos`, `exp` no están correctamente
-redondeadas. Por eso los hashes difieren:
+redondeadas. Antes de la fase 5 eso hacía diferir los hashes:
 
-| Plataforma        | HASH_GOLDEN_BITS   | HASH_GOLDEN_TEXT   |
+| Plataforma (libm del sistema) | HASH_GOLDEN_BITS   | HASH_GOLDEN_TEXT   |
 |-------------------|--------------------|--------------------|
 | macOS arm64 (clang 21) | `2b22878a87a359cf` | `ea2f38eac978c4a1` |
 | WASM (emcc 6.0.9, node 24) | `664d767f2bc729c6` | `7ef2cb24832fc966` |
 
-Magnitud medida con el CLI en ambas plataformas (script de comparación sobre
-los golden y sobre 200 000 colores / 50 000 pares aleatorios):
+Magnitud medida entonces con el CLI en ambas plataformas (golden y 200 000
+colores / 50 000 pares aleatorios): Lab ~30 % de filas con algún bit distinto,
+|Δ| máx 1,2e-13; ΔE00 ~10 % de pares, |Δ| máx 3,1e-13; Bradford 0 diferencias
+(solo +, ×, ÷); ambas a ≤ 2,6e-13 del oráculo Python.
 
-- Lab: ~30 % de las filas difieren en algún bit; |Δ| máx = 1.2e-13 (≈ 8 ULP
-  para valores de magnitud 100; en componentes casi nulas, p. ej. a ≈ 1e-3,
-  esa misma diferencia absoluta son miles de ULP).
-- ΔE00: ~10 % de los pares difieren; |Δ| máx = 3.1e-13 (≤ 47 ULP).
-- Bradford: 0 diferencias (solo +, ×, ÷).
-- Ambas plataformas quedan a ≤ 2.6e-13 del oráculo Python (numpy usa otra libm
-  más).
+**Desde la fase 5 el motor lleva su propia libm** (`ce_libm.c`): `ce_cbrt`,
+`ce_pow`, `ce_exp`, `ce_atan2`, `ce_sin` y `ce_cos` son copias de musl 1.2.6
+(la de Emscripten 6.0.9; ficheros y sha256 en la cabecera del `.c`) con dos
+cambios: el camino con FMA de `pow` (`__FP_FAST_FMA`, que Apple clang
+activaría en arm64) queda fijado al camino sin FMA (el que ejecuta WASM), y
+`double_t` es `double` (`_Static_assert(FLT_EVAL_METHOD == 0)`). Solo usan
++, −, ×, ÷, `sqrt`, `floor` y bits IEEE 754, así que con FP_CONTRACT OFF
+producen los mismos bits en cualquier plataforma; de `<math.h>` el motor solo
+conserva `sqrt`, `fabs`, `floor` e `isfinite`/`isnan`. Resultado: Lab, ΔE00,
+pesos de la gaussiana, scores y hashes idénticos en nativo y WASM
+(`HASH_GOLDEN_BITS` = `664d767f2bc729c6` en las dos: el valor que antes daba
+solo WASM). Precisión: < 1 ulp por construcción (pow/exp 0,54 ulp, cbrt 0,67
+ulp); frente a la libm de Apple, máximo 1 ulp en las seis funciones y
+16 838/18 000 resultados idénticos (`test_libm_vs_system`, cota 2 ulp); en
+WASM 18 000/18 000 idénticos a la musl del sistema. `test_libm_golden_hash`
+gatea un FNV-1a de los bits de las seis funciones sobre 18 000 casos
+(`HASH_LIBM` = `e2a522f84cbcb366`) que debe salir igual en nativo, ASan y
+WASM; `test_libm_special_values` cubre NaN, ±inf, ±0, subnormales, los
+resultados exactamente representables (2^10, cbrt(27), exp(0)…) y la
+reducción de argumento grande (sin(1e22)). Coste: paleta 1024² 2,27 → 2,70 ms,
+match v0 0,034 → 0,047 ms (`BENCHLOG.md`).
 
-Tolerancia aplicada: **1e-9** absoluto en Lab, ΔE00 y XYZ frente a los golden
-(cuatro órdenes de magnitud de margen sobre lo medido), y el round-trip 8 bits
-es exacto en ambas plataformas. Las decisiones de las capas superiores
-(argmin de ΔE00 sobre el diccionario) deben desempatar por índice para ser
-robustas a diferencias de 1e-13. Si algún día hiciera falta bit-exactitud
-nativo/WASM, la vía es incluir implementaciones portables de `cbrt/pow/atan2/
-sin/cos/exp` (p. ej. las de musl) dentro del motor, compiladas con el pragma.
+Tolerancia de respaldo: **1e-9** absoluto en Lab, ΔE00 y XYZ frente a los
+golden (el oráculo Python usa la libm de numpy: acuerdo medido ~1e-13), y el
+round-trip 8 bits es exacto en ambas plataformas. Las decisiones de las capas
+superiores (argmin de ΔE00 sobre el diccionario) siguen desempatando por
+índice.
 
 ## Layout
 
@@ -270,7 +528,8 @@ engine/
   Sources/CColorEngine/ce_dict_data.h generado por `make dict`
   Sources/CColorEngine/ce_ctx.c       capa 2: contexto (ce_ctx_size / ce_ctx_init)
   Sources/CColorEngine/ce_image.c     capa 2: validación, box-downscale, pesos
-  Sources/CColorEngine/ce_palette.c   capa 2: histograma, MMCQ, Lloyd, fusión; stubs de la 3
+  Sources/CColorEngine/ce_palette.c   capa 2: histograma, MMCQ, Lloyd, fusión
+  Sources/CColorEngine/ce_match.c     capa 3: score, top-k con desempate por id, ce_analyze
   Sources/CColorEngine/ce_internal.h  layout del contexto (no es API pública)
   Sources/CColorEngine/include/ce/ce.h  API pública
   Sources/CColorEngine/include/module.modulemap
@@ -279,12 +538,14 @@ engine/
   tests/test_dict.c                   tests Unity (diccionario)
   tests/test_ctx.c                    tests Unity (contexto, errores)
   tests/test_palette.c                tests Unity (paleta, PNM, rendimiento)
+  tests/test_match.c                  tests Unity (match: recall 348/348, empates, errores, hash, rendimiento)
+  tests/cli_match_check.js            validador del contrato JSON de match/analyze/batch (node)
   tests/fuzz_palette.c                fuzz loop propio (make fuzz)
   tests/unity/                        Unity 2.7.2 (MIT), vendorizado
   tests/data/                         Sharma + golden TSV (generados por el oráculo)
   tests/ColorEngineTests/             XCTest del wrapper (en macOS APFS "Tests/" y
                                       "tests/" son el mismo directorio)
-  tools/ce_cli.c                      CLI "ce"
+  tools/ce_cli.c                      CLI "ce" (version, lab, de2000, convert, dict, palette, match, analyze, batch)
   tools/ce_pnm.c, ce_pnm.h            parser P6/P5 (entrada no confiable; fuera del SPM)
   BENCHLOG.md                         una línea por iteración de rendimiento
 ```

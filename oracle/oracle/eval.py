@@ -20,12 +20,29 @@ Ejecuta, en este orden, y escribe ``<out>/scorecard.json`` y ``<out>/scorecard.m
    ``synth.compose`` por ``ce palette`` (200 composiciones en modo uniforme, 30 de
    invariancias; con ``--fast`` 40 y 8). ``not implemented`` con motivo si el CLI no tiene
    el subcomando ``palette``.
-3-4. Capas 3 (match) y 4 (fotos reales): ``not implemented`` hasta las fases 3 y 9 del plan.
+3. Capa 3 (match contra el diccionario, ``oracle.l3``): 348 x 10 sintéticos de
+   ``synth.wada_gen`` en ``harness/out/synth`` (cacheados por ``generator_hash``; con
+   ``--fast`` 35 combinaciones fijas), ``ce batch`` en tres columnas (kL=1 oficial, kL=2 y
+   skin=1 informativas), umbrales por degradación y cuota máxima de ``thresholds.json`` L3,
+   determinismo, holdout (variantes 10-11 con ``COLORSAPP_HOLDOUT_SEED``; sin ella
+   ``skipped``) y ``golden-check``. ``not implemented`` si el CLI no tiene ``match``.
+4. Capa 4 (fotos reales, ``l4.run``): runner mínimo sobre ``$COLORSAPP_GOLDEN_DIR``
+   (manifest, sha256/formato, consenso, recall por tag, cuota máxima, Fleiss κ); sin la
+   variable, ``skipped``.
 
-Los umbrales salen de ``harness/thresholds.json`` (ruta protegida); las claves de L2 que
-falten toman el valor del contrato de F2 y se anotan como defaults no promovidos. Código
-de salida 0 solo si todas las capas están implementadas y en verde; 1 si alguna falla o
-falta. Al final imprime una línea resumen del tipo ``L1 OK; L2 OK; L3-L4 not implemented``.
+Semántica de salida por capa (sección 6 del plan):
+
+| Situación                                                              | Estado            | Exit |
+|------------------------------------------------------------------------|-------------------|------|
+| capa no implementada                                                   | ``not implemented``| 1    |
+| implementada y en umbral                                               | ``pass``          | 0    |
+| implementada fuera de umbral o con error                               | ``fail``          | 1    |
+| sin datos: L4 sin ``COLORSAPP_GOLDEN_DIR``; holdout sin ``COLORSAPP_HOLDOUT_SEED`` | ``skipped`` + motivo + aviso | 0 |
+
+``skipped`` solo admite esos dos motivos. Los umbrales salen de ``harness/thresholds.json``
+(ruta protegida); las claves que falten toman el valor del contrato de su fase y se anotan
+como defaults no promovidos. ``--fast`` gatea además el tiempo total (< 2 min). Al final
+imprime una línea resumen del tipo ``L1 OK; L2 OK; L3 OK (holdout skipped); L4 skipped``.
 """
 
 from __future__ import annotations
@@ -47,7 +64,8 @@ from typing import Any
 
 import numpy as np
 
-from oracle import l2
+from l4 import run as l4run
+from oracle import l2, l3
 from oracle import reference as ref
 from oracle.diff_oracle import find_cli, run_cli
 
@@ -68,10 +86,8 @@ LAYERS: tuple[tuple[str, str], ...] = (
     ("L3", "Match contra el diccionario"),
     ("L4", "Fotos reales"),
 )
-NOT_IMPLEMENTED_LAYERS: dict[str, str] = {
-    "L3": "not implemented (fase 3: ce_match.c, oracle/synth/wada_gen.py, test_l3_match.py)",
-    "L4": "not implemented (fase 9: oracle/l4/, set dorado en $COLORSAPP_GOLDEN_DIR)",
-}
+#: Estados de capa que no hacen fallar el eval (sección 6 del plan).
+GREEN_STATUSES = ("pass", "skipped")
 
 # Programa C mínimo para ejecutar ce_de2000_k con factores paramétricos (el CLI ``ce``
 # solo expone kL = kC = kH = 1). Se compila contra build/libcolorengine.a al vuelo.
@@ -119,11 +135,15 @@ class Check:
 class Layer:
     id: str
     title: str
-    status: str = "not implemented"  # pass | fail | not implemented
+    status: str = "not implemented"  # pass | fail | not implemented | skipped
     checks: list[Check] = field(default_factory=list)
+    #: Avisos destacados (checks o capa ``skipped``): van al scorecard y a stdout.
+    warnings: list[str] = field(default_factory=list)
+    #: Markdown adicional (p. ej. la tabla de L3 por degradación y columna).
+    markdown: str | None = None
 
     def finalize(self) -> None:
-        if self.status == "not implemented":
+        if self.status in ("not implemented", "skipped"):
             return
         self.status = "fail" if any(c.status == "fail" for c in self.checks) else "pass"
 
@@ -441,21 +461,99 @@ def run_layer2(cli: Path, thresholds: dict[str, Any], out_dir: Path, fast: bool)
     return layer
 
 
-def add_eval_fast_budget(layer2: Layer, thresholds: dict[str, Any], elapsed: float) -> None:
-    """Presupuesto de tiempo de ``make eval-fast`` (PLAN §8 F2: < 2 min), leído de
-    ``thresholds.json`` L2.eval_fast_seconds_max; se anota en la capa 2 y se re-evalúa su estado."""
-    limit = (thresholds.get("L2") or {}).get("eval_fast_seconds_max")
-    if limit is None or layer2.status == "not implemented":
+# --------------------------------------------------------------------------------------
+# Capa 3 (oracle.l3) y capa 4 (l4.run): envoltorios con la semántica skipped
+# --------------------------------------------------------------------------------------
+
+
+def _print_checks(checks: list[Check]) -> None:
+    for c in checks:
+        first = c.detail.splitlines()[0] if c.detail else ""
+        print(f"  [{c.status:>7}] {c.name}" + (f" ({c.seconds:.1f}s)" if c.seconds else "") + (f": {first}" if c.status in ("skipped", "info") and first else ""))
+        if c.status == "fail":
+            print("           " + c.detail.replace("\n", "\n           "))
+
+
+def run_layer3(cli: Path, thresholds: dict[str, Any], out_dir: Path, fast: bool) -> Layer:
+    layer = Layer("L3", "Match contra el diccionario", status="pending")
+    if not l3.has_match(cli):
+        layer.status = "not implemented"
+        reason = l3.not_implemented_reason(cli)
+        layer.checks.append(Check("ce match", "skipped", reason))
+        print(f"L3 Match contra el diccionario: not implemented ({reason})")
+        return layer
+    print(f"L3 match contra el diccionario ({'fast: 35 combinaciones' if fast else '348 combinaciones'} x 10 variantes; "
+          "columnas kL1 (oficial), kL2 y skin1; holdout si hay COLORSAPP_HOLDOUT_SEED; golden-check)")
+    try:
+        checks, _detail, table = l3.run_layer3(cli, thresholds, out_dir, fast, with_golden=True, log=lambda *_: None)
+    except Exception as exc:  # noqa: BLE001 - el scorecard debe terminar siempre
+        import traceback
+
+        layer.checks.append(Check("oracle.l3.run_layer3", "fail", f"excepción {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1500:]}"))
+        print(f"  [   fail] oracle.l3.run_layer3: {type(exc).__name__}: {exc}")
+        layer.finalize()
+        return layer
+    layer.checks = [Check(**asdict(c)) for c in checks]
+    layer.markdown = table
+    for c in layer.checks:
+        if c.status == "skipped":
+            layer.warnings.append(f"L3 {c.name}: {c.detail.splitlines()[0]}")
+    _print_checks(layer.checks)
+    layer.finalize()
+    return layer
+
+
+def run_layer4(cli: Path, thresholds: dict[str, Any], out_dir: Path) -> Layer:
+    layer = Layer("L4", "Fotos reales", status="pending")
+    golden_dir = l4run.golden_dir_from_env()
+    if golden_dir is None:
+        status, checks, detail = l4run.run_layer4(cli, thresholds, out_dir, log=lambda *_: None)
+        layer.status = "skipped"
+        layer.checks = [Check(**asdict(c)) for c in checks]
+        layer.warnings.append(f"L4 skipped: {detail['reason']}")
+        print(f"L4 Fotos reales: skipped ({detail['reason']})")
+        return layer
+    if not l3.has_match(cli):
+        layer.status = "not implemented"
+        reason = l3.not_implemented_reason(cli)
+        layer.checks.append(Check("ce batch", "skipped", reason))
+        print(f"L4 Fotos reales: not implemented ({reason})")
+        return layer
+    print(f"L4 fotos reales del set dorado ({golden_dir})")
+    try:
+        status, checks, _detail = l4run.run_layer4(cli, thresholds, out_dir, golden_dir=golden_dir, log=lambda *_: None)
+    except Exception as exc:  # noqa: BLE001
+        import traceback
+
+        layer.checks.append(Check("l4.run.run_layer4", "fail", f"excepción {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1500:]}"))
+        print(f"  [   fail] l4.run.run_layer4: {type(exc).__name__}: {exc}")
+        layer.finalize()
+        return layer
+    layer.checks = [Check(**asdict(c)) for c in checks]
+    _print_checks(layer.checks)
+    layer.finalize()
+    return layer
+
+
+def add_eval_fast_budget(layers: list[Layer], thresholds: dict[str, Any], elapsed: float) -> None:
+    """Presupuesto de tiempo total de ``make eval-fast`` (PLAN §6: < 2 min). Límite:
+    ``thresholds.json`` L3.eval_fast_seconds_max si existe, si no L2.eval_fast_seconds_max
+    (propuesta en thresholds.proposed.json). Se anota en la última capa implementada de L2/L3."""
+    limit = (thresholds.get("L3") or {}).get("eval_fast_seconds_max") or (thresholds.get("L2") or {}).get("eval_fast_seconds_max")
+    targets = [layer for layer in layers if layer.id in ("L2", "L3") and layer.status in ("pass", "fail")]
+    if limit is None or not targets:
         return
+    target = targets[-1]
     elapsed = round(elapsed, 1)
+    scope = "L0 + L1 fast + L2 fast" + (" + L3 fast (35 combinaciones)" if target.id == "L3" else "")
     check = Check(
-        f"make eval-fast completo < {float(limit):.0f} s (L2.eval_fast_seconds_max)",
+        f"make eval-fast completo < {float(limit):.0f} s (eval_fast_seconds_max)",
         "pass" if elapsed < float(limit) else "fail",
-        f"{elapsed} s (L0 + L1 fast + L2 fast, incluido make build/test)",
+        f"{elapsed} s ({scope}, incluido make build/test)",
         value=elapsed, threshold=float(limit), seconds=elapsed,
     )
-    layer2.checks.append(check)
-    layer2.finalize()
+    target.checks.append(check)
+    target.finalize()
     print(f"  [{check.status:>7}] {check.name}: {check.detail}")
 
 
@@ -506,6 +604,11 @@ def render_markdown(card: dict[str, Any]) -> str:
     add("")
     add(f"**{card['summary']}**")
     add("")
+    if card.get("warnings"):
+        add("> **AVISO — `skipped` (implementado pero sin datos; no cuenta como fallo, y el gate de F10 exige un scorecard sin ningún `skipped`):**")
+        for w in card["warnings"]:
+            add(f"> - {w}")
+        add("")
     add("| Capa | Estado | Checks |")
     add("|---|---|---|")
     p = card["protected"]
@@ -532,6 +635,12 @@ def render_markdown(card: dict[str, Any]) -> str:
             add(f"| {layer['id']} | {cell(c['name'])} | {c['status']} | {value} | {thr} | {cell(c['detail'])} |")
         if not layer["checks"]:
             add(f"| {layer['id']} | — | {layer['status']} | | | |")
+    for layer in card["layers"]:
+        if layer.get("markdown"):
+            add("")
+            add(f"## {layer['id']} {layer['title']}: recall por degradación y columna (kL1 oficial; kL2 y skin1 informativas)")
+            add("")
+            add(layer["markdown"])
     add("")
     return "\n".join(lines)
 
@@ -539,10 +648,14 @@ def render_markdown(card: dict[str, Any]) -> str:
 def build_summary(layers: list[Layer], protected: Check) -> str:
     parts: list[str] = []
     for layer in layers:
+        inner_skipped = sorted({c.name.split(" (")[0] for c in layer.checks if c.status == "skipped" and layer.status != "skipped"})
+        suffix = f" ({', '.join(inner_skipped)} skipped)" if inner_skipped and layer.status != "not implemented" else ""
         if layer.status == "pass":
-            parts.append(f"{layer.id} OK")
+            parts.append(f"{layer.id} OK{suffix}")
         elif layer.status == "fail":
-            parts.append(f"{layer.id} FAIL")
+            parts.append(f"{layer.id} FAIL{suffix}")
+        elif layer.status == "skipped":
+            parts.append(f"{layer.id} skipped")
     missing = [layer.id for layer in layers if layer.status == "not implemented"]
     if missing:
         rng = f"{missing[0]}-{missing[-1]}" if len(missing) > 1 else missing[0]
@@ -584,14 +697,13 @@ def main(argv: list[str] | None = None) -> int:
     cli = find_cli(args.cli)
     layers.append(run_layer1(cli, thresholds, dictionary, out_dir, args.fast, args.no_make))
     layers.append(run_layer2(cli, thresholds, out_dir, args.fast))
-    for layer_id, title in LAYERS[2:]:
-        layer = Layer(layer_id, title, status="not implemented")
-        layers.append(layer)
-        print(f"{layer_id} {title}: {NOT_IMPLEMENTED_LAYERS[layer_id]}")
+    layers.append(run_layer3(cli, thresholds, out_dir, args.fast))
+    layers.append(run_layer4(cli, thresholds, out_dir))
     if args.fast:
-        add_eval_fast_budget(layers[1], thresholds, time.perf_counter() - started)
+        add_eval_fast_budget(layers, thresholds, time.perf_counter() - started)
 
-    all_green = protected.ok and all(layer.status == "pass" for layer in layers)
+    warnings = [w for layer in layers for w in layer.warnings]
+    all_green = protected.ok and all(layer.status in GREEN_STATUSES for layer in layers)
     exit_code = 0 if all_green else 1
     summary = build_summary(layers, protected)
     card = {
@@ -612,9 +724,11 @@ def main(argv: list[str] | None = None) -> int:
         },
         "protected": asdict(protected),
         "layers": [
-            {"id": layer.id, "title": layer.title, "status": layer.status, "checks": [asdict(c) for c in layer.checks]}
+            {"id": layer.id, "title": layer.title, "status": layer.status, "checks": [asdict(c) for c in layer.checks],
+             "warnings": layer.warnings, "markdown": layer.markdown}
             for layer in layers
         ],
+        "warnings": warnings,
         "summary": summary,
         "exit_code": exit_code,
         "seconds": round(time.perf_counter() - started, 1),
@@ -622,6 +736,10 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "scorecard.json").write_text(json.dumps(card, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (out_dir / "scorecard.md").write_text(render_markdown(card), encoding="utf-8")
     print("")
+    if warnings:
+        print("AVISO: capas o checks `skipped` (sin datos; no cuentan como fallo, pero el gate de F10 exige ninguno):")
+        for w in warnings:
+            print(f"  - {w}")
     print(summary)
     print(f"scorecard: {out_dir / 'scorecard.json'} y scorecard.md ({card['seconds']} s) -> exit {exit_code}")
     return exit_code

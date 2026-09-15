@@ -36,6 +36,7 @@ Además el differential testing nativo/WASM detecta comportamiento indefinido.
 la paridad se mide a 1e-9 y los empates se resuelven por id de combinación.
 **Consecuencias.** Sin RNG en el motor (histograma → MMCQ → Lloyd ponderado, todo
 determinista). Si libm diverge, se añade `ce_libm.c` portable.
+Medido en F5 (`make parity`, 20 fixtures, 2026-09-15): con la libm del sistema, Lab y scores a ≤ 5,7e-14 salvo en swatches acromáticos, donde ΔE00 ∝ √C' en C' = 0 amplifica 1e-14 de libm a 2,4e-8 en el score (rampa de grises). **Resolución (misma fecha):** `ce_libm.c` implementado (cbrt, pow, exp, atan2, sin, cos de musl 1.2.6, sin FMA, compilados con el motor en todas las plataformas): `make parity` sale 0 con la salida JSON byte a byte idéntica en las 20 fixtures (|Δ| = 0, hash igual 20/20) y `test_math` gatea un golden de bits de las seis funciones (`HASH_LIBM`) igual en nativo, ASan y WASM; coste medido: paleta 1024² 2,27 → 2,70 ms, match 0,034 → 0,047 ms (`engine/BENCHLOG.md`). El `hash` de resultados pasa a ser comparable entre plataformas.
 
 ## ADR-004 — Espacio de color único: CIELAB D65 + ΔE2000
 
@@ -87,3 +88,27 @@ inglés. El Makefile raíz no se edita: cada área añade `mk/<area>.mk`. Python
 vía `uv run --project oracle`.
 **Motivo.** Un usuario hispanohablante y varios agentes trabajando en paralelo por
 áreas sin pisarse.
+
+## ADR-009 — Match con hipótesis de adaptación (exposición e iluminante)
+
+**Decisión.** Desde la corrección de F3/F5 (2026-09-15) el score del match es el
+mínimo, sobre un conjunto fijo de hipótesis de adaptación aplicadas a los swatches
+(identidad; ganancias 2^EV con EV = k · 0,5 y |EV| ≤ 1; Bradford A/D50/D75/F2 → D65;
+y sus combinaciones, 25 en total), del score de la fase 3 más una penalización lineal
+(2,0 ΔE por EV, 2,0 ΔE por iluminante ≠ D65). La identidad siempre está y gana los
+empates; con `exposure_ev_max = 0` e `illuminant_search = 0` el motor es exactamente
+el match v0 (`ce_match_opts` gana esos cuatro campos al final del struct).
+**Motivo.** La línea base L3 fallaba iluminante (@3 68 % < 80 %) y exposición (@1
+22 % < 75 %) y ningún ajuste de kL/kC/λ/σ los alcanzaba (`engine/BENCHLOG.md`):
+ΔE00 no es invariante a un cambio global de exposición ni a un iluminante sin
+balance de blancos, así que hay que modelarlos. Con las hipótesis: illuminant
+94,4/98,3, exposure 87,6/96,6, agregado 96,8/99,1 sin pérdida en el resto (clean,
+shapes, texture, shading, JPEG 100 %; distractor 97,4/99,1); cuota máxima 0,9 %,
+`ambiguous` 1,6 %.
+**Consecuencias.** Match 0,03 → 1,2 ms nativo (cota 5 ms) y `ce_analyze` 1024² 3,8 ms
+(cota 10 ms). Los iluminantes hipotéticos coinciden con los estándar CIE del
+generador L3 (A, F2, D75): la mejora en `illuminant` es en parte tautológica y la
+prueba real es L4 (fotos); el barrido con rejillas que no contienen ±1 EV ni F2/D75
+sigue pasando los umbrales. El scorecard conserva el match v0 como columna
+informativa `noadapt`; los goldens se regeneraron con motivo en `harness/CHANGELOG.md`
+(recall 39/50 → 47/50).

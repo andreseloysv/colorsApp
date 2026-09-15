@@ -1,4 +1,5 @@
-# Motor C (fase 2): fuzz loop propio bajo ASan/UBSan y medición de la paleta.
+# Motor C (fases 2 y 3): fuzz loop propio bajo ASan/UBSan y mediciones de la
+# paleta y del match.
 # Incluido automáticamente por el Makefile raíz (usa ROOT, ENGINE, BUILD,
 # BUILD_ASAN). `make build` / `make test` ya viven en el Makefile raíz.
 #
@@ -10,11 +11,28 @@
 #   make bench-palette
 #       ejecuta test_palette en nativo -O2 y muestra PERF_1024_RGBA_MS (la cota
 #       de 150 ms la exige el propio test; anotar en engine/BENCHLOG.md).
+#   make bench-match
+#       ejecuta test_match en nativo -O2 y muestra MATCH_MS, ANALYZE_1024_MS y
+#       RECALL_EXACT (cotas 2 ms / 10 ms en el propio test; anotar en BENCHLOG.md).
+#   make parity [PARITY_TOL=1e-9] [PARITY_TOP=3]
+#       fase 5: compila el CLI `ce` nativo (build/) y WASM (build-wasm/, emcmake,
+#       mismo target `ce` que make test-wasm), genera harness/wasm/fixtures/ si
+#       falta y ejecuta harness/wasm/run_parity.js (node): `ce match --json` en las
+#       dos plataformas sobre las 20 fixtures; |ΔLab|, |Δweight| y |Δscore| del
+#       top-3 <= PARITY_TOL, mismo orden de ids y mismo ambiguous; escribe
+#       harness/out/parity.json. Exit != 0 si algo difiere.
+#   make parity-fixtures
+#       regenera harness/wasm/fixtures/ (20 PPM <= 128 px + manifest.json con sha256)
+#       con uv y comprueba que la regeneración es idéntica byte a byte (--check).
 
 FUZZ_SECONDS ?= 600
 FUZZ_SEED ?= 1
+HARNESS_WASM := $(ROOT)/harness/wasm
+PARITY_FIXTURES := $(HARNESS_WASM)/fixtures
+PARITY_TOL ?= 1e-9
+PARITY_TOP ?= 3
 
-.PHONY: fuzz bench-palette
+.PHONY: fuzz bench-palette bench-match parity parity-build parity-fixtures
 
 fuzz:
 	cmake -S $(ENGINE) -B $(BUILD_ASAN) -DCMAKE_BUILD_TYPE=Release -DCE_SANITIZE=ON
@@ -23,3 +41,27 @@ fuzz:
 
 bench-palette: build
 	$(BUILD)/test_palette | grep -E 'PERF_1024_RGBA_MS|Tests .* Failures'
+
+bench-match: build
+	$(BUILD)/test_match | grep -E 'MATCH_MS|RECALL_EXACT|Tests .* Failures'
+
+# Paridad nativo/WASM (fase 5). Solo el target `ce` en cada build dir: el mismo
+# CMakeLists y las mismas flags que make test / make test-wasm (nunca -ffast-math).
+parity-build:
+	cmake -S $(ENGINE) -B $(BUILD) -DCMAKE_BUILD_TYPE=Release
+	cmake --build $(BUILD) --parallel --target ce
+	emcmake cmake -S $(ENGINE) -B $(BUILD_WASM) -DCMAKE_BUILD_TYPE=Release
+	cmake --build $(BUILD_WASM) --parallel --target ce
+
+# Las fixtures están versionadas; solo se generan si faltan (exige uv). Para
+# regenerarlas a propósito: make parity-fixtures.
+$(PARITY_FIXTURES)/manifest.json:
+	$(UV) python $(HARNESS_WASM)/make_fixtures.py --out $(PARITY_FIXTURES)
+
+parity-fixtures:
+	$(UV) python $(HARNESS_WASM)/make_fixtures.py --out $(PARITY_FIXTURES)
+	$(UV) python $(HARNESS_WASM)/make_fixtures.py --check --out $(PARITY_FIXTURES)
+
+parity: parity-build $(PARITY_FIXTURES)/manifest.json
+	node $(HARNESS_WASM)/run_parity.js --native $(BUILD)/tools/ce --wasm $(BUILD_WASM)/tools/ce.js \
+	  --fixtures $(PARITY_FIXTURES) --tol $(PARITY_TOL) --top $(PARITY_TOP) --out $(ROOT)/harness/out/parity.json

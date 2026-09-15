@@ -3,9 +3,11 @@
  *
  * Reglas: C11, sin I/O, sin malloc, todo en double, sin contracción FMA
  * (pragma abajo + -ffp-contract=off en el build) para que nativo y WASM
- * produzcan los mismos bits en las operaciones básicas. Las únicas fuentes de
- * diferencia entre plataformas son las funciones de libm (pow, cbrt, atan2,
- * sin, cos, exp), que no están correctamente redondeadas; ver README.
+ * produzcan los mismos bits en las operaciones básicas. Las funciones
+ * trascendentes (pow, cbrt, atan2, sin, cos, exp) no se toman de <math.h>
+ * sino de ce_libm.c (copia de musl, sin FMA): así también ellas dan los
+ * mismos bits en todas las plataformas. De <math.h> solo quedan sqrt y fabs,
+ * exactos por IEEE 754. Ver README ("Determinismo nativo vs WASM").
  */
 #include "ce/ce.h"
 
@@ -142,7 +144,7 @@ static void ce_mat3_inverse(const double m[9], double inv[9])
 static double ce_lab_f(double t)
 {
     if (t > CE_LAB_EPSILON) {
-        return cbrt(t);
+        return ce_cbrt(t);
     }
     return (CE_LAB_KAPPA * t + 16.0) / 116.0;
 }
@@ -183,7 +185,7 @@ static double ce_hue_deg(double a, double b)
     if (a == 0.0 && b == 0.0) {
         return 0.0;
     }
-    h = ce_rad2deg(atan2(b, a));
+    h = ce_rad2deg(ce_atan2(b, a));
     if (h < 0.0) {
         h += 360.0;
     }
@@ -211,7 +213,7 @@ double ce_srgb_decode(double c)
     if (c <= CE_SRGB_DECODE_THRESHOLD) {
         return c / 12.92;
     }
-    return pow((c + 0.055) / 1.055, 2.4);
+    return ce_pow((c + 0.055) / 1.055, 2.4);
 }
 
 double ce_srgb_encode(double c)
@@ -219,7 +221,7 @@ double ce_srgb_encode(double c)
     if (c <= CE_SRGB_ENCODE_THRESHOLD) {
         return 12.92 * c;
     }
-    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+    return 1.055 * ce_pow(c, 1.0 / 2.4) - 0.055;
 }
 
 /* ------------------------------------------------------------------------
@@ -386,7 +388,7 @@ double ce_de2000_k(ce_lab lab1, ce_lab lab2, double kL, double kC, double kH)
     }
 
     /* (11): ΔH' con signo. */
-    const double dHp = 2.0 * sqrt(C12) * sin(ce_deg2rad(dhp / 2.0));
+    const double dHp = 2.0 * sqrt(C12) * ce_sin(ce_deg2rad(dhp / 2.0));
 
     /* (12)-(14): medias L̄', C̄', h̄'. */
     const double Lp_bar = (L1 + L2) / 2.0;
@@ -407,14 +409,14 @@ double ce_de2000_k(ce_lab lab1, ce_lab lab2, double kL, double kC, double kH)
 
     /* (15): T. */
     const double T = 1.0
-                   - 0.17 * cos(ce_deg2rad(hp_bar - 30.0))
-                   + 0.24 * cos(ce_deg2rad(2.0 * hp_bar))
-                   + 0.32 * cos(ce_deg2rad(3.0 * hp_bar + 6.0))
-                   - 0.20 * cos(ce_deg2rad(4.0 * hp_bar - 63.0));
+                   - 0.17 * ce_cos(ce_deg2rad(hp_bar - 30.0))
+                   + 0.24 * ce_cos(ce_deg2rad(2.0 * hp_bar))
+                   + 0.32 * ce_cos(ce_deg2rad(3.0 * hp_bar + 6.0))
+                   - 0.20 * ce_cos(ce_deg2rad(4.0 * hp_bar - 63.0));
 
     /* (16): Δθ. */
     const double dtheta_arg = (hp_bar - 275.0) / 25.0;
-    const double dtheta = 30.0 * exp(-(dtheta_arg * dtheta_arg));
+    const double dtheta = 30.0 * ce_exp(-(dtheta_arg * dtheta_arg));
 
     /* (17): R_C. */
     const double Cp_bar7 = ce_pow7(Cp_bar);
@@ -428,7 +430,7 @@ double ce_de2000_k(ce_lab lab1, ce_lab lab2, double kL, double kC, double kH)
     const double SH = 1.0 + 0.015 * Cp_bar * T;
 
     /* (21): R_T. */
-    const double RT = -sin(ce_deg2rad(2.0 * dtheta)) * RC;
+    const double RT = -ce_sin(ce_deg2rad(2.0 * dtheta)) * RC;
 
     /* (22): ΔE00. */
     {

@@ -1,0 +1,2094 @@
+{
+  "schema": 1,
+  "note": "Propuestas del agente (2026-09-15) en español y alemán; el usuario elige y copia a names.es.json (status accepted). No es el fichero curado.",
+  "suggestions": [
+    {
+      "id": 1,
+      "name_es": "Tejados de Lisboa",
+      "name_de": "Dachziegel am Mittelmeer",
+      "rationale": "Naranja teja (English Red) sobre azul verdoso (Cerulean): tejas de terracota frente al agua del sur."
+    },
+    {
+      "id": 2,
+      "name_es": "Faro en la noche",
+      "name_de": "Hafenlicht",
+      "rationale": "Naranja amarillo cálido contra azul marino casi negro: una luz encendida en la oscuridad."
+    },
+    {
+      "id": 3,
+      "name_es": "Pan de pueblo",
+      "name_de": "Brotkruste",
+      "rationale": "Siena tostada y amarillo limón pálido: corteza dorada y miga."
+    },
+    {
+      "id": 4,
+      "name_es": "Vendimia tardía",
+      "name_de": "Pflaume im Korb",
+      "rationale": "Tostado arena (Isabella) y púrpura profundo: uva o ciruela madura sobre mimbre y hoja seca."
+    },
+    {
+      "id": 5,
+      "name_es": "Lago entre abetos",
+      "name_de": "Tannen am Fjord",
+      "rationale": "Verde bosque (Cossack) y azul petróleo profundo: coníferas junto a agua fría."
+    },
+    {
+      "id": 6,
+      "name_es": "Coral a medianoche",
+      "name_de": "Glut im Dunkeln",
+      "rationale": "Coral luminoso (Grenadine) sobre índigo casi negro: brasa o coral que brilla en la noche."
+    },
+    {
+      "id": 7,
+      "name_es": "Caqui en la escarcha",
+      "name_de": "Sanddorn im Nebel",
+      "rationale": "Naranja vivo contra verde glauco pálido y frío: fruta madura entre hojas heladas."
+    },
+    {
+      "id": 8,
+      "name_es": "Tarde en Provenza",
+      "name_de": "Zimt auf Flieder",
+      "rationale": "Canela rojiza y lavanda grisácea: tierra cálida y flor malva."
+    },
+    {
+      "id": 9,
+      "name_es": "Brezal al anochecer",
+      "name_de": "Heide in der Dämmerung",
+      "rationale": "Dos morados, ciruela oscura y violeta apagado: brezo y mora al caer la luz."
+    },
+    {
+      "id": 10,
+      "name_es": "Hojarasca de noviembre",
+      "name_de": "Waldboden",
+      "rationale": "Canela y oliva caqui apagado: suelo de bosque en otoño."
+    },
+    {
+      "id": 11,
+      "name_es": "Lino y piedra",
+      "name_de": "Kieselstrand",
+      "rationale": "Crema marfil y gris mineral verdoso: tela cruda y canto rodado."
+    },
+    {
+      "id": 12,
+      "name_es": "Cayo al mediodía",
+      "name_de": "Sandbank bei Ebbe",
+      "rationale": "Arena tostada y azul verdoso vivo: banco de arena y agua somera al sol."
+    },
+    {
+      "id": 13,
+      "name_es": "Tinaja de vino",
+      "name_de": "Krug und Aubergine",
+      "rationale": "Siena de barro cocido y púrpura vinoso apagado: cerámica, vino y ciruela."
+    },
+    {
+      "id": 14,
+      "name_es": "Limonada rosa",
+      "name_de": "Rhabarberkuchen",
+      "rationale": "Rosa espinela y amarillo Nápoles pálido: bebida o pastel de verano."
+    },
+    {
+      "id": 15,
+      "name_es": "Estanque con glicinias",
+      "name_de": "Hortensie am Teich",
+      "rationale": "Verde azulado (Benzol) y lavanda grisácea: agua fría y flor malva."
+    },
+    {
+      "id": 16,
+      "name_es": "Ladrillo bajo el cielo",
+      "name_de": "Backstein im März",
+      "rationale": "Rojo Vandyke oscuro y celeste pálido: muro de ladrillo y cielo de primavera."
+    },
+    {
+      "id": 17,
+      "name_es": "Arrecife de coral",
+      "name_de": "Korallenriff",
+      "rationale": "Rojo coral (Eugenia) y verde mar brillante: arrecife tropical."
+    },
+    {
+      "id": 18,
+      "name_es": "Higo abierto",
+      "name_de": "Reife Feige",
+      "rationale": "Beige rosado (Fawn) y violeta granza oscuro: piel de higo y pulpa."
+    },
+    {
+      "id": 19,
+      "name_es": "Brote en el tronco",
+      "name_de": "Frühlingstrieb",
+      "rationale": "Marrón tabaco oscuro y verde brote vivo: hoja nueva sobre corteza."
+    },
+    {
+      "id": 20,
+      "name_es": "Orquídea en el bajío",
+      "name_de": "Perlmutt im Flachwasser",
+      "rationale": "Turquesa claro (Calamine) y rosa empolvado (Laelia): agua somera y nácar."
+    },
+    {
+      "id": 21,
+      "name_es": "Guayaba abierta",
+      "name_de": "Papaya und Limette",
+      "rationale": "Rosa granadina y verde mar: pulpa y piel de fruta tropical."
+    },
+    {
+      "id": 22,
+      "name_es": "Girasol en julio",
+      "name_de": "Rapsfeld im Mai",
+      "rationale": "Amarillo puro y azul Lyon intenso: flor amarilla contra cielo de verano."
+    },
+    {
+      "id": 23,
+      "name_es": "Albaricoque al crepúsculo",
+      "name_de": "Pfirsich und Malve",
+      "rationale": "Ante canela (albaricoque) y malva claro: cielo de atardecer."
+    },
+    {
+      "id": 24,
+      "name_es": "Bodega en penumbra",
+      "name_de": "Weinkeller",
+      "rationale": "Sepia y púrpura vinoso: madera oscura y vino."
+    },
+    {
+      "id": 25,
+      "name_es": "Piscina en Marrakech",
+      "name_de": "Innenhof in Marrakesch",
+      "rationale": "Rojo etrusco (muro de tierra) y azul Nilo pálido (agua): patio marroquí."
+    },
+    {
+      "id": 26,
+      "name_es": "Miel sobre nogal",
+      "name_de": "Kürbis im Oktober",
+      "rationale": "Amarillo dorado y umber pálido: miel, calabaza y madera."
+    },
+    {
+      "id": 27,
+      "name_es": "Cerezo sobre pizarra",
+      "name_de": "Kirschblüte auf Grau",
+      "rationale": "Rosa corintio y gris pizarra oscuro: flor clara sobre tejado gris."
+    },
+    {
+      "id": 28,
+      "name_es": "Cuero y tinta",
+      "name_de": "Mahagoni und Indigo",
+      "rationale": "Marrón granza rojizo e índigo profundo: cuero viejo y tinta."
+    },
+    {
+      "id": 29,
+      "name_es": "Olivar en la niebla",
+      "name_de": "Wacholder im Tau",
+      "rationale": "Verde grisáceo (Kronberg) y azul salvia brumoso: olivo, enebro y rocío."
+    },
+    {
+      "id": 30,
+      "name_es": "Fresco de Pompeya",
+      "name_de": "Mohnblüte im Steinbruch",
+      "rationale": "Rojo pompeyano y gris mineral: pigmento sobre revoco de piedra."
+    },
+    {
+      "id": 31,
+      "name_es": "Chile y maíz",
+      "name_de": "Strohfeuer",
+      "rationale": "Rojo anaranjado y amarillo limón pálido: picante y paja encendida."
+    },
+    {
+      "id": 32,
+      "name_es": "Espiga verde",
+      "name_de": "Weizen im Juni",
+      "rationale": "Salmón ocráceo (paja) y verde vivo (Night Green): trigo tierno."
+    },
+    {
+      "id": 33,
+      "name_es": "Verja oxidada",
+      "name_de": "Kupfer auf Schiefer",
+      "rationale": "Siena y gris pizarra oscuro: hierro con herrumbre."
+    },
+    {
+      "id": 34,
+      "name_es": "Chicle sobre hormigón",
+      "name_de": "Pfingstrose im Nebel",
+      "rationale": "Rosa eosina y gris neutro: rosa chillón sobre gris urbano."
+    },
+    {
+      "id": 35,
+      "name_es": "Butaca de teatro",
+      "name_de": "Theatersessel",
+      "rationale": "Rosa pardo desvaído y rojo carmín: terciopelo gastado."
+    },
+    {
+      "id": 36,
+      "name_es": "Mostaza y menta",
+      "name_de": "Ginkgo im Frost",
+      "rationale": "Amarillo sulfina (mostaza) y verde turquesa pálido: hoja amarilla en escarcha."
+    },
+    {
+      "id": 37,
+      "name_es": "Ciruela sobre adobe",
+      "name_de": "Rote Bete im Ofen",
+      "rationale": "Rojo ladrillo y rojo violeta profundo: fruta oscura y barro cocido."
+    },
+    {
+      "id": 38,
+      "name_es": "Pavo real",
+      "name_de": "Pfauenfeder",
+      "rationale": "Verde diamina y azul Lyon: plumaje de pavo real."
+    },
+    {
+      "id": 39,
+      "name_es": "Regata de julio",
+      "name_de": "Regatta im Juli",
+      "rationale": "Carmín y azul Helvetia: casco rojo sobre azul de mar en una regata de verano."
+    },
+    {
+      "id": 40,
+      "name_es": "Calabaza en la huerta",
+      "name_de": "Ringelblume im Beet",
+      "rationale": "Naranja tostado vinoso y amarillo cidra verdoso: fruto y hoja de huerto."
+    },
+    {
+      "id": 41,
+      "name_es": "Laguna de juncos",
+      "name_de": "Schilf am Ufer",
+      "rationale": "Caqui oliva y turquesa calamina: cañaveral y agua glaciar."
+    },
+    {
+      "id": 42,
+      "name_es": "Iris entre espigas",
+      "name_de": "Veilchen im Kornfeld",
+      "rationale": "Ocre amarillo y violeta: flor morada en un trigal."
+    },
+    {
+      "id": 43,
+      "name_es": "Hortensias de junio",
+      "name_de": "Hortensien im Juni",
+      "rationale": "Rosa corintio y violeta acónito: hortensias de principios de verano."
+    },
+    {
+      "id": 44,
+      "name_es": "Mar de fondo",
+      "name_de": "Tiefe Strömung",
+      "rationale": "Verde porcelana (teal) y azul olímpico: dos azules de agua profunda."
+    },
+    {
+      "id": 45,
+      "name_es": "Nata y vainilla",
+      "name_de": "Sahne und Vanille",
+      "rationale": "Rosa concha pálido y amarillo limón: postre de nata con vainilla."
+    },
+    {
+      "id": 46,
+      "name_es": "Brasa sobre carbón",
+      "name_de": "Monarchfalter",
+      "rationale": "Naranja y negro: brasa viva o alas de mariposa monarca."
+    },
+    {
+      "id": 47,
+      "name_es": "Bruma sobre geranios",
+      "name_de": "Ziegel und Rosenstaub",
+      "rationale": "Rojo etrusco y lavanda grisácea rosada: terracota velada."
+    },
+    {
+      "id": 48,
+      "name_es": "Buganvilla en la bahía",
+      "name_de": "Fuchsie und Kobalt",
+      "rationale": "Púrpura rosolane (fucsia) y azul Helvetia: flor intensa junto al mar."
+    },
+    {
+      "id": 49,
+      "name_es": "Cielo sobre el Egeo",
+      "name_de": "Himmel über der Ägäis",
+      "rationale": "Celeste pálido y azul: cielo claro sobre mar."
+    },
+    {
+      "id": 50,
+      "name_es": "Tinta sobre pergamino",
+      "name_de": "Aubergine auf Leinen",
+      "rationale": "Marfil y violeta granza oscuro: papel viejo y tinta morada."
+    },
+    {
+      "id": 51,
+      "name_es": "Carpa de circo",
+      "name_de": "Zirkuszelt",
+      "rationale": "Rojo carmín y azul: franjas de lona de circo."
+    },
+    {
+      "id": 52,
+      "name_es": "Teclas de piano",
+      "name_de": "Kerze im Kohlenkeller",
+      "rationale": "Amarillo azufre pálido (marfil) y negro."
+    },
+    {
+      "id": 53,
+      "name_es": "Ocaso en el viñedo",
+      "name_de": "Mandarine auf Samt",
+      "rationale": "Naranja amarillo y violeta oscuro: sol poniente sobre uva."
+    },
+    {
+      "id": 54,
+      "name_es": "Agua de glaciar",
+      "name_de": "Eisfjord",
+      "rationale": "Verde benzol y azul glauco claro: agua fría y hielo."
+    },
+    {
+      "id": 55,
+      "name_es": "Rosa sobre nieve",
+      "name_de": "Himbeersahne",
+      "rationale": "Rosa viejo y blanco: pétalo o frambuesa con nata."
+    },
+    {
+      "id": 56,
+      "name_es": "Lila de tormenta",
+      "name_de": "Gewitter über Lavendel",
+      "rationale": "Lavanda grisácea y violeta profundo: cielo cargado sobre flores."
+    },
+    {
+      "id": 57,
+      "name_es": "Concha de mejillón",
+      "name_de": "Novemberabend",
+      "rationale": "Pardo topo violáceo y gris pizarra: interior oscuro de una concha."
+    },
+    {
+      "id": 58,
+      "name_es": "Cobre con cardenillo",
+      "name_de": "Anker im Seegras",
+      "rationale": "Rojizo Hay's russet y verde mar: metal oxidado y verdín."
+    },
+    {
+      "id": 59,
+      "name_es": "Flamenco entre juncos",
+      "name_de": "Flamingo im Schilf",
+      "rationale": "Rosa eosina y citrino oliva: ave rosada entre cañas amarillentas."
+    },
+    {
+      "id": 60,
+      "name_es": "Ventana encendida",
+      "name_de": "Erleuchtetes Fenster",
+      "rationale": "Amarillo limón pálido y azul Tiro oscuro: luz cálida en la noche."
+    },
+    {
+      "id": 61,
+      "name_es": "Uva y pámpano",
+      "name_de": "Heidelbeere im Farn",
+      "rationale": "Verde amarillento claro y púrpura cotinga: fruto oscuro y hoja de vid."
+    },
+    {
+      "id": 62,
+      "name_es": "Abeja al sol",
+      "name_de": "Hornisse",
+      "rationale": "Amarillo puro y negro: rayas de insecto."
+    },
+    {
+      "id": 63,
+      "name_es": "Cormorán en la ría",
+      "name_de": "Kormoran am Fluss",
+      "rationale": "Marrón vinoso oscuro y azul cerúleo verdoso: ave oscura sobre agua."
+    },
+    {
+      "id": 64,
+      "name_es": "Sombra de lilas",
+      "name_de": "Flieder im Schatten",
+      "rationale": "Violeta acónito y violeta suave oscuro: dos lilas en penumbra."
+    },
+    {
+      "id": 65,
+      "name_es": "Retama en la ensenada",
+      "name_de": "Ginster an der Küste",
+      "rationale": "Amarillo sulfina y turquesa calamina: flor amarilla sobre agua clara y resguardada."
+    },
+    {
+      "id": 66,
+      "name_es": "Almazara",
+      "name_de": "Ölbaum im August",
+      "rationale": "Ocre oliva y verde oliva: aceite y hoja de olivo."
+    },
+    {
+      "id": 67,
+      "name_es": "Marea nocturna",
+      "name_de": "Nordsee bei Nacht",
+      "rationale": "Azul olímpico y azul Tiro oscuro: mar al anochecer."
+    },
+    {
+      "id": 68,
+      "name_es": "Canario en la ventana",
+      "name_de": "Zitrone auf Rosenholz",
+      "rationale": "Rosa pardo apagado y amarillo puro: nota viva sobre fondo empolvado."
+    },
+    {
+      "id": 69,
+      "name_es": "Chimenea apagada",
+      "name_de": "Nasser Asphalt",
+      "rationale": "Gris cálido y negro: ceniza y hollín."
+    },
+    {
+      "id": 70,
+      "name_es": "Sendero en el pinar",
+      "name_de": "Kiefernpfad",
+      "rationale": "Siena y verde Lincoln oscuro: tierra y pino en un sendero de pinar."
+    },
+    {
+      "id": 71,
+      "name_es": "Pan con tomate",
+      "name_de": "Sandstein und Karmin",
+      "rationale": "Rojo pompeyano y salmón ocráceo: tomate sobre pan tostado."
+    },
+    {
+      "id": 72,
+      "name_es": "Amanecer en calma",
+      "name_de": "Sommermorgen",
+      "rationale": "Amarillo azufre pálido y celeste pálido: primera luz del día."
+    },
+    {
+      "id": 73,
+      "name_es": "Salvia en maceta",
+      "name_de": "Salbei im Tontopf",
+      "rationale": "Umber pálido y verde rainette (salvia): barro y hoja gris."
+    },
+    {
+      "id": 74,
+      "name_es": "Cenote",
+      "name_de": "Schnorchelbucht",
+      "rationale": "Verde turquesa pálido y verde azulado: agua transparente en dos profundidades."
+    },
+    {
+      "id": 75,
+      "name_es": "Crepúsculo nevado",
+      "name_de": "Winterhimmel",
+      "rationale": "Celeste pálido y azul violeta oscuro: nieve al caer la noche."
+    },
+    {
+      "id": 76,
+      "name_es": "Manzanilla y ceniza",
+      "name_de": "Vanille auf Beton",
+      "rationale": "Amarillo limón pálido y gris cálido: flor pálida sobre gris."
+    },
+    {
+      "id": 77,
+      "name_es": "Boya en agua honda",
+      "name_de": "Boje im Tiefwasser",
+      "rationale": "Rojo Eugenia y azul Vanderpoel profundo: rojo de señal sobre agua honda."
+    },
+    {
+      "id": 78,
+      "name_es": "Chiringuito en agosto",
+      "name_de": "Liegestuhl im August",
+      "rationale": "Canela rosado (melocotón) y verde Venecia: playa y helado."
+    },
+    {
+      "id": 79,
+      "name_es": "Tabaco y turquesa",
+      "name_de": "Rost auf Türkis",
+      "rationale": "Marrón granza y verde azulado: barca oxidada en agua turquesa."
+    },
+    {
+      "id": 80,
+      "name_es": "Crema de violetas",
+      "name_de": "Lavendelzucker",
+      "rationale": "Amarillo azufre pálido (crema) y malva claro: postre con flor."
+    },
+    {
+      "id": 81,
+      "name_es": "Sol de noviembre",
+      "name_de": "Herbstsonne im Dunst",
+      "rationale": "Amarillo dorado y gris cálido: sol bajo entre bruma."
+    },
+    {
+      "id": 82,
+      "name_es": "Tierra de remolacha",
+      "name_de": "Holunder im Laub",
+      "rationale": "Rojizo Hay's russet y violeta granza oscuro: raíz morada y tierra."
+    },
+    {
+      "id": 83,
+      "name_es": "Rastrojo bajo tormenta",
+      "name_de": "Deich im Sturm",
+      "rationale": "Ante oliva pálido y azul violeta oscuro: hierba seca bajo cielo de tormenta."
+    },
+    {
+      "id": 84,
+      "name_es": "Magnolia entre pinos",
+      "name_de": "Muschel im Seetang",
+      "rationale": "Rosa concha y verde pizarra profundo: flor pálida sobre verde oscuro."
+    },
+    {
+      "id": 85,
+      "name_es": "Barca varada",
+      "name_de": "Münze im Brunnen",
+      "rationale": "Naranja tostado vinoso y azul Amberes (petróleo): casco oxidado sobre agua."
+    },
+    {
+      "id": 86,
+      "name_es": "Oasis de palmeras",
+      "name_de": "Wüste am Meer",
+      "rationale": "Siena y verde mar: arena caliente y agua de oasis."
+    },
+    {
+      "id": 87,
+      "name_es": "Peonía en la pradera",
+      "name_de": "Pfingstrose im Gras",
+      "rationale": "Rosa corintio y amarillo cidra verdoso: flor rosa sobre hierba."
+    },
+    {
+      "id": 88,
+      "name_es": "Bahía al amanecer",
+      "name_de": "Rosa Segel",
+      "rationale": "Rosa concha muy pálido sobre azul intenso: vela clara sobre el agua de una bahía al amanecer."
+    },
+    {
+      "id": 89,
+      "name_es": "Farola de gas",
+      "name_de": "Gaslaterne",
+      "rationale": "Naranja cálido contra un azul violáceo casi nocturno: lámpara de gas en la calle a oscuras."
+    },
+    {
+      "id": 90,
+      "name_es": "Algodón de azúcar",
+      "name_de": "Zuckerwatte",
+      "rationale": "Rosa vivo y violeta acónito: hilos de algodón de azúcar."
+    },
+    {
+      "id": 91,
+      "name_es": "Castañas asadas",
+      "name_de": "Lederwerkstatt",
+      "rationale": "Vino oscuro y naranja rojizo: cáscara tostada y brasa, o cuero curtido en un taller."
+    },
+    {
+      "id": 92,
+      "name_es": "Pez payaso",
+      "name_de": "Südseelagune",
+      "rationale": "Coral salmón con verde azulado: pez de arrecife sobre agua tropical."
+    },
+    {
+      "id": 93,
+      "name_es": "Hierba de duna",
+      "name_de": "Dünengras",
+      "rationale": "Amarillo oliváceo apagado bajo un azul lechoso: hierba de duna con cielo velado."
+    },
+    {
+      "id": 94,
+      "name_es": "Dehesa de encinas",
+      "name_de": "Leinen und Tanne",
+      "rationale": "Paja marfil y verde muy oscuro: pasto seco bajo copas de encina; lino crudo y abeto."
+    },
+    {
+      "id": 95,
+      "name_es": "Últimas brasas",
+      "name_de": "Kaminglut",
+      "rationale": "Rojizo de óxido sobre violeta casi negro: el rescoldo de una chimenea al apagarse."
+    },
+    {
+      "id": 96,
+      "name_es": "Meseta en verano",
+      "name_de": "Olivenhain im Spätsommer",
+      "rationale": "Ocre de trigo y verde oliva: campos segados y olivos a finales del verano."
+    },
+    {
+      "id": 97,
+      "name_es": "Geranio en maceta",
+      "name_de": "Geranie im Tontopf",
+      "rationale": "Rosa claro y rojo terracota: flor de geranio sobre barro, o ladrillo con luz de tarde."
+    },
+    {
+      "id": 98,
+      "name_es": "Caoba y añil",
+      "name_de": "Mahagoni und Tinte",
+      "rationale": "Marrón granate profundo y azul violáceo oscuro: madera vieja y tinta añil."
+    },
+    {
+      "id": 99,
+      "name_es": "Piscina en julio",
+      "name_de": "Planschbecken",
+      "rationale": "Amarillo limón pálido y azul cerúleo: sol, agua y helado de limón junto al mar."
+    },
+    {
+      "id": 100,
+      "name_es": "Lavanda seca",
+      "name_de": "Verblühte Heide",
+      "rationale": "Caqui apagado y violeta grisáceo: ramillete de lavanda seca o brezo otoñal."
+    },
+    {
+      "id": 101,
+      "name_es": "Seda sobre añil",
+      "name_de": "Seide auf Indigo",
+      "rationale": "Rosa empolvado sobre azul real profundo: seda pálida sobre tela teñida, rosa en la noche."
+    },
+    {
+      "id": 102,
+      "name_es": "Barro y lino",
+      "name_de": "Tonkrug auf Leinen",
+      "rationale": "Marfil pajizo y naranja rojizo: cántaro de barro sobre tela cruda."
+    },
+    {
+      "id": 103,
+      "name_es": "Vino caliente",
+      "name_de": "Zwetschgenkuchen",
+      "rationale": "Canela rojiza y ciruela oscura: especias en vino tinto, tarta de ciruela con canela."
+    },
+    {
+      "id": 104,
+      "name_es": "Lacre sobre papel",
+      "name_de": "Siegelwachs",
+      "rationale": "Carmín profundo sobre crema pálido: un sello de lacre en un pliego de papel."
+    },
+    {
+      "id": 105,
+      "name_es": "Rosal de invierno",
+      "name_de": "Salbei und Altrosa",
+      "rationale": "Rosa empolvado y verde salvia: pétalos mustios entre hojas grises de rosal."
+    },
+    {
+      "id": 106,
+      "name_es": "Fosa abisal",
+      "name_de": "Tiefsee",
+      "rationale": "Azul petróleo y violeta casi negro: agua profunda sin luz."
+    },
+    {
+      "id": 107,
+      "name_es": "Retama del monte",
+      "name_de": "Raps im Dunst",
+      "rationale": "Amarillo brillante sobre oliva grisáceo: retama en flor en el monte, o colza bajo cielo gris."
+    },
+    {
+      "id": 108,
+      "name_es": "Teja y clavel",
+      "name_de": "Rhabarberkompott",
+      "rationale": "Rosa vivo y rojo ladrillo: clavel sobre teja, o tallos de ruibarbo cocido."
+    },
+    {
+      "id": 109,
+      "name_es": "Luna del pinar",
+      "name_de": "Nachtkerze",
+      "rationale": "Amarillo pálido sobre verde oliva negruzco: luz de luna entre pinos; la onagra que abre de noche."
+    },
+    {
+      "id": 110,
+      "name_es": "Tueste oscuro",
+      "name_de": "Nussbaumholz",
+      "rationale": "Dos marrones, uno rojizo y otro casi negro: grano de café tostado, madera de nogal."
+    },
+    {
+      "id": 111,
+      "name_es": "Brotes de abril",
+      "name_de": "Maigrün",
+      "rationale": "Amarillo pálido y verde tierno: hojas nuevas de primavera."
+    },
+    {
+      "id": 112,
+      "name_es": "Salmón y azabache",
+      "name_de": "Leuchtreklame",
+      "rationale": "Coral salmón contra negro: un rótulo luminoso en la noche."
+    },
+    {
+      "id": 113,
+      "name_es": "Melocotón con cacao",
+      "name_de": "Nougatpraline",
+      "rationale": "Rosa melocotón pálido y marrón muy oscuro: fruta y chocolate, bombón de nougat."
+    },
+    {
+      "id": 114,
+      "name_es": "Mediodía en la dársena",
+      "name_de": "Safran auf Petrol",
+      "rationale": "Naranja dorado y azul verdoso: sol de mediodía sobre el agua del puerto."
+    },
+    {
+      "id": 115,
+      "name_es": "Sorbete de mango",
+      "name_de": "Feuerlilie",
+      "rationale": "Amarillo crema y rojo anaranjado: pulpa de mango, o pétalos de azucena de fuego."
+    },
+    {
+      "id": 116,
+      "name_es": "Jacintos de marzo",
+      "name_de": "Hyazinthe",
+      "rationale": "Rosa empolvado y azul violeta: jacintos en flor a principios de primavera."
+    },
+    {
+      "id": 117,
+      "name_es": "Amapola sobre carbón",
+      "name_de": "Mohn und Kohle",
+      "rationale": "Carmín y negro: amapola sobre carbón, la pareja clásica de la laca."
+    },
+    {
+      "id": 118,
+      "name_es": "Tabaco y miel",
+      "name_de": "Honigbrot",
+      "rationale": "Ocre dorado y marrón oscuro: hoja de tabaco, miel sobre pan moreno."
+    },
+    {
+      "id": 119,
+      "name_es": "Ría escarchada",
+      "name_de": "Elbe im Januar",
+      "rationale": "Azul pálido helado sobre azul marino muy oscuro: río en invierno bajo la escarcha."
+    },
+    {
+      "id": 120,
+      "name_es": "Pétalos de granado",
+      "name_de": "Rosenblatt auf Samt",
+      "rationale": "Rosa empolvado y rojo pompeyano: pétalo claro sobre terciopelo granate."
+    },
+    {
+      "id": 121,
+      "name_es": "Setas del hayedo",
+      "name_de": "Pilze im Buchenlaub",
+      "rationale": "Marrón, salmón ocre y verde oscuro: suelo de bosque en otoño con hongos y hojarasca."
+    },
+    {
+      "id": 122,
+      "name_es": "Cartel de feria",
+      "name_de": "Jahrmarktplakat",
+      "rationale": "Carmín, crema anaranjado y verde azulado: tintas planas de un cartel de feria."
+    },
+    {
+      "id": 123,
+      "name_es": "Cóctel de verano",
+      "name_de": "Bowle auf der Terrasse",
+      "rationale": "Coral, limón y marrón vinoso: fruta en copa y madera de terraza."
+    },
+    {
+      "id": 124,
+      "name_es": "Viñedo en otoño",
+      "name_de": "Weinlese",
+      "rationale": "Rojo lacado oscuro, ocre y oliva amarillento: hojas de vid, tierra y uva en vendimia."
+    },
+    {
+      "id": 125,
+      "name_es": "Marisma encapotada",
+      "name_de": "Wattenmeer",
+      "rationale": "Arena rosada, azul verdoso y azul tormenta: marisma y marea bajo cielo cubierto."
+    },
+    {
+      "id": 126,
+      "name_es": "Azulejo de Lisboa",
+      "name_de": "Azulejo aus Lissabon",
+      "rationale": "Marfil, ocre y azul intenso: cerámica pintada de azulejo."
+    },
+    {
+      "id": 127,
+      "name_es": "Albaricoque y pistacho",
+      "name_de": "Aprikose und Pistazie",
+      "rationale": "Naranja pálido, verde pistacho y violeta suave: sabores de heladería."
+    },
+    {
+      "id": 128,
+      "name_es": "Confitería",
+      "name_de": "Pastellkreide",
+      "rationale": "Rosa, verde agua y malva claro: caramelos y peladillas, barras de tiza pastel."
+    },
+    {
+      "id": 129,
+      "name_es": "Girasoles al mediodía",
+      "name_de": "Strohhut",
+      "rationale": "Amarillo vivo, caqui y azul claro: girasol, tierra seca y cielo; sombrero de paja al sol."
+    },
+    {
+      "id": 130,
+      "name_es": "Alfombra persa",
+      "name_de": "Orientteppich",
+      "rationale": "Siena, carmín y violeta: los tintes de un tapiz oriental."
+    },
+    {
+      "id": 131,
+      "name_es": "Patio de Marrakech",
+      "name_de": "Kupfer und Türkis",
+      "rationale": "Siena, rojo anaranjado y azul pavo real: barro, cobre y azulejo de un patio marroquí."
+    },
+    {
+      "id": 132,
+      "name_es": "Cera de abeja",
+      "name_de": "Bienenwachs",
+      "rationale": "Crema, dorado y amarillo oliváceo: panal, cera y paja de verano."
+    },
+    {
+      "id": 133,
+      "name_es": "Barca de pescadores",
+      "name_de": "Fischkutter",
+      "rationale": "Rojo oscuro, amarillo verdoso y verde mar: casco pintado, redes y agua."
+    },
+    {
+      "id": 134,
+      "name_es": "Frutos del bosque",
+      "name_de": "Beerensorbet",
+      "rationale": "Rosa vivo, malva y violeta profundo: frambuesa, mora y arándano en sorbete."
+    },
+    {
+      "id": 135,
+      "name_es": "Prado en mayo",
+      "name_de": "Almwiese",
+      "rationale": "Crema, verde hierba y azul claro: pradera alpina bajo cielo de primavera."
+    },
+    {
+      "id": 136,
+      "name_es": "Carnaval",
+      "name_de": "Harlekin",
+      "rationale": "Escarlata, verde y violeta oscuro: rombos de traje de arlequín, disfraz de fiesta."
+    },
+    {
+      "id": 137,
+      "name_es": "Tomate y albahaca",
+      "name_de": "Terrasse in Siena",
+      "rationale": "Rojo etrusco, crema anaranjado y verde pistacho: mesa toscana al sol."
+    },
+    {
+      "id": 138,
+      "name_es": "Naranjal costero",
+      "name_de": "Tropenfrucht",
+      "rationale": "Dorado, limón y verde agua: cítricos junto al mar, fruta tropical."
+    },
+    {
+      "id": 139,
+      "name_es": "Pizarra mojada",
+      "name_de": "Regen über Hamburg",
+      "rationale": "Azul claro, índigo profundo y gris neutro: lluvia, tejados y cielo de plomo."
+    },
+    {
+      "id": 140,
+      "name_es": "Faro al anochecer",
+      "name_de": "Bernstein und Petrol",
+      "rationale": "Dorado, azul petróleo y gris pizarra: luz cálida sobre mar y roca al caer la tarde."
+    },
+    {
+      "id": 141,
+      "name_es": "Noche de hogueras",
+      "name_de": "Johannisfeuer",
+      "rationale": "Naranja, verde tierno y azul marino: hoguera de San Juan entre hojas bajo cielo nocturno."
+    },
+    {
+      "id": 142,
+      "name_es": "Mantel provenzal",
+      "name_de": "Trachtenrock",
+      "rationale": "Rojo frambuesa, mostaza y azul salvia: estampado de tela tradicional."
+    },
+    {
+      "id": 143,
+      "name_es": "Glicinia al alba",
+      "name_de": "Glyzinienranke",
+      "rationale": "Azul intenso, lila y gris cálido: racimos de glicinia en la luz azul del amanecer."
+    },
+    {
+      "id": 144,
+      "name_es": "Neón de Tokio",
+      "name_de": "Leuchtschrift in Tokio",
+      "rationale": "Magenta, naranja y negro: rótulos encendidos en una calle de noche."
+    },
+    {
+      "id": 145,
+      "name_es": "Liquen sobre corteza",
+      "name_de": "Moorlandschaft",
+      "rationale": "Marrón, amarillo verdoso y violeta negruzco: liquen en tronco, turbera en sombra."
+    },
+    {
+      "id": 146,
+      "name_es": "Monte bajo",
+      "name_de": "Lodenmantel",
+      "rationale": "Caqui, oliva grisáceo y verde bosque: matorral seco y paño de loden."
+    },
+    {
+      "id": 147,
+      "name_es": "Frambuesa sobre porcelana",
+      "name_de": "Himbeeren auf Porzellan",
+      "rationale": "Rosa espinela, rojo oscuro y verde agua pálido: fruta roja sobre plato claro."
+    },
+    {
+      "id": 148,
+      "name_es": "Dunas de Cádiz",
+      "name_de": "Sonnensegel in Cádiz",
+      "rationale": "Mostaza, naranja dorado y azul cerúleo: arena caliente, sol y mar."
+    },
+    {
+      "id": 149,
+      "name_es": "Cosecha de calabazas",
+      "name_de": "Erntedank",
+      "rationale": "Mostaza, naranja y verde pizarra oscuro: calabazas sobre hojas de otoño."
+    },
+    {
+      "id": 150,
+      "name_es": "Melón con menta",
+      "name_de": "Melone mit Minze",
+      "rationale": "Rosa melocotón, amarillo verdoso y verde menta pálido: fruta fresca, plantas en galería."
+    },
+    {
+      "id": 151,
+      "name_es": "Velero al atardecer",
+      "name_de": "Segel vor Indigo",
+      "rationale": "Crema, naranja y azul petróleo profundo: vela y sol bajo sobre agua oscura."
+    },
+    {
+      "id": 152,
+      "name_es": "Tejados de Toledo",
+      "name_de": "Dächer von Lübeck",
+      "rationale": "Rojo terracota, óxido oscuro y azul pálido: tejas y ladrillo bajo cielo de invierno."
+    },
+    {
+      "id": 153,
+      "name_es": "Puesto de frutas",
+      "name_de": "Zinnienstrauß",
+      "rationale": "Rosa vivo, naranja y amarillo verdoso: fruta apilada, ramo de zinnias."
+    },
+    {
+      "id": 154,
+      "name_es": "Banderines de feria",
+      "name_de": "Bauklötze",
+      "rationale": "Rojo, amarillo y azul puros: banderitas de fiesta, bloques de madera infantiles."
+    },
+    {
+      "id": 155,
+      "name_es": "Luces del puerto",
+      "name_de": "Lichterkette",
+      "rationale": "Rojo anaranjado, verde azulado e índigo profundo: guirnalda de luces reflejada en agua nocturna."
+    },
+    {
+      "id": 156,
+      "name_es": "Lirios silvestres",
+      "name_de": "Krokuswiese",
+      "rationale": "Mostaza, verde menta y violeta: flores moradas y amarillas entre hierba."
+    },
+    {
+      "id": 157,
+      "name_es": "Manta de cuadros",
+      "name_de": "Tweedjacke",
+      "rationale": "Burdeos, mostaza y azul medio: manta de lana a cuadros, chaqueta de tweed."
+    },
+    {
+      "id": 158,
+      "name_es": "Limonero",
+      "name_de": "Zitronenbaum",
+      "rationale": "Limón, canela rojiza y verde vivo: fruto, rama y hoja de un mismo árbol."
+    },
+    {
+      "id": 159,
+      "name_es": "Cala de Formentera",
+      "name_de": "Formentera im Dunst",
+      "rationale": "Caqui, turquesa y lavanda grisácea: arena, agua somera y bruma."
+    },
+    {
+      "id": 160,
+      "name_es": "Biblioteca antigua",
+      "name_de": "Studierstube",
+      "rationale": "Mostaza, tierra sombra y azul grisáceo: lomos de piel, roble y luz de ventana."
+    },
+    {
+      "id": 161,
+      "name_es": "Muelle de madera",
+      "name_de": "Bootshaus",
+      "rationale": "Marrón, canela rosada y azul intenso: tablones, sol y agua de embarcadero."
+    },
+    {
+      "id": 162,
+      "name_es": "Jardín inglés",
+      "name_de": "Rosengarten im Juni",
+      "rationale": "Rosa viejo, verde salvia y lila: rosales y arriates en pleno junio."
+    },
+    {
+      "id": 163,
+      "name_es": "Boya amarilla",
+      "name_de": "Gelbe Boje",
+      "rationale": "Amarillo vivo, turquesa pálido y azul petróleo: boya flotando en agua clara."
+    },
+    {
+      "id": 164,
+      "name_es": "Cielo de agosto",
+      "name_de": "Himmel über der Sahara",
+      "rationale": "Rojo anaranjado, dorado y violeta: gradiente de puesta de sol sobre el desierto."
+    },
+    {
+      "id": 165,
+      "name_es": "Peonías",
+      "name_de": "Himbeercreme",
+      "rationale": "Rosa empolvado, rosa vivo y vino oscuro: ramo de peonías, crema de frambuesa."
+    },
+    {
+      "id": 166,
+      "name_es": "Hibisco",
+      "name_de": "Hibiskus",
+      "rationale": "Coral, amarillo pálido y verde muy oscuro: flor tropical o capuchina sobre hoja sombría."
+    },
+    {
+      "id": 167,
+      "name_es": "Marea baja",
+      "name_de": "Ostseestrand",
+      "rationale": "Beige crudo, azul cielo pálido y azul petróleo: arena húmeda, cielo y agua lejana."
+    },
+    {
+      "id": 168,
+      "name_es": "Ciruela y limón",
+      "name_de": "Schwalbenschwanz",
+      "rationale": "Limón, azul petróleo y púrpura: fruta contrastada, alas de mariposa macaón."
+    },
+    {
+      "id": 169,
+      "name_es": "Almendro en flor",
+      "name_de": "Puderdose",
+      "rationale": "Rosa, amarillo pálido y gris cálido: flor de almendro sobre rama gris; polvera y borla."
+    },
+    {
+      "id": 170,
+      "name_es": "Traje de flamenca",
+      "name_de": "Seidensari",
+      "rationale": "Magenta, naranja dorado y violeta: telas vivas de vestido de fiesta o sari de seda."
+    },
+    {
+      "id": 171,
+      "name_es": "Hojas sobre hielo",
+      "name_de": "Ahorn im Raureif",
+      "rationale": "Rojo oscuro, naranja y verde pálido: hoja de arce caída sobre escarcha."
+    },
+    {
+      "id": 172,
+      "name_es": "Bazar de Estambul",
+      "name_de": "Basar in Istanbul",
+      "rationale": "Canela rojiza, azul petróleo y púrpura: especias, cobre y azulejo de un zoco."
+    },
+    {
+      "id": 173,
+      "name_es": "Cocina de abuela",
+      "name_de": "Milchbar",
+      "rationale": "Limón, caoba oscura y turquesa pálido: azulejo, madera y formica de una cocina de mediados de siglo."
+    },
+    {
+      "id": 174,
+      "name_es": "Rosas secas",
+      "name_de": "Gepresste Rosen",
+      "rationale": "Rosa, lavanda grisácea y marrón vinoso: pétalos prensados que han perdido color."
+    },
+    {
+      "id": 175,
+      "name_es": "Campo de espliego",
+      "name_de": "Lavendel und Heu",
+      "rationale": "El violeta profundo sobre el oliva pálido y el melocotón tostado evoca lavanda entre hierba seca al sol."
+    },
+    {
+      "id": 176,
+      "name_es": "Playa de conchas",
+      "name_de": "Muschelsammlung",
+      "rationale": "Rosa, crema de concha y agua turquesa clara: conchas recogidas en la orilla."
+    },
+    {
+      "id": 177,
+      "name_es": "Ramo de flores secas",
+      "name_de": "Trockenblumenstrauß",
+      "rationale": "Granate apagado, caqui y lavanda grisácea: ramo de flores secas que ha perdido color."
+    },
+    {
+      "id": 178,
+      "name_es": "Arenal de la mañana",
+      "name_de": "Stille Lagune",
+      "rationale": "Arena marfil, azul glauco y verde azulado: la orilla en calma cuando el agua se retira."
+    },
+    {
+      "id": 179,
+      "name_es": "Cometa al viento",
+      "name_de": "Drachen im Wind",
+      "rationale": "Rojo anaranjado, dorado y azul intenso en primarios francos, como tela de cometa."
+    },
+    {
+      "id": 180,
+      "name_es": "Malva en la niebla",
+      "name_de": "Malve im Nebel",
+      "rationale": "Albaricoque cálido, malva y gris neutro: flor malva en una tarde de niebla."
+    },
+    {
+      "id": 181,
+      "name_es": "Vino de moras",
+      "name_de": "Brombeerwein",
+      "rationale": "Carmín, violeta y púrpura casi negro: jugo de mora y vino tinto."
+    },
+    {
+      "id": 182,
+      "name_es": "Cuero de montura",
+      "name_de": "Ledersessel im Dunkeln",
+      "rationale": "Siena, marrón Vandyke e índigo nocturno: cuero curtido en una habitación a oscuras."
+    },
+    {
+      "id": 183,
+      "name_es": "Tormenta de ciruelas",
+      "name_de": "Gewitter über Pflaumen",
+      "rationale": "Gris plomo con malva y violeta rojizo: nubarrón sobre fruta oscura."
+    },
+    {
+      "id": 184,
+      "name_es": "Rosal de tapia",
+      "name_de": "Wildrose am Wegrand",
+      "rationale": "Rosa coral, marfil y oliva grisáceo: flor de rosal silvestre contra hoja polvorienta."
+    },
+    {
+      "id": 185,
+      "name_es": "Muro de terracota",
+      "name_de": "Terrakotta und Vanille",
+      "rationale": "Rojo etrusco, taupe rosado y amarillo pálido: revoque de barro cocido con luz cremosa."
+    },
+    {
+      "id": 186,
+      "name_es": "Puerto de pescadores",
+      "name_de": "Kutter vor Anker",
+      "rationale": "Óxido oscuro, salmón ocre y azul franco: casco herrumbroso o tejado bajo un cielo de verano."
+    },
+    {
+      "id": 187,
+      "name_es": "Hortensia azul",
+      "name_de": "Blaue Hortensie",
+      "rationale": "Azul profundo, lavanda rosada y violeta acónito: cabezas de hortensia o lilas al anochecer."
+    },
+    {
+      "id": 188,
+      "name_es": "Prado de abril",
+      "name_de": "Kräutergarten im Tau",
+      "rationale": "Verde salvia, azul lavanda y menta: hierbas frescas con rocío de primavera."
+    },
+    {
+      "id": 189,
+      "name_es": "Selva de guacamayos",
+      "name_de": "Kolibri im Dickicht",
+      "rationale": "Amarillo limón y turquesa sobre verde casi negro: plumaje vivo entre follaje espeso."
+    },
+    {
+      "id": 190,
+      "name_es": "Ánfora griega",
+      "name_de": "Attische Vase",
+      "rationale": "Marfil, rojo inglés y negro: la paleta exacta de la cerámica ática de figuras negras."
+    },
+    {
+      "id": 191,
+      "name_es": "Girasoles junto al canal",
+      "name_de": "Sonnenblumen am Kanal",
+      "rationale": "Ocre amarillo y azul intenso con un taupe rosado: girasol sobre agua de canal."
+    },
+    {
+      "id": 192,
+      "name_es": "Luz de vela",
+      "name_de": "Nussholz und Zinn",
+      "rationale": "Crema anaranjada sobre marrón nogal y gris plomo: llama cálida en una habitación de madera y peltre."
+    },
+    {
+      "id": 193,
+      "name_es": "Batido de papaya",
+      "name_de": "Sorbet an der Lagune",
+      "rationale": "Coral, amarillo Nápoles y verde porcelana: fruta tropical con un toque de agua fría."
+    },
+    {
+      "id": 194,
+      "name_es": "Sombrilla de rayas",
+      "name_de": "Strandkorb auf Rügen",
+      "rationale": "Bermellón, rosa concha y azul medio: lona de playa de cartel antiguo."
+    },
+    {
+      "id": 195,
+      "name_es": "Merienda de fresas",
+      "name_de": "Erdbeeren auf Marmor",
+      "rationale": "Rosa espinela, limón pálido y gris neutro: fruta y nata sobre mostrador de mármol."
+    },
+    {
+      "id": 196,
+      "name_es": "Lirios de acequia",
+      "name_de": "Schwertlilien am Bach",
+      "rationale": "Violeta azulado, verde cidra y celeste pálido: flor de lirio, su hoja y el cielo reflejado."
+    },
+    {
+      "id": 197,
+      "name_es": "Glicinia mojada",
+      "name_de": "Cosmeen im Wind",
+      "rationale": "Rosa eosina y violeta suave sobre gris: racimos de flor bajo cielo cubierto."
+    },
+    {
+      "id": 198,
+      "name_es": "Huerto en septiembre",
+      "name_de": "Kürbis im September",
+      "rationale": "Siena tostada, amarillo intenso y verde: calabazas, tierra y mata al final del verano."
+    },
+    {
+      "id": 199,
+      "name_es": "Taller de alfarero",
+      "name_de": "Blaumann und Lehm",
+      "rationale": "Rojo ocre, oliva parduzco y azul Lyon: barro fresco y mono de trabajo azul."
+    },
+    {
+      "id": 200,
+      "name_es": "Granada del olivar",
+      "name_de": "Preiselbeeren im Moos",
+      "rationale": "Carmín sobre oliva pálido y verde cromo: fruto rojo entre hojas grises y musgo."
+    },
+    {
+      "id": 201,
+      "name_es": "Sorbete de sandía",
+      "name_de": "Grapefruit auf Minze",
+      "rationale": "Coral, oliva y menta: pulpa fresca, corteza y hoja aromática."
+    },
+    {
+      "id": 202,
+      "name_es": "Espuma de mar",
+      "name_de": "Gletscherwasser",
+      "rationale": "Turquesa pálido y menta sobre gris pizarra: agua muy fría rompiendo contra roca."
+    },
+    {
+      "id": 203,
+      "name_es": "Melocotón en rama",
+      "name_de": "Pfirsich am Zweig",
+      "rationale": "Limón pálido, melocotón y verde Lincoln oscuro: fruta madura entre hojas."
+    },
+    {
+      "id": 204,
+      "name_es": "Buganvilla de azotea",
+      "name_de": "Bougainvillea am Mittag",
+      "rationale": "Magenta, canela rojiza y azul glauco: flor trepadora sobre teja bajo cielo claro."
+    },
+    {
+      "id": 205,
+      "name_es": "Tarde de vendimia",
+      "name_de": "Pfirsich und Bordeaux",
+      "rationale": "Granate, melocotón y violeta: uva, piel de fruta y luz que declina."
+    },
+    {
+      "id": 206,
+      "name_es": "Mermelada de albaricoque",
+      "name_de": "Aprikosenmarmelade",
+      "rationale": "Rosa corintio, dorado y canela: dulce recién horneado con glaseado."
+    },
+    {
+      "id": 207,
+      "name_es": "Madera de naufragio",
+      "name_de": "Treibholz und Seeglas",
+      "rationale": "Marrón Sudán, verde glauco y negro: tabla erosionada, vidrio pulido por el mar y roca."
+    },
+    {
+      "id": 208,
+      "name_es": "Cala en calma",
+      "name_de": "Kreidefelsen",
+      "rationale": "Crema azufre con verde azulado y azul Amberes: acantilado claro sobre agua profunda y quieta."
+    },
+    {
+      "id": 209,
+      "name_es": "Desayuno con caléndulas",
+      "name_de": "Orange zum Frühstück",
+      "rationale": "Marfil, naranja y azul salvia: mesa de mañana con flor y fruta."
+    },
+    {
+      "id": 210,
+      "name_es": "Bancal de cítricos",
+      "name_de": "Zitronenhain",
+      "rationale": "Amarillo limón y canela clara sobre verde Lincoln: fruto, luz y hoja oscura."
+    },
+    {
+      "id": 211,
+      "name_es": "Mandarina de medianoche",
+      "name_de": "Mandarine um Mitternacht",
+      "rationale": "Naranja albaricoque y oliva amarillento contra índigo profundo: último resplandor sobre hierba seca."
+    },
+    {
+      "id": 212,
+      "name_es": "Villa de Herculano",
+      "name_de": "Villa in Herculaneum",
+      "rationale": "Rojo pompeyano, marrón citrino y azul grisáceo: muro pintado de una villa romana."
+    },
+    {
+      "id": 213,
+      "name_es": "Toldo de verano",
+      "name_de": "Ostersonntag",
+      "rationale": "Melocotón, amarillo vivo y celeste: franjas de lona de mañana luminosa."
+    },
+    {
+      "id": 214,
+      "name_es": "Biblioteca de monasterio",
+      "name_de": "Klosterbibliothek",
+      "rationale": "Marfil, marrón Sudán y violeta: hoja antigua, cuero de lomo y tinta de escritorio."
+    },
+    {
+      "id": 215,
+      "name_es": "Sari de fiesta",
+      "name_de": "Papierlaternen",
+      "rationale": "Crema dorada, azul intenso y púrpura eupatorio: seda festiva y farolillos de papel."
+    },
+    {
+      "id": 216,
+      "name_es": "Mata de tomate",
+      "name_de": "Klatschmohn",
+      "rationale": "Rojo jaspe, verde y negro: fruto sobre hoja, o amapola con su centro oscuro."
+    },
+    {
+      "id": 217,
+      "name_es": "Cabaña de caza",
+      "name_de": "Jagdhütte",
+      "rationale": "Granate apagado, salmón ocre y verde diamina: madera, lana y bosque."
+    },
+    {
+      "id": 218,
+      "name_es": "Hora azul",
+      "name_de": "Blaue Stunde",
+      "rationale": "Azul Helvetia, lavanda grisácea y plomo: el momento en que el día se apaga sobre el agua."
+    },
+    {
+      "id": 219,
+      "name_es": "Bayas de serbal",
+      "name_de": "Vogelbeeren",
+      "rationale": "Rojo jaspe sobre verde cromo y verde oscuro: bayas rojas de serbal entre follaje."
+    },
+    {
+      "id": 220,
+      "name_es": "Postre de frambuesa",
+      "name_de": "Feigen im Spätsommer",
+      "rationale": "Púrpura granada, salmón ocre y violeta acónito: fruta oscura con crema tostada."
+    },
+    {
+      "id": 221,
+      "name_es": "Laca japonesa",
+      "name_de": "Lackschale",
+      "rationale": "Carmín, gris neutro y negro: urushi rojo y negro sobre superficie mate."
+    },
+    {
+      "id": 222,
+      "name_es": "Zoco de especias",
+      "name_de": "Ahorn im Oktober",
+      "rationale": "Ocre, naranja y rufo: sacos de cúrcuma y pimentón, o arce en otoño."
+    },
+    {
+      "id": 223,
+      "name_es": "Fachada con salitre",
+      "name_de": "Verblasste Fassade",
+      "rationale": "Taupe rosado, salmón ocre y turquesa pálido: pintura desgastada de casa junto al mar."
+    },
+    {
+      "id": 224,
+      "name_es": "Cuarzo sobre pizarra",
+      "name_de": "Rosenquarz auf Schiefer",
+      "rationale": "Rosa espinela sobre azul Médici y taupe ciruela: cuarzo rosa contra piedra oscura."
+    },
+    {
+      "id": 225,
+      "name_es": "Flor de Pascua",
+      "name_de": "Stechpalme im Advent",
+      "rationale": "Carmín, verde oscuro y púrpura pizarra: rojo y verde de invierno con sombra profunda."
+    },
+    {
+      "id": 226,
+      "name_es": "Bombón de violeta",
+      "name_de": "Veilchenpraline",
+      "rationale": "Marrón vistoris, crema dorada y violeta: chocolate, relleno y flor confitada."
+    },
+    {
+      "id": 227,
+      "name_es": "Laguna de flamencos",
+      "name_de": "Flamingo auf Türkis",
+      "rationale": "Rosa Hermosa, azul glauco y cerúleo: aves rosadas sobre agua turquesa."
+    },
+    {
+      "id": 228,
+      "name_es": "Cerezas sobre lino",
+      "name_de": "Kirschen auf Marmor",
+      "rationale": "Carmín, limón pálido y gris neutro: fruta roja sobre mantel o plato claro."
+    },
+    {
+      "id": 229,
+      "name_es": "Farol entre niebla",
+      "name_de": "Laterne zwischen Tannen",
+      "rationale": "Dorado sobre verde pizarra casi negro y gris: luz cálida entre bosque y bruma."
+    },
+    {
+      "id": 230,
+      "name_es": "Papaya con menta",
+      "name_de": "Riff bei Ebbe",
+      "rationale": "Coral, turquesa pálido y menta: pulpa de papaya con hoja de menta, o coral en agua clara."
+    },
+    {
+      "id": 231,
+      "name_es": "Verja con rosas",
+      "name_de": "Rost am Zaun",
+      "rationale": "Rosa camafeo, óxido oscuro y azul Olympic: hierro herrumbroso, flor y cielo."
+    },
+    {
+      "id": 232,
+      "name_es": "Uniforme de gala",
+      "name_de": "Marinejacke",
+      "rationale": "Carmín, canela rosada e índigo: paño azul marino con vivos rojos y galón claro."
+    },
+    {
+      "id": 233,
+      "name_es": "Tapiz medieval",
+      "name_de": "Wappenteppich",
+      "rationale": "Carmín, citrino y azul violáceo: hilos desvaídos de tapicería heráldica."
+    },
+    {
+      "id": 234,
+      "name_es": "Panadería al alba",
+      "name_de": "Kaffee am Fenster",
+      "rationale": "Canela clara, tierra sombra y celeste pálido: bollo, café y cielo de primera hora."
+    },
+    {
+      "id": 235,
+      "name_es": "Naranjas al alba",
+      "name_de": "Morgenrot über Dünen",
+      "rationale": "Marfil, naranja y lavanda grisácea: primera luz sobre arena con cielo malva."
+    },
+    {
+      "id": 236,
+      "name_es": "Abrigo de tweed",
+      "name_de": "Tweed im November",
+      "rationale": "Caqui, azul Lyon y púrpura drab: lana de invierno en tonos apagados."
+    },
+    {
+      "id": 237,
+      "name_es": "Ladrillo en invierno",
+      "name_de": "Backstein im Frost",
+      "rationale": "Carmín, marrón garanza y azul salvia: muro rojo bajo cielo frío."
+    },
+    {
+      "id": 238,
+      "name_es": "Higo sobre piedra",
+      "name_de": "Aubergine auf Sand",
+      "rationale": "Salmón ocre, púrpura cotinga y gris cálido: fruto oscuro sobre superficie mineral."
+    },
+    {
+      "id": 239,
+      "name_es": "Papel pintado antiguo",
+      "name_de": "Alte Tapete",
+      "rationale": "Taupe rosado, amarillo pirita y verde glauco: manchas apagadas sobre papel pintado viejo."
+    },
+    {
+      "id": 240,
+      "name_es": "Pelota de playa",
+      "name_de": "Limonade am Beckenrand",
+      "rationale": "Salmón, amarillo puro y cerúleo: colores de verano pop y agua clorada."
+    },
+    {
+      "id": 241,
+      "name_es": "Boya entre bruma",
+      "name_de": "Rettungsboje",
+      "rationale": "Naranja rojizo y crema con arena y azul Médici gris: flotador vivo sobre mar apagado."
+    },
+    {
+      "id": 242,
+      "name_es": "Bordado mexicano",
+      "name_de": "Mexikanische Stickerei",
+      "rationale": "Rosa eosina, siena, verde diamina y negro: hilo de colores sobre tela oscura, o dalias empapadas."
+    },
+    {
+      "id": 243,
+      "name_es": "Páramo de otoño",
+      "name_de": "Heidemoor",
+      "rationale": "Siena, marfil, verde oliva y pizarra: brezal, hierba seca y cielo bajo."
+    },
+    {
+      "id": 244,
+      "name_es": "Redes en el muelle",
+      "name_de": "Fischernetze am Kai",
+      "rationale": "Rojizo leonado, taupe, verde Andover y azul Amberes: redes de pesca tendidas junto al agua."
+    },
+    {
+      "id": 245,
+      "name_es": "Tartán escocés",
+      "name_de": "Schottenkaro",
+      "rationale": "Carmín, verde aceite, azul tirio y pizarra: cuadros de lana en tonos profundos."
+    },
+    {
+      "id": 246,
+      "name_es": "Casas de Burano",
+      "name_de": "Häuser von Burano",
+      "rationale": "Rosa corintio, rojo ladrillo, crema y canela clara: fachadas pintadas o tarta de ruibarbo."
+    },
+    {
+      "id": 247,
+      "name_es": "Azulejos de Fez",
+      "name_de": "Basar in Marrakesch",
+      "rationale": "Siena, amarillo intenso, verde benzol y azul Lyon: mosaico zellige y tenderetes de zoco."
+    },
+    {
+      "id": 248,
+      "name_es": "Ramo de dalias",
+      "name_de": "Herbstastern",
+      "rationale": "Rosa eosina, caqui, lavanda y púrpura pizarra: flores de final de temporada con tallo seco."
+    },
+    {
+      "id": 249,
+      "name_es": "Alfombra kilim",
+      "name_de": "Kelim im Flur",
+      "rationale": "Óxido oscuro, ecru, ocre oliva y azul Médici: lana tejida en tonos terrosos."
+    },
+    {
+      "id": 250,
+      "name_es": "Mango caribeño",
+      "name_de": "Markt in Havanna",
+      "rationale": "Amarillo pirita, rojo melocotón, verde mar y azul Nilo: fruta, sol y mar en un puesto de mercado."
+    },
+    {
+      "id": 251,
+      "name_es": "Patio de colegio",
+      "name_de": "Ampelkreuzung",
+      "rationale": "Rojo, amarillo, verde diamina y pizarra: primarios de juego, o semáforo sobre asfalto."
+    },
+    {
+      "id": 252,
+      "name_es": "Mercado de Oaxaca",
+      "name_de": "Keramik aus Puebla",
+      "rationale": "Rojo eugenia, siena, amarillo sulfina y verde azulado: textiles y talavera de puesto mexicano."
+    },
+    {
+      "id": 253,
+      "name_es": "Cóctel de madrugada",
+      "name_de": "Neonreklame",
+      "rationale": "Limón y naranja sobre púrpura cotinga y pizarra: luces cálidas contra noche de bar."
+    },
+    {
+      "id": 254,
+      "name_es": "Cerezo en flor",
+      "name_de": "Mandelbaum im März",
+      "rationale": "Rosa corintio, crema azufre, oliva y rosa laelia: pétalos claros con rama y hoja."
+    },
+    {
+      "id": 255,
+      "name_es": "Ribera del Nilo",
+      "name_de": "Pharaonenmaske",
+      "rationale": "Siena, amarillo pirita, azul calamina y negro: arena, oro, turquesa y sombra egipcia."
+    },
+    {
+      "id": 256,
+      "name_es": "Capuchinas trepadoras",
+      "name_de": "Tigerlilie",
+      "rationale": "Canela rosada, naranja, verde viridiano y negro: flor naranja sobre hoja y tierra."
+    },
+    {
+      "id": 257,
+      "name_es": "Confeti de carnaval",
+      "name_de": "Kirmes am Rhein",
+      "rationale": "Rojo espectro, naranja amarillo, azul y violeta acónito: papelillos de fiesta y luces de feria."
+    },
+    {
+      "id": 258,
+      "name_es": "Cesta de septiembre",
+      "name_de": "Erntekorb im September",
+      "rationale": "Granate, canela rosada, oliva y azul Amberes: cesta de huerto a final de verano."
+    },
+    {
+      "id": 259,
+      "name_es": "Costa de Amalfi",
+      "name_de": "Hafen von Sorrent",
+      "rationale": "Limón, verde azulado, azul Helvetia y gris cálido: fruta, mar y piedra de puerto italiano."
+    },
+    {
+      "id": 260,
+      "name_es": "Hibisco costero",
+      "name_de": "Seerosenteich",
+      "rationale": "Rosa antiguo, canela rosada, verde glauco y verde mar: flor y hoja sobre agua."
+    },
+    {
+      "id": 261,
+      "name_es": "Heladería de barrio",
+      "name_de": "Eisdiele",
+      "rationale": "Rojo frambuesa, crema, azul calamina y gris cálido: sabores de bola y mostrador de heladería."
+    },
+    {
+      "id": 262,
+      "name_es": "Fresas entre hojas",
+      "name_de": "Tomatenbeet",
+      "rationale": "Rojo de fruto sobre crema, con amarillo oliváceo y verde de hoja: fresas maduras entre la mata."
+    },
+    {
+      "id": 263,
+      "name_es": "Tejado marinero",
+      "name_de": "Hafen bei Ebbe",
+      "rationale": "Teja oxidada y arena junto a agua pálida y pizarra oscura: puerto al bajar la marea."
+    },
+    {
+      "id": 264,
+      "name_es": "Tulipán papagayo",
+      "name_de": "Papageientulpe",
+      "rationale": "Rosa claro y naranja encendido contra gris verdoso y cerúleo: pétalos rizados de tulipán papagayo."
+    },
+    {
+      "id": 265,
+      "name_es": "Mimosa a oscuras",
+      "name_de": "Raps in der Dämmerung",
+      "rationale": "Amarillo intenso y oliva sobre violeta casi negro, con un rosa viejo: flor amarilla en la oscuridad."
+    },
+    {
+      "id": 266,
+      "name_es": "Amapolas en trigal",
+      "name_de": "Zirkuswagen",
+      "rationale": "Rojo puro, crema de espiga, verde salvia y verdeazul: campo en junio o carromato pintado."
+    },
+    {
+      "id": 267,
+      "name_es": "Parque acuático",
+      "name_de": "Freibad im Juli",
+      "rationale": "Naranja y crema cálida frente a verde azulado y azul franco: toboganes y piscina de verano."
+    },
+    {
+      "id": 268,
+      "name_es": "Estanque helado",
+      "name_de": "Zugefrorener Teich",
+      "rationale": "Rosa polvoriento, siena y verde casi negro junto a azul hielo: orilla congelada en invierno."
+    },
+    {
+      "id": 269,
+      "name_es": "Bodega en octubre",
+      "name_de": "Kellergewölbe",
+      "rationale": "Siena, vino oscuro, malva y negro: fruta madura, cuero y penumbra de bodega."
+    },
+    {
+      "id": 270,
+      "name_es": "Huerta en agosto",
+      "name_de": "Radieschenbund",
+      "rationale": "Rojo de fruto, amarillo pálido y dos verdes de hoja: manojo recién arrancado."
+    },
+    {
+      "id": 271,
+      "name_es": "Fucsia en umbría",
+      "name_de": "Kolibri im Schatten",
+      "rationale": "Magenta vivo con menta, verdeazul y verde abisal: flor brillante en sombra húmeda."
+    },
+    {
+      "id": 272,
+      "name_es": "Polo de mandarina",
+      "name_de": "Limonadenstand",
+      "rationale": "Limón pálido, naranja, agua clara y azul lavanda: refresco helado a la orilla."
+    },
+    {
+      "id": 273,
+      "name_es": "Pétalos en la acera",
+      "name_de": "Bordstein im April",
+      "rationale": "Rosa flor, burdeos, marrón y gris neutro: pétalos caídos sobre suelo mojado."
+    },
+    {
+      "id": 274,
+      "name_es": "Tarde de feria",
+      "name_de": "Riesenrad am Abend",
+      "rationale": "Naranja rojizo, caqui, azul medio y malva claro: luces de atracciones al anochecer."
+    },
+    {
+      "id": 275,
+      "name_es": "Barro cocido",
+      "name_de": "Töpferscheibe",
+      "rationale": "Rojo ladrillo, arena, marrón rubia y pardo violáceo: cerámica y taller de alfarero."
+    },
+    {
+      "id": 276,
+      "name_es": "Sandía abierta",
+      "name_de": "Melonenscheibe",
+      "rationale": "Rosa intenso, rosa pálido, verde lima y negro: pulpa, corteza y pepitas."
+    },
+    {
+      "id": 277,
+      "name_es": "Orquídeas en penumbra",
+      "name_de": "Orchideenhaus",
+      "rationale": "Rosa, magenta y oliva sobre violeta negro: flor tropical en la oscuridad de un invernadero."
+    },
+    {
+      "id": 278,
+      "name_es": "Peral en septiembre",
+      "name_de": "Zucchiniblüte",
+      "rationale": "Crema, mostaza, verde y verde profundo: fruta y hoja al final del verano."
+    },
+    {
+      "id": 279,
+      "name_es": "Muelle de especias",
+      "name_de": "Seemannskiste",
+      "rationale": "Siena, melocotón y arena junto a azul marino: sacos de canela en un puerto."
+    },
+    {
+      "id": 280,
+      "name_es": "Seto de escaramujos",
+      "name_de": "Hagebuttenhecke",
+      "rationale": "Rojo fruto, verde oscuro, rosa apagado y pardo: escaramujos en el seto."
+    },
+    {
+      "id": 281,
+      "name_es": "Bajío tropical",
+      "name_de": "Minzlimonade",
+      "rationale": "Amarillo pálido, verdeazul, menta y azul profundo: aguas someras y bebida fría."
+    },
+    {
+      "id": 282,
+      "name_es": "Guisante de olor",
+      "name_de": "Tulpenmarkt",
+      "rationale": "Rojo, tostado, menta y lila: ramo de primavera sobre papel de estraza."
+    },
+    {
+      "id": 283,
+      "name_es": "Cúpula oxidada",
+      "name_de": "Verwitterte Kuppel",
+      "rationale": "Terracota, vino, verde salvia y turquesa: cobre envejecido de una cúpula sobre teja."
+    },
+    {
+      "id": 284,
+      "name_es": "Guacamayo",
+      "name_de": "Karibische Bucht",
+      "rationale": "Coral, amarillo puro, verde mar y verde oscuro: plumaje y bahía tropical."
+    },
+    {
+      "id": 285,
+      "name_es": "Pueblo de adobe",
+      "name_de": "Wüstenoase",
+      "rationale": "Rosa polvo, siena y naranja quemado con agua pálida: desierto y sombra de palmeras."
+    },
+    {
+      "id": 286,
+      "name_es": "Sari de azafrán",
+      "name_de": "Gewürzbasar",
+      "rationale": "Siena, azafrán, azul pavo e índigo: tejidos y puestos de especias."
+    },
+    {
+      "id": 287,
+      "name_es": "Casetas de playa",
+      "name_de": "Bonbonglas",
+      "rationale": "Rosa chicle, mostaza, celeste y aguamarina: pasteles de verano."
+    },
+    {
+      "id": 288,
+      "name_es": "Brasa nocturna",
+      "name_de": "Bernstein im Torf",
+      "rationale": "Naranja sobre sepia, pardo y negro: rescoldo o ámbar entre tierra oscura."
+    },
+    {
+      "id": 289,
+      "name_es": "Luciérnagas en junio",
+      "name_de": "Ginster im Dunkeln",
+      "rationale": "Limón y verde-amarillo sobre índigo y violeta negro: puntos de luz en la noche."
+    },
+    {
+      "id": 290,
+      "name_es": "Higuera en sombra",
+      "name_de": "Feigenbaum im Schatten",
+      "rationale": "Pardo ciruela, limón pálido, verde oscuro y menta: fruta y hoja bajo un árbol."
+    },
+    {
+      "id": 291,
+      "name_es": "Agua de lima",
+      "name_de": "Frühlingsquelle",
+      "rationale": "Verde-amarillo, verde mar, menta y aguamarina: frescor líquido."
+    },
+    {
+      "id": 292,
+      "name_es": "Pan recién hecho",
+      "name_de": "Butterkeks",
+      "rationale": "Limón pálido, canela, tostado y crudo: corteza, miga y lino."
+    },
+    {
+      "id": 293,
+      "name_es": "Sauce ribereño",
+      "name_de": "Bachlauf im Mai",
+      "rationale": "Siena, agua pálida, verde grisáceo y verde: tronco y hojas junto al arroyo."
+    },
+    {
+      "id": 294,
+      "name_es": "Narcisos en marzo",
+      "name_de": "Osterglocken",
+      "rationale": "Amarillo pálido y crema con verde y azul salvia: flores tempranas bajo cielo claro."
+    },
+    {
+      "id": 295,
+      "name_es": "Haz de faro",
+      "name_de": "Leuchtturmnacht",
+      "rationale": "Crema, amarillo puro, azul y violeta negro: haz de luz contra cielo oscuro."
+    },
+    {
+      "id": 296,
+      "name_es": "Madera de deriva",
+      "name_de": "Alte Landkarte",
+      "rationale": "Amarillo pálido, salmón ocre, umber y pizarra: papel viejo y madera gastada."
+    },
+    {
+      "id": 297,
+      "name_es": "Cosecha al anochecer",
+      "name_de": "Kürbisernte",
+      "rationale": "Siena, naranja, verde oliva e índigo: calabazas y campo al caer la tarde."
+    },
+    {
+      "id": 298,
+      "name_es": "Guindillas secas",
+      "name_de": "Getrocknete Chilis",
+      "rationale": "Siena, limón, naranja rojo y negro: ristra de guindillas al sol."
+    },
+    {
+      "id": 299,
+      "name_es": "Frambuesas del jardín",
+      "name_de": "Beeren am Ufer",
+      "rationale": "Frambuesa, melocotón, oliva y azul verdoso: fruta, hoja y agua."
+    },
+    {
+      "id": 300,
+      "name_es": "Orilla de coral",
+      "name_de": "Café an der Promenade",
+      "rationale": "Salmón, crema, agua pálida y aguamarina: mañana en la costa."
+    },
+    {
+      "id": 301,
+      "name_es": "Ramo de abril",
+      "name_de": "Wiesenstrauß",
+      "rationale": "Rojo, marfil, verde salvia y malva: flores de primavera junto a una valla."
+    },
+    {
+      "id": 302,
+      "name_es": "Duna de madrugada",
+      "name_de": "Dünen vor Tagesanbruch",
+      "rationale": "Crema, arena, azul hielo y azul profundo: playa antes del sol."
+    },
+    {
+      "id": 303,
+      "name_es": "Caquis en la tapia",
+      "name_de": "Kaki auf Stein",
+      "rationale": "Amarillo pálido y naranja vivo sobre gris y verde negro: fruta madura sobre piedra."
+    },
+    {
+      "id": 304,
+      "name_es": "Musgo sobre herrumbre",
+      "name_de": "Moos auf Rost",
+      "rationale": "Rojizo oscuro, crema, caqui y verdeazul: musgo creciendo sobre metal oxidado."
+    },
+    {
+      "id": 305,
+      "name_es": "Piña colada",
+      "name_de": "Frühstück am Meer",
+      "rationale": "Melocotón, amarillo, verde lima y agua pálida: bebida tropical frente al mar."
+    },
+    {
+      "id": 306,
+      "name_es": "Selva recién llovida",
+      "name_de": "Regenwaldmorgen",
+      "rationale": "Limón, verdeazul, verde viridiano y azul hielo: hojas mojadas y luz."
+    },
+    {
+      "id": 307,
+      "name_es": "Terciopelo de ópera",
+      "name_de": "Samtvorhang",
+      "rationale": "Carmín, lavanda gris, malva y púrpura oscuro: telón y palco."
+    },
+    {
+      "id": 308,
+      "name_es": "Fresas con nata",
+      "name_de": "Erdbeerbeet",
+      "rationale": "Rosa beige, escarlata, naranja rojo y menta: fruta, hoja y nata."
+    },
+    {
+      "id": 309,
+      "name_es": "Ocaso sobre olas",
+      "name_de": "Abendrot am Fjord",
+      "rationale": "Dorado y albaricoque sobre índigo y azul profundo: cielo encendido sobre agua oscura."
+    },
+    {
+      "id": 310,
+      "name_es": "Aceite y hogaza",
+      "name_de": "Steinofenbrot",
+      "rationale": "Amarillo pálido, canela, oliva y verde negro: aceite, pan de horno y sombra de olivo."
+    },
+    {
+      "id": 311,
+      "name_es": "Manzanos en primavera",
+      "name_de": "Apfelwiese im Frühling",
+      "rationale": "Rojo oscuro, crema, gris verdoso y verde-amarillo: manzano en flor con hoja tierna."
+    },
+    {
+      "id": 312,
+      "name_es": "Lago alpino",
+      "name_de": "Lärchen im Oktober",
+      "rationale": "Siena, naranja, verde gris y azul profundo: árboles de otoño junto al agua."
+    },
+    {
+      "id": 313,
+      "name_es": "Naipes sobre fieltro",
+      "name_de": "Kartentisch",
+      "rationale": "Carmín, amarillo, verde y negro: mesa de juego."
+    },
+    {
+      "id": 314,
+      "name_es": "Peonía al crepúsculo",
+      "name_de": "Tintenrose",
+      "rationale": "Rosa vivo, rojizo, azul real y violeta oscuro: flor contra cielo de tinta."
+    },
+    {
+      "id": 315,
+      "name_es": "Ponche de frutas",
+      "name_de": "Früchtebowle",
+      "rationale": "Salmón, amarillo pálido, dorado y púrpura orquídea: ponche de frutas de verano."
+    },
+    {
+      "id": 316,
+      "name_es": "Vidriera de catedral",
+      "name_de": "Edelsteinschatulle",
+      "rationale": "Rojo oscuro, verde viridiano, violeta y rojo violeta: cristal y piedras preciosas."
+    },
+    {
+      "id": 317,
+      "name_es": "Nácar y vainilla",
+      "name_de": "Muschelschale",
+      "rationale": "Canela clara, crudo, limón y agua pálida: nácar de concha y crema de vainilla."
+    },
+    {
+      "id": 318,
+      "name_es": "Pinar en penumbra",
+      "name_de": "Schwarzwald im Regen",
+      "rationale": "Oliva pardo, oliva negro, verde oscuro y verde pizarra: bosque denso."
+    },
+    {
+      "id": 319,
+      "name_es": "Cempasúchil",
+      "name_de": "Studentenblumen",
+      "rationale": "Siena, amarillo, naranja y verde: flores de oro sobre hoja."
+    },
+    {
+      "id": 320,
+      "name_es": "Terraza de junio",
+      "name_de": "Krabbenbrötchen",
+      "rationale": "Coral, crema, oliva y azul grisáceo: verano junto al mar."
+    },
+    {
+      "id": 321,
+      "name_es": "Brezal brumoso",
+      "name_de": "Nasses Schieferdach",
+      "rationale": "Rosa polvo, amarillo pálido, verde negro y azul salvia: paisaje bajo la niebla."
+    },
+    {
+      "id": 322,
+      "name_es": "Macizo de fucsias",
+      "name_de": "Fuchsienbeet",
+      "rationale": "Rojo puro, rojizo, púrpura orquídea y azul violeta: fucsias en flor."
+    },
+    {
+      "id": 323,
+      "name_es": "Secadero de tabaco",
+      "name_de": "Tabakscheune",
+      "rationale": "Canela, oliva amarillo, marrón rojizo y negro: hojas de tabaco colgadas en un secadero."
+    },
+    {
+      "id": 324,
+      "name_es": "Lluvia urbana",
+      "name_de": "Schirme in der Stadt",
+      "rationale": "Rojo oscuro, azul medio, malva y gris: ciudad mojada."
+    },
+    {
+      "id": 325,
+      "name_es": "Fachada toscana",
+      "name_de": "Safranküche",
+      "rationale": "Rojo, amarillo pálido, ocre y verde oscuro: muro al sol y persianas."
+    },
+    {
+      "id": 326,
+      "name_es": "Ensalada fresca",
+      "name_de": "Kapuzinerkresse",
+      "rationale": "Amarillo pálido, naranja rojo, lima y verde vivo: flor y hoja recién cortadas."
+    },
+    {
+      "id": 327,
+      "name_es": "Pétalos secos",
+      "name_de": "Marzipanrose",
+      "rationale": "Rosa, siena, crudo y lavanda gris: flor prensada sobre papel."
+    },
+    {
+      "id": 328,
+      "name_es": "Zoco de Fez",
+      "name_de": "Grünspan auf Kupfer",
+      "rationale": "Rojo ladrillo, albaricoque, marrón oscuro y verde porcelana: cobre y cerámica."
+    },
+    {
+      "id": 329,
+      "name_es": "Última luz",
+      "name_de": "Kerzenlicht im Winter",
+      "rationale": "Crema, lavanda gris, púrpura y pizarra: claridad que se apaga."
+    },
+    {
+      "id": 330,
+      "name_es": "Cristal de mar",
+      "name_de": "Geschliffenes Glas",
+      "rationale": "Verde pálido, azul hielo, azul salvia y verdeazul: agua fría y vidrio pulido."
+    },
+    {
+      "id": 331,
+      "name_es": "Zarzamora madura",
+      "name_de": "Reife Brombeeren",
+      "rationale": "Frambuesa, violeta negro, malva y violeta: fruto oscuro."
+    },
+    {
+      "id": 332,
+      "name_es": "Rosas del seto",
+      "name_de": "Stechpalme",
+      "rationale": "Coral, escarlata, verde negro y verde oscuro: flor o baya sobre follaje denso."
+    },
+    {
+      "id": 333,
+      "name_es": "Bahía de veraneo",
+      "name_de": "Ferienbucht",
+      "rationale": "Siena, limón, menta y azul: cascos pintados en una bahía de veraneo."
+    },
+    {
+      "id": 334,
+      "name_es": "Marisma en primavera",
+      "name_de": "Schilf am Kanal",
+      "rationale": "Rosa concha, oliva, lima y azul verdoso: caña, brote y agua."
+    },
+    {
+      "id": 335,
+      "name_es": "Máscara veneciana",
+      "name_de": "Venezianische Maske",
+      "rationale": "Rojo oscuro, naranja, violeta y pizarra: fiesta nocturna."
+    },
+    {
+      "id": 336,
+      "name_es": "Tarta de ruibarbo",
+      "name_de": "Erdbeertörtchen",
+      "rationale": "Rosa, rojizo, limón pálido y oliva oscuro: fruta, masa y crema."
+    },
+    {
+      "id": 337,
+      "name_es": "Terciopelo ajado",
+      "name_de": "Pflaumenmus",
+      "rationale": "Pardo ciruela, rosa apagado, carmín violáceo y negro: terciopelo viejo, dulzor oscuro."
+    },
+    {
+      "id": 338,
+      "name_es": "Dalias tardías",
+      "name_de": "Bauerngarten im Herbst",
+      "rationale": "Rojo carmín, naranja, verde oscuro y lavanda gris: jardín en octubre."
+    },
+    {
+      "id": 339,
+      "name_es": "Poniente serrano",
+      "name_de": "Wüstendämmerung",
+      "rationale": "Salmón ocre, naranja, azul grisáceo e índigo: cielo al caer el sol."
+    },
+    {
+      "id": 340,
+      "name_es": "Letrero de neón",
+      "name_de": "Nächtliche Tankstelle",
+      "rationale": "Naranja rojo y verde mar sobre gris y negro: luz eléctrica en la noche."
+    },
+    {
+      "id": 341,
+      "name_es": "Salmón en el torrente",
+      "name_de": "Lachs im Bergbach",
+      "rationale": "Salmón, verde, verde negro y azul grisáceo: pez vivo entre agua y bosque."
+    },
+    {
+      "id": 342,
+      "name_es": "Merienda de domingo",
+      "name_de": "Zimtschnecke",
+      "rationale": "Rosa, crema, ocre pardo y verde negro: bollería y taza."
+    },
+    {
+      "id": 343,
+      "name_es": "Maleta de cuero",
+      "name_de": "Lederkoffer am Kai",
+      "rationale": "Siena, marfil, oliva gris y azul profundo: cuero, lona y agua fría."
+    },
+    {
+      "id": 344,
+      "name_es": "Fuegos artificiales",
+      "name_de": "Silvesterhimmel",
+      "rationale": "Canela clara, azul real, malva y negro: destellos sobre cielo oscuro."
+    },
+    {
+      "id": 345,
+      "name_es": "Óxido sobre hielo",
+      "name_de": "Eisgang im März",
+      "rationale": "Rojizo, azul hielo, turquesa y azul violeta: metal y agua helada."
+    },
+    {
+      "id": 346,
+      "name_es": "Orquídea de invernadero",
+      "name_de": "Alpenveilchen im Moos",
+      "rationale": "Magenta, agua pálida, verde-amarillo y verde gris: flor y musgo."
+    },
+    {
+      "id": 347,
+      "name_es": "Hortensia marina",
+      "name_de": "Flieder an der Küste",
+      "rationale": "Oliva amarillo, verde mar, azul profundo y lila: flor junto al agua."
+    },
+    {
+      "id": 348,
+      "name_es": "Mata de berenjena",
+      "name_de": "Rotkohl und Wirsing",
+      "rationale": "Verde pálido, verde, oliva negro y púrpura oscuro: hoja y fruto."
+    }
+  ]
+}

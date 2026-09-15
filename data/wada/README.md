@@ -141,3 +141,17 @@ sRGB, relative colorimetric + compensación de punto negro). Si en la máquina h
 máxima por canal en `CONVERSION_CHECK.md` y añade a cada errata CMYK un `derived_rgb_candidate`
 (el sRGB que tendría el color con el CMYK del libro). Sin perfil, el informe lo dice y no hay
 candidatos. El perfil de Adobe no se incluye en el repo (licencia de Adobe).
+
+## Propuestas de nombres
+
+`names.suggested.json` es una **propuesta** del agente (348 entradas `{id, name_es, name_de,
+rationale}`, una por lámina, revisadas para evitar duplicados, anglicismos y palabras clave
+repetidas más de tres veces). No es el fichero curado y el generador no lo lee.
+
+Para aceptar un nombre: copiar `name_es` **o** `name_de` al campo `name` de la entrada con el
+mismo `id` en `names.es.json`, poner `lang` en `es` o `de` según el que se haya elegido y
+`status` en `accepted` (`notes` es libre). También se puede hacer desde
+`harness/label/names.html` (`make names-html`), pegando el nombre elegido en el campo de la
+lámina y descargando el `names.es.json` resultante. Si ninguna de las dos opciones convence,
+se puede pedir al agente otra ronda (para un `id` concreto, un lote o todo el diccionario);
+el agente solo reescribe `names.suggested.json`, nunca `names.es.json`.

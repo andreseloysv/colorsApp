@@ -8,8 +8,7 @@
  * Funciones de libm usadas: las de ce_math (pow/cbrt/atan2/sin/cos/exp) y
  * exp en la gaussiana (ce_image.c).
  *
- * Al final del fichero viven los stubs de la fase 3 (ce_match, ce_analyze):
- * devuelven CE_ERR_NOT_IMPLEMENTED hasta que exista ce_match.c.
+ * La capa 3 (ce_match, ce_analyze, ce_match_opts_default) vive en ce_match.c.
  */
 #include "ce_internal.h"
 
@@ -41,18 +40,6 @@ void ce_palette_opts_default(ce_palette_opts *o)
     o->merge_de = 5.0;
     o->min_weight = 0.05;
     o->skin_rule = 0;
-}
-
-void ce_match_opts_default(ce_match_opts *o)
-{
-    if (o == NULL) {
-        return;
-    }
-    o->kL = 1.0;
-    o->kC = 1.0;
-    o->kH = 1.0;
-    o->coverage_lambda = 0.5;
-    o->ambiguous_gap = 1.0;
 }
 
 static int ce_opts_valid(const ce_palette_opts *o)
@@ -687,22 +674,4 @@ uint64_t ce_result_hash(const ce_result *r)
         h = ce_fnv1a_bytes(h, &amb, 1);
     }
     return h;
-}
-
-/* ------------------------------------------------------------------------
- * Fase 3 (stubs): ce_match.c los sustituirá.
- * ---------------------------------------------------------------------- */
-
-int ce_match(const ce_ctx *ctx, const ce_swatch *sw, int n, const ce_match_opts *o,
-             ce_hit *out, int top_k, int *ambiguous)
-{
-    (void)ctx; (void)sw; (void)n; (void)o; (void)out; (void)top_k; (void)ambiguous;
-    return CE_ERR_NOT_IMPLEMENTED;
-}
-
-int ce_analyze(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *po,
-               const ce_match_opts *mo, ce_result *out)
-{
-    (void)ctx; (void)img; (void)po; (void)mo; (void)out;
-    return CE_ERR_NOT_IMPLEMENTED;
 }
