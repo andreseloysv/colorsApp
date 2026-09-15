@@ -308,3 +308,126 @@ final class MatchTests: XCTestCase {
         }
     }
 }
+
+// MARK: - Máscara opcional (fase 6: EngineBridge de la app la usa para la
+// segmentación de persona)
+
+final class MaskTests: XCTestCase {
+    /// Dos bandas horizontales 50/50: rojo arriba, azul abajo.
+    private func twoBlockImage(width: Int, height: Int, stride: Int) -> [UInt8] {
+        var px = [UInt8](repeating: 0, count: stride * height)
+        for y in 0..<height {
+            let c: (UInt8, UInt8, UInt8) = y < height / 2 ? (200, 30, 40) : (30, 60, 200)
+            for x in 0..<width {
+                let o = y * stride + x * 4
+                px[o] = c.0
+                px[o + 1] = c.1
+                px[o + 2] = c.2
+                px[o + 3] = 255
+            }
+        }
+        return px
+    }
+
+    func testMaskDropsMaskedPixels() throws {
+        let width = 64, height = 64, stride = width * 4
+        let px = twoBlockImage(width: width, height: height, stride: stride)
+        var opts = PaletteOptions.default
+        opts.centerSigma = 0
+        // Máscara: solo la mitad superior (roja) cuenta.
+        var mask = [UInt8](repeating: 0, count: width * height)
+        for i in 0..<(width * height / 2) { mask[i] = 255 }
+        let palette = try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                try extractPalette(rgba: buf, width: width, height: height, stride: stride, options: opts, mask: m)
+            }
+        }
+        XCTAssertEqual(palette.count, 1)
+        XCTAssertEqual(palette[0].hex, "#c81e28")
+        XCTAssertEqual(palette[0].weight, 1.0, accuracy: 1e-12)
+        // Sin máscara: dos swatches 50/50.
+        let full = try px.withUnsafeBufferPointer { buf in
+            try extractPalette(rgba: buf, width: width, height: height, stride: stride, options: opts)
+        }
+        XCTAssertEqual(full.count, 2)
+        // analyze con la misma máscara devuelve la misma paleta.
+        let r = try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                try analyze(rgba: buf, width: width, height: height, stride: stride, paletteOptions: opts, mask: m)
+            }
+        }
+        XCTAssertEqual(r.swatches, palette)
+        XCTAssertEqual(r.hits.count, 3)
+    }
+
+    /// Mitades izquierda/derecha (la máscara varía dentro de cada fila): el
+    /// swatch enmascarado debe ser exacto igual que con mitades arriba/abajo.
+    func testMaskLeftRightHalvesExact() throws {
+        let width = 64, height = 64, stride = width * 4
+        var px = [UInt8](repeating: 0, count: stride * height)
+        var mask = [UInt8](repeating: 0, count: width * height)
+        for y in 0..<height {
+            for x in 0..<width {
+                let c: (UInt8, UInt8, UInt8) = x < width / 2 ? (200, 30, 40) : (30, 60, 200)
+                let o = y * stride + x * 4
+                px[o] = c.0
+                px[o + 1] = c.1
+                px[o + 2] = c.2
+                px[o + 3] = 255
+                mask[y * width + x] = x < width / 2 ? 255 : 0
+            }
+        }
+        var opts = PaletteOptions.default
+        opts.centerSigma = 0
+        let palette = try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                try extractPalette(rgba: buf, width: width, height: height, stride: stride, options: opts, mask: m)
+            }
+        }
+        XCTAssertEqual(palette.count, 1)
+        XCTAssertEqual(palette[0].hex, "#c81e28")
+        XCTAssertEqual(palette[0].weight, 1.0, accuracy: 1e-12)
+        XCTAssertEqual(palette[0].lab, srgbToLab(r: 200, g: 30, b: 40))
+        // Con sigma por defecto (0,35) el swatch sigue siendo exactamente rojo.
+        let centered = try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                try extractPalette(rgba: buf, width: width, height: height, stride: stride, mask: m)
+            }
+        }
+        XCTAssertEqual(centered.count, 1)
+        XCTAssertEqual(centered[0].hex, "#c81e28")
+    }
+
+    func testMaskAllZeroGivesMeanColor() throws {
+        let width = 32, height = 32, stride = width * 4
+        let px = twoBlockImage(width: width, height: height, stride: stride)
+        let mask = [UInt8](repeating: 0, count: width * height)
+        let palette = try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                try extractPalette(rgba: buf, width: width, height: height, stride: stride, mask: m)
+            }
+        }
+        XCTAssertEqual(palette.count, 1)
+        XCTAssertEqual(palette[0].weight, 1.0, accuracy: 1e-12)
+        // Media (sin ponderar) de (200,30,40) y (30,60,200): (115, 45, 120).
+        XCTAssertEqual(Int(palette[0].r), 115)
+        XCTAssertEqual(Int(palette[0].g), 45)
+        XCTAssertEqual(Int(palette[0].b), 120)
+    }
+
+    func testMaskTooSmallThrows() throws {
+        let width = 8, height = 8, stride = width * 4
+        let px = twoBlockImage(width: width, height: height, stride: stride)
+        let mask = [UInt8](repeating: 255, count: width * height - 1)
+        try px.withUnsafeBufferPointer { buf in
+            try mask.withUnsafeBufferPointer { m in
+                XCTAssertThrowsError(try extractPalette(rgba: buf, width: width, height: height, stride: stride, mask: m)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .maskTooSmall(required: 64, actual: 63))
+                }
+                XCTAssertThrowsError(try analyze(rgba: buf, width: width, height: height, stride: stride, mask: m)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .maskTooSmall(required: 64, actual: 63))
+                }
+            }
+        }
+    }
+}

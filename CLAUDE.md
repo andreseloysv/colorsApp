@@ -46,9 +46,17 @@ comentarios en español; identificadores, ficheros y símbolos en inglés.
 | `make eval` / `eval-fast` | Scorecard completo de las capas L1–L4 / L1+L2+10 % de L3 (L1 y L2 desde la fase 2, L3 desde la 3; holdout y L4 `skipped` sin sus datos) |
 | `make ios-generate` | `xcodegen generate` en `ios/` (crea `ios/Signing.xcconfig` desde la plantilla si falta) |
 | `make ios-build-sim` / `ios-build-device-nosign` | Build sin firma para simulador / dispositivo genérico |
-| `make ios-test-sim` / `ios-run-sim` | XCTest en el primer iPhone simulado / boot+install+launch y captura `harness/out/stub.png` |
+| `make ios-test-sim` / `ios-run-sim` | Todos los XCTest en el simulador `SIM_NAME` (boot si hace falta + `simctl privacy grant photos` + `xcodebuild test`, sin sysdiagnose) / boot+install+launch y captura `harness/out/stub.png` |
+| `make ios-addmedia MEDIA_DIR=<dir>` | `xcrun simctl addmedia` de todos los PNG de `MEDIA_DIR` al carrete del simulador `SIM_NAME` (fixtures del escaneo día 0) |
 | `make ios-install DEVICE=<udid>` | Build firmada + `devicectl install` + launch en un iPhone (exige identidad Apple Development) |
 | `make ios-lint` | Falla si `ios/` (sin el `.xcodeproj` generado ni `build-ios/`) contiene `URLSession|NWConnection|CFNetwork` |
+
+Variables de `mk/ios.mk`: `SIM_NAME` (simulador por nombre, defecto `iPhone 18 Pro`; `SIM_UDID`
+se resuelve desde él o se pasa directo), `DERIVED` (DerivedData de xcodebuild, defecto
+`build-ios`; **cada agente que compile en paralelo usa el suyo y su propio simulador**, p. ej.
+`make ios-test-sim DERIVED=build-ios-hoy SIM_NAME="iPhone 17"`), `MEDIA_DIR` (ios-addmedia),
+`DEVICE` (UDID físico), `IOS_CONFIG` (Debug). Fixtures de `EngineParityTests`: `uv run --project
+oracle python oracle/tools/make_ios_fixtures.py` (solo lee `harness/golden/`; `--check` verifica).
 
 Python siempre vía uv: `uv run --project oracle python ...` (el venv vive en `oracle/.venv`).
 El Makefile raíz no se edita: cada área añade sus targets en `mk/<area>.mk` usando

@@ -63,6 +63,8 @@ public func deltaE76(_ x: Lab, _ y: Lab) -> Double {
 public enum ColorEngineError: Error, Equatable, Sendable {
     /// El buffer es más corto que (height - 1) * stride + width * 4.
     case bufferTooSmall(required: Int, actual: Int)
+    /// La máscara opcional tiene menos de width * height bytes.
+    case maskTooSmall(required: Int, actual: Int)
     /// El motor devolvió un código negativo (ce_status de ce.h).
     case engine(code: Int32)
 }
@@ -168,15 +170,31 @@ private func validateRGBA(_ rgba: UnsafeBufferPointer<UInt8>, width: Int, height
     return base
 }
 
+/// Máscara opcional de ce_image: width * height bytes empaquetados sin stride
+/// (0 anula el píxel, 255 = peso pleno). nil => sin máscara. Devuelve el
+/// puntero base o nil; lanza `maskTooSmall` si el buffer es corto.
+private func validateMask(_ mask: UnsafeBufferPointer<UInt8>?, width: Int, height: Int) throws -> UnsafePointer<UInt8>? {
+    guard let mask else { return nil }
+    let required = width * height
+    guard let base = mask.baseAddress, mask.count >= required else {
+        throw ColorEngineError.maskTooSmall(required: required, actual: mask.count)
+    }
+    return base
+}
+
 /// Extrae la paleta dominante de un buffer RGBA8 sRGB (alpha ignorada, no
 /// premultiplicada) de `width` x `height` píxeles con `stride` bytes por fila.
 /// Reserva un `ce_ctx` con `ce_ctx_size()` (alineado a 16) solo durante la
 /// llamada. Toda la lógica está en C (ce_palette_extract); devuelve los
-/// swatches ordenados por peso descendente (suma 1). Lanza
-/// `ColorEngineError` si el buffer es corto o el motor devuelve un error.
+/// swatches ordenados por peso descendente (suma 1). `mask` opcional (width *
+/// height bytes, sin stride, 0..255: multiplica el peso de cada píxel; la
+/// máscara toda a 0 da 1 swatch con el color medio). Lanza `ColorEngineError`
+/// si el buffer o la máscara son cortos o el motor devuelve un error.
 public func extractPalette(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
-                           options: PaletteOptions = .default) throws -> [Swatch] {
+                           options: PaletteOptions = .default,
+                           mask: UnsafeBufferPointer<UInt8>? = nil) throws -> [Swatch] {
     let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let maskBase = try validateMask(mask, width: width, height: height)
     let size = ce_ctx_size()
     let mem = UnsafeMutableRawPointer.allocate(byteCount: size, alignment: 16)
     defer { mem.deallocate() }
@@ -184,7 +202,7 @@ public func extractPalette(rgba: UnsafeBufferPointer<UInt8>, width: Int, height:
         throw ColorEngineError.engine(code: CE_ERR_CTX.rawValue)
     }
     var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
-                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: nil)
+                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: maskBase)
     var opts = options.cValue
     var out = [ce_swatch](repeating: ce_swatch(), count: Int(CE_PALETTE_MAX_COLORS))
     let n = out.withUnsafeMutableBufferPointer { buf -> Int32 in
@@ -357,15 +375,17 @@ public var colorEngineMaxHits: Int {
 /// Paleta + match contra el diccionario (ce_analyze) sobre un buffer RGBA8
 /// sRGB como el de `extractPalette`. `topK` en 1...10 (si no, lanza
 /// `.engine(code: CE_ERR_ARG)`); el motor calcula siempre los 10 mejores y
-/// aquí se devuelven los `topK` primeros. Reserva un `ce_ctx` solo durante
-/// la llamada; nada de lógica de color en Swift.
+/// aquí se devuelven los `topK` primeros. `mask` opcional como en
+/// `extractPalette` (width * height bytes, 0 anula el píxel). Reserva un
+/// `ce_ctx` solo durante la llamada; nada de lógica de color en Swift.
 public func analyze(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
                     paletteOptions: PaletteOptions = .default, matchOptions: MatchOptions = .default,
-                    topK: Int = 3) throws -> AnalysisResult {
+                    topK: Int = 3, mask: UnsafeBufferPointer<UInt8>? = nil) throws -> AnalysisResult {
     guard topK >= 1, topK <= Int(CE_MATCH_MAX_HITS) else {
         throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
     }
     let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let maskBase = try validateMask(mask, width: width, height: height)
     let size = ce_ctx_size()
     let mem = UnsafeMutableRawPointer.allocate(byteCount: size, alignment: 16)
     defer { mem.deallocate() }
@@ -373,7 +393,7 @@ public func analyze(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, s
         throw ColorEngineError.engine(code: CE_ERR_CTX.rawValue)
     }
     var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
-                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: nil)
+                       stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: maskBase)
     var po = paletteOptions.cValue
     var mo = matchOptions.cValue
     var res = ce_result()

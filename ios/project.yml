@@ -1,6 +1,13 @@
 # Proyecto Xcode generado con XcodeGen (`make ios-generate`). El .xcodeproj no
 # se versiona. Firma: DEVELOPMENT_TEAM viene de ios/Signing.xcconfig (gitignored;
 # copia de ios/Signing.example.xcconfig que `make ios-generate` crea si falta).
+#
+# Dependencias SPM: el motor local ../engine (producto ColorEngine) y GRDB.swift
+# (SQLite, MIT). La red solo se usa para resolver paquetes al compilar; la app
+# no usa red (make ios-lint). Sin entitlements ni capabilities (Personal Team).
+#
+# Recursos del diccionario: se referencian desde ../data/wada (no se copian al
+# árbol de ios/); names.es.json es ruta protegida y solo se lee.
 name: ColorsApp
 options:
   bundleIdPrefix: com.andreseloy
@@ -26,6 +33,9 @@ settings:
 packages:
   ColorEngine:
     path: ../engine
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 7.0.0
 
 targets:
   ColorsApp:
@@ -34,9 +44,18 @@ targets:
     sources:
       - path: ColorsApp
         excludes: [Info.plist]
+      # Diccionario de Wada (data/wada), referenciado, no copiado.
+      - path: ../data/wada/dictionary.json
+        buildPhase: resources
+        group: Resources
+      - path: ../data/wada/names.es.json
+        buildPhase: resources
+        group: Resources
     dependencies:
       - package: ColorEngine
         product: ColorEngine
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.andreseloy.colorsapp
@@ -49,15 +68,25 @@ targets:
   ColorsAppTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [ColorsAppTests]
+    sources:
+      - path: ColorsAppTests
+        excludes: [Fixtures]
+      # Fixtures (5 PPM de harness/golden + PNG sRGB/Display P3 + expected_match.json)
+      # generadas por oracle/tools/make_ios_fixtures.py; van planas en el bundle del test.
+      - path: ColorsAppTests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: ColorsApp
       - package: ColorEngine
         product: ColorEngine
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.andreseloy.colorsapp.tests
         GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ColorsApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ColorsApp"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 
 schemes:
   ColorsApp:

@@ -1,0 +1,600 @@
+{
+ "schema": 1,
+ "kind": "ios_parity_fixtures",
+ "source": "harness/golden/match_50.json",
+ "generator": "oracle/tools/make_ios_fixtures.py",
+ "ce_version": "0.1.0",
+ "dict_version": "fd95ac692777",
+ "tolerance": 1e-09,
+ "top_k": 3,
+ "n": 5,
+ "entries": [
+  {
+   "file": "f01_c003_v01.ppm",
+   "png_srgb": "f01_c003_v01_srgb.png",
+   "png_p3": "f01_c003_v01_p3.png",
+   "sha256": "b73588c7c0ec9efeefdc443249dec660c378b626d1187ad5027ed7185066be69",
+   "combo_id": 3,
+   "variant": "shapes",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      94.33366871917939,
+      -3.993756616800681,
+      33.456579616509494
+     ],
+     "weight": 0.5621112796201297,
+     "rgb": [
+      255,
+      239,
+      174
+     ],
+     "hex": "#ffefae"
+    },
+    {
+     "lab": [
+      54.56402377278373,
+      23.43841512833261,
+      51.57191775424995
+     ],
+     "weight": 0.43788872037987026,
+     "rgb": [
+      187,
+      113,
+      37
+     ],
+     "hex": "#bb7125"
+    }
+   ],
+   "hits": [
+    {
+     "id": 3,
+     "score": 1.007747027406369e-12,
+     "size": 2,
+     "colors": [
+      13,
+      39
+     ]
+    },
+    {
+     "id": 102,
+     "score": 11.418745355239,
+     "size": 2,
+     "colors": [
+      41,
+      67
+     ]
+    },
+    {
+     "id": 31,
+     "score": 17.94174087010372,
+     "size": 2,
+     "colors": [
+      17,
+      39
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "1916605accb98536"
+  },
+  {
+   "file": "f13_c076_v07.ppm",
+   "png_srgb": "f13_c076_v07_srgb.png",
+   "png_p3": "f13_c076_v07_p3.png",
+   "sha256": "450734cde1c3121b7c40ef9a9bbc9de4fe234febe6b798b00b60bd56c5149ebf",
+   "combo_id": 76,
+   "variant": "jpeg",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      66.788008458609,
+      -1.6356313421260664,
+      2.933318049138355
+     ],
+     "weight": 0.5645711340357732,
+     "rgb": [
+      162,
+      163,
+      157
+     ],
+     "hex": "#a2a39d"
+    },
+    {
+     "lab": [
+      94.04362987988647,
+      -3.4235427556426137,
+      32.77464866905468
+     ],
+     "weight": 0.38073001587151095,
+     "rgb": [
+      255,
+      238,
+      175
+     ],
+     "hex": "#ffeeaf"
+    },
+    {
+     "lab": [
+      66.38955201041279,
+      2.0728219854336896,
+      -0.07949633922036893
+     ],
+     "weight": 0.05469885009271591,
+     "rgb": [
+      165,
+      160,
+      162
+     ],
+     "hex": "#a5a0a2"
+    }
+   ],
+   "hits": [
+    {
+     "id": 76,
+     "score": 2.525296451199673,
+     "size": 2,
+     "colors": [
+      39,
+      156
+     ]
+    },
+    {
+     "id": 169,
+     "score": 8.988511054062974,
+     "size": 3,
+     "colors": [
+      1,
+      39,
+      156
+     ]
+    },
+    {
+     "id": 11,
+     "score": 13.424585007853992,
+     "size": 2,
+     "colors": [
+      41,
+      155
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "cddba035a8646532"
+  },
+  {
+   "file": "f24_c148_v09.ppm",
+   "png_srgb": "f24_c148_v09_srgb.png",
+   "png_p3": "f24_c148_v09_p3.png",
+   "sha256": "b9335fbe08e88e25dc809f5dafdc8776ea2f3b40bc7e87de446a1389dd2021e2",
+   "combo_id": 148,
+   "variant": "distractor",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      31.89914395407129,
+      41.36337798996293,
+      41.81505633184159
+     ],
+     "weight": 0.36519655141576113,
+     "rgb": [
+      140,
+      39,
+      6
+     ],
+     "hex": "#8c2706"
+    },
+    {
+     "lab": [
+      74.37336616408635,
+      -0.06907273290668314,
+      61.78281966109019
+     ],
+     "weight": 0.2862264399239222,
+     "rgb": [
+      214,
+      180,
+      62
+     ],
+     "hex": "#d6b43e"
+    },
+    {
+     "lab": [
+      77.87037500921502,
+      15.54734711721184,
+      78.19717248514615
+     ],
+     "weight": 0.20659058176131,
+     "rgb": [
+      252,
+      179,
+      21
+     ],
+     "hex": "#fcb315"
+    },
+    {
+     "lab": [
+      55.66768838109616,
+      -25.96576918101573,
+      -18.755010502525483
+     ],
+     "weight": 0.1419864268990066,
+     "rgb": [
+      0,
+      147,
+      165
+     ],
+     "hex": "#0093a5"
+    }
+   ],
+   "hits": [
+    {
+     "id": 249,
+     "score": 17.40274534508438,
+     "size": 4,
+     "colors": [
+      32,
+      53,
+      58,
+      124
+     ]
+    },
+    {
+     "id": 148,
+     "score": 18.301821341468003,
+     "size": 3,
+     "colors": [
+      58,
+      60,
+      117
+     ]
+    },
+    {
+     "id": 124,
+     "score": 18.632143173766373,
+     "size": 3,
+     "colors": [
+      35,
+      59,
+      93
+     ]
+    }
+   ],
+   "ambiguous": 1,
+   "hash": "88bd56ae7e76dfdb"
+  },
+  {
+   "file": "f37_c253_v09.ppm",
+   "png_srgb": "f37_c253_v09_srgb.png",
+   "png_p3": "f37_c253_v09_p3.png",
+   "sha256": "464725872033049d3071534689e3889ffbf211b4bb070aa46aa11683fbd76c34",
+   "combo_id": 253,
+   "variant": "distractor",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      51.1794615702168,
+      29.0543795918054,
+      -39.07674916926575
+     ],
+     "weight": 0.3651965514157602,
+     "rgb": [
+      136,
+      107,
+      189
+     ],
+     "hex": "#886bbd"
+    },
+    {
+     "lab": [
+      28.13563443813166,
+      -4.8028427711966915,
+      -6.408969290243904
+     ],
+     "weight": 0.22555325579200217,
+     "rgb": [
+      52,
+      69,
+      76
+     ],
+     "hex": "#34454c"
+    },
+    {
+     "lab": [
+      18.36995873706136,
+      34.265703878015195,
+      -16.373180244754494
+     ],
+     "weight": 0.16454340322500693,
+     "rgb": [
+      80,
+      19,
+      69
+     ],
+     "hex": "#501345"
+    },
+    {
+     "lab": [
+      68.7011790558397,
+      35.366658383354455,
+      48.75596678530428
+     ],
+     "weight": 0.16270114271921962,
+     "rgb": [
+      246,
+      140,
+      80
+     ],
+     "hex": "#f68c50"
+    },
+    {
+     "lab": [
+      92.10099872004108,
+      -14.403175847322482,
+      78.18134523351736
+     ],
+     "weight": 0.08200564684801091,
+     "rgb": [
+      248,
+      237,
+      67
+     ],
+     "hex": "#f8ed43"
+    }
+   ],
+   "hits": [
+    {
+     "id": 253,
+     "score": 8.933330944880852,
+     "size": 4,
+     "colors": [
+      55,
+      62,
+      151,
+      157
+     ]
+    },
+    {
+     "id": 103,
+     "score": 21.471670448897246,
+     "size": 2,
+     "colors": [
+      66,
+      152
+     ]
+    },
+    {
+     "id": 33,
+     "score": 23.271878197478657,
+     "size": 2,
+     "colors": [
+      13,
+      157
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "9481852e0bc34e29"
+  },
+  {
+   "file": "f50_c348_v02.ppm",
+   "png_srgb": "f50_c348_v02_srgb.png",
+   "png_p3": "f50_c348_v02_p3.png",
+   "sha256": "aa61da64cb7489157b4cd0e32e264b1110b187dbc03cabac49433880c971a904",
+   "combo_id": 348,
+   "variant": "texture",
+   "opts": {
+    "palette": {
+     "k_init": 6,
+     "max_iters": 20,
+     "max_colors": 5,
+     "max_side": 256,
+     "center_sigma": 0.35,
+     "merge_de": 5,
+     "min_weight": 0.05,
+     "skin_rule": 0
+    },
+    "match": {
+     "kL": 1,
+     "kC": 1,
+     "kH": 1,
+     "coverage_lambda": 1,
+     "ambiguous_gap": 1,
+     "exposure_ev_max": 1,
+     "exposure_penalty": 2,
+     "illuminant_search": 1,
+     "illuminant_penalty": 2,
+     "top": 3
+    }
+   },
+   "swatches": [
+    {
+     "lab": [
+      77.58769292085425,
+      -8.91561584516191,
+      23.821857138837185
+     ],
+     "weight": 0.2781350368045549,
+     "rgb": [
+      192,
+      195,
+      147
+     ],
+     "hex": "#c0c393"
+    },
+    {
+     "lab": [
+      18.508720220039567,
+      34.26458729861248,
+      -16.374079602165235
+     ],
+     "weight": 0.2744044931800994,
+     "rgb": [
+      80,
+      19,
+      69
+     ],
+     "hex": "#501345"
+    },
+    {
+     "lab": [
+      45.63502161585318,
+      -29.150274875467748,
+      23.816872223065943
+     ],
+     "weight": 0.23237931668832745,
+     "rgb": [
+      68,
+      120,
+      67
+     ],
+     "hex": "#447843"
+    },
+    {
+     "lab": [
+      19.010075179407455,
+      -8.698242536713995,
+      7.96460689406409
+     ],
+     "weight": 0.21508115332701822,
+     "rgb": [
+      37,
+      49,
+      34
+     ],
+     "hex": "#253122"
+    }
+   ],
+   "hits": [
+    {
+     "id": 348,
+     "score": 0.3466306616433812,
+     "size": 4,
+     "colors": [
+      52,
+      106,
+      109,
+      151
+     ]
+    },
+    {
+     "id": 202,
+     "score": 23.59767613045323,
+     "size": 3,
+     "colors": [
+      87,
+      114,
+      157
+     ]
+    },
+    {
+     "id": 61,
+     "score": 26.64187906238493,
+     "size": 2,
+     "colors": [
+      91,
+      151
+     ]
+    }
+   ],
+   "ambiguous": 0,
+   "hash": "fd7063904d1e7056"
+  }
+ ]
+}

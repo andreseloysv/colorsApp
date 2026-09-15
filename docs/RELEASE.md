@@ -131,14 +131,41 @@ quedarían 2 para ColorsApp y otra app. Sigue siendo plan B, no plan A; detalles
 
 ## Salida real del primer `make ios-install`
 
-Pegar aquí, sin editar, la salida del primer `make ios-install DEVICE=00008110-000E65AC1E69801E`
-(o de `make release-week DEVICES=...`) que instale de verdad en el iPhone 13 mini, y
-después la del iPhone de la esposa. Es criterio de salida de la fase 0 (`PLAN.md` §8).
+Fecha: 2026-09-15, 08:15–08:26 CEST. Dispositivo: iPhone 13 mini `00008110-000E65AC1E69801E` (Developer Mode
+activado, emparejado por cable). Ejecutado por el orquestador desde un worktree del commit `c13ad9a` (el stub de F0),
+porque el árbol principal tenía la app de F6/F7 a medio construir. Primera build: ~10 min (registro del dispositivo,
+perfil de aprovisionamiento y compilación desde cero); sin ningún diálogo.
 
-```
-(fecha:)
-(comando:)
-(salida:)
+```text
+$ make ios-install DEVICE=00008110-000E65AC1E69801E
+xcodebuild -project .../ios/ColorsApp.xcodeproj -scheme ColorsApp -configuration Debug -derivedDataPath .../build-ios \
+  -quiet -destination 'id=00008110-000E65AC1E69801E' -allowProvisioningUpdates -allowProvisioningDeviceRegistration build
+    Signing Identity:     "Apple Development: Andres Eloy Sanchez Vargas (R5YU39BZ89)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.andreseloy.colorsapp"
+    "com.apple.developer.team-identifier" = 33SX3B8X57;
+warning: All interface orientations must be supported unless the app requires full screen.
+xcrun devicectl device install app --device 00008110-000E65AC1E69801E .../Debug-iphoneos/ColorsApp.app
+App installed:
+• bundleID: com.andreseloy.colorsapp
+• installationURL: file:///private/var/containers/Bundle/Application/7CB2310B-.../ColorsApp.app/
+xcrun devicectl device process launch --device 00008110-000E65AC1E69801E com.andreseloy.colorsapp
+Launched application with com.andreseloy.colorsapp bundle identifier.
+exit=0
 ```
 
-Si hizo falta el fallback ⌘R, anotar aquí en qué paso falló la ruta headless.
+Perfil emitido el 2026-09-15: caduca el **2026-09-22**; antes de esa fecha, `make release-week DEVICES=...`.
+
+### Incidencia resuelta: "0 valid identities" con el certificado ya creado
+
+Tras crear el certificado en Xcode, `security find-identity -v -p codesigning` seguía en 0 aunque el certificado y su
+clave estaban en el llavero de inicio de sesión. Causa: el llavero del sistema solo tenía el intermedio "Apple Worldwide
+Developer Relations" antiguo (caducado el 2023-02-07) y faltaba el **G3** que firma los certificados actuales. Solución
+(la ejecuta el usuario, sin sudo): descargar `https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer` y
+
+```bash
+security add-certificates -k ~/Library/Keychains/login.keychain-db ~/Downloads/AppleWWDRCAG3.cer
+security find-identity -v -p codesigning   # debe listar "1 valid identities found"
+```
+
+El Team ID del Personal Team no se muestra en Xcode; se lee del propio certificado:
+`security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject` → campo `OU=` (aquí `33SX3B8X57`).

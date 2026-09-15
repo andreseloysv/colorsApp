@@ -24,7 +24,10 @@ API pública: `Sources/CColorEngine/include/ce/ce.h` (documentada en español).
 Wrapper Swift: `Sources/ColorEngine/ColorEngine.swift` (`Lab`, `srgbToLab`,
 `labToSrgb8`, `deltaE2000`, `deltaE76`, `Swatch`, `PaletteOptions`,
 `extractPalette`, `nearestDictionaryColor`, `MatchOptions`, `Hit`,
-`AnalysisResult`, `analyze`, accesores `dictionary*`).
+`AnalysisResult`, `analyze`, accesores `dictionary*`). Desde la fase 6
+`extractPalette` y `analyze` aceptan `mask:` opcional (`UnsafeBufferPointer<UInt8>?`,
+width × height bytes sin stride, 0 anula el píxel; corto => `.maskTooSmall`), que
+va tal cual a `ce_image.mask`; la app la usa para la máscara de persona.
 
 ## Compilar y probar
 
