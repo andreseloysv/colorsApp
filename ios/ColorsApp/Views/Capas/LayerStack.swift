@@ -5,7 +5,9 @@
 // PaletteDebugLayers del motor); construirlas no vuelve a ejecutar Vision ni el
 // motor, solo pinta mapas de bits. Cada capa lleva título, una frase de qué
 // significa, sus números y avisos. Reproducible desde la línea de comandos:
-// `visionmask --layers` (capas 4–7) y `ce match --mask --debug-dir` (capas 3, 8–11).
+// `visionmask --layers` (capas 4–7) y `ce match --mask --debug-dir` / `ce garments`
+// (capas 3, 8–12). La capa 8, «Prendas» (ADR-011), va entre la máscara final y la
+// asignación a colores: es donde se ve por qué un pantalón con sombras es UN color.
 import Foundation
 import CoreGraphics
 import ColorEngine
@@ -13,7 +15,9 @@ import SubjectKit
 
 struct InspectorLayer: Identifiable, Sendable {
     enum Kind: Int, CaseIterable, Sendable {
-        case photo = 1, raster, reduced, people, pose, skin, finalMask, weights, labels, palette, explanation
+        /// «Prendas» (`garments`) se intercaló en el 8 (ADR-011): entre la máscara final y el
+        /// peso por píxel, que es donde ocurre en el motor (`ce_palette_extract_garments`).
+        case photo = 1, raster, reduced, people, pose, skin, finalMask, garments, weights, labels, palette, explanation
     }
 
     let kind: Kind
@@ -43,6 +47,38 @@ struct SwatchRow: Identifiable, Sendable {
     let nearestColorName: String
     let nearestColorHex: String
     let nearestDeltaE: Double
+    var id: Int { index }
+}
+
+/// Un tono (cluster de Lloyd) agrupado dentro de un color de prenda: la luz, la sombra o el
+/// pliegue de la MISMA tela.
+struct GarmentToneRow: Identifiable, Sendable {
+    let index: Int
+    let hex: String
+    let rgb: (UInt8, UInt8, UInt8)
+    /// Peso del cluster sobre el total de la imagen (antes de agrupar).
+    let weight: Double
+    let pixels: Int
+    var id: Int { index }
+}
+
+/// Un color de la paleta POR PRENDA con su región, su cuota y los tonos que se agruparon en él.
+struct GarmentRow: Identifiable, Sendable {
+    /// Índice del swatch en la paleta final (0-based).
+    let index: Int
+    let swatch: Swatch
+    /// `CE_GARMENT_REGION_*`: 1 arriba, 2 abajo, 3 prenda entera, 0 sin mapa.
+    let region: Int
+    let regionLabel: String
+    /// Cuota de la región sobre el área que cubre el mapa (0...1).
+    let regionShare: Double
+    /// Cuota de este color DENTRO de su región (peso final / cuota de la región).
+    let shareInRegion: Double
+    let mergedClusters: Int
+    let pixels: Int
+    let tones: [GarmentToneRow]
+    /// Por qué el motor lo dejó en un solo color (o en dos).
+    let reason: String
     var id: Int { index }
 }
 
@@ -109,6 +145,8 @@ struct LayerStack: Sendable {
     /// Poses a dibujar sobre la capa 5 (en píxeles del raster) con su color.
     let poses: [(pose: Pose, colorIndex: Int)]
     let swatches: [SwatchRow]
+    /// Colores por prenda de la capa 8 (vacío en el camino clásico, sin pose).
+    let garments: [GarmentRow]
     let clusters: [ClusterRow]
     let explanations: [ExplanationCard]
     /// Swatch por píxel de la reducida (para aislar un swatch).
@@ -125,7 +163,7 @@ struct LayerStack: Sendable {
         value.formatted(.number.precision(.fractionLength(digits)).grouping(.never).locale(Locale(identifier: "es_ES")))
     }
 
-    /// Construye las 11 capas. Puro y síncrono: llamar fuera del MainActor.
+    /// Construye las 12 capas. Puro y síncrono: llamar fuera del MainActor.
     static func build(outcome o: ScanOutcome, dictionary: WadaDictionary,
                       paletteOptions: PaletteOptions = .default, matchOptions: MatchOptions = EngineBridge.appMatchOptions) -> LayerStack {
         let w = o.raster.width, h = o.raster.height
@@ -229,11 +267,34 @@ struct LayerStack: Sendable {
         maskLayer.warning = maskText.warning
         layers.append(maskLayer)
 
-        // 8. Peso por píxel.
+        // 8. Prendas (paleta por prenda, ADR-011).
+        var garmentLayer = InspectorLayer(
+            kind: .garments, title: "Prendas",
+            meaning: "Con la pose, la máscara se reparte en la parte de arriba (torso y brazos) y la de abajo (caderas a tobillos). Dentro de cada prenda, los tonos de la MISMA tela con distinta luz —sombra, pliegues— se juntan en un color y se muestra el tono iluminado, no la media.")
+        var garmentRows: [GarmentRow] = []
+        if o.usesGarments {
+            garmentRows = Self.garmentRows(o, dictionary: dictionary)
+            if let g = o.garmentLayers {
+                garmentLayer.overlay = LayerBitmaps.garmentRegions(g.regionMap, width: g.reducedWidth, height: g.reducedHeight)
+                garmentLayer.pixelated = true
+                garmentLayer.defaultOpacity = 0.75
+            }
+            garmentLayer.facts = Self.garmentFacts(o, rows: garmentRows)
+            if garmentRows.contains(where: { $0.region == GarmentRegion.whole.rawValue }) {
+                garmentLayer.facts.append("Arriba y abajo salieron del mismo color: el motor las juntó en una sola prenda (vestido o mono).")
+            }
+        } else {
+            garmentLayer.warning = maskedWithoutPose(s)
+                ? "Sin pose utilizable en esta foto: no hay regiones de prenda y la paleta sale del camino clásico (un color por grupo de tonos de toda la máscara)."
+                : "Esta foto se analizó sin regiones de prenda (sin persona, sin pose o con la foto completa): paleta clásica."
+        }
+        layers.append(garmentLayer)
+
+        // 9. Peso por píxel.
         var weightLayer = InspectorLayer(
             kind: .weights, title: "Peso por píxel",
             meaning: "Cuánto cuenta cada píxel al agrupar: máscara × preferencia por el centro. Amarillo cuenta mucho, negro nada.")
-        // 9. Asignación a colores.
+        // 10. Asignación a colores.
         var labelLayer = InspectorLayer(
             kind: .labels, title: "Asignación a colores",
             meaning: "A qué color de la paleta alimenta cada píxel. Gris rayado: su grupo se descartó; oscuro: no pesa. Toca un color para aislar sus píxeles.")
@@ -292,7 +353,7 @@ struct LayerStack: Sendable {
         layers.append(weightLayer)
         layers.append(labelLayer)
 
-        // 10. Paleta final.
+        // 11. Paleta final.
         var paletteLayer = InspectorLayer(
             kind: .palette, title: "Paleta final",
             meaning: "Los colores que el motor compara con el diccionario y cuánto pesa cada uno.")
@@ -301,7 +362,7 @@ struct LayerStack: Sendable {
         }
         layers.append(paletteLayer)
 
-        // 11. Por qué ganó.
+        // 12. Por qué ganó.
         var whyLayer = InspectorLayer(
             kind: .explanation, title: "Por qué ganó",
             meaning: "Para cada una de las 3 mejores: qué color de la combinación explica cada color de la foto, cuánto falta por cubrir y qué corrección de luz se supuso.")
@@ -315,8 +376,56 @@ struct LayerStack: Sendable {
                       "Tiempos: Vision \(num(o.timings.visionMs, 0)) ms · máscara \(num(o.timings.maskMs, 0)) ms · motor \(num(o.timings.engineMs, 0)) ms · total \(num(o.timings.totalMs, 0)) ms"]
         header.insert("Recorte: \(opts.mode.rawValue) · \(opts.region.rawValue) · piel \(opts.adaptiveSkin ? "sí" : "no") — \(notice.text)", at: 0)
         return LayerStack(photo: photo, rasterWidth: w, rasterHeight: h, layers: layers, poses: poses,
-                          swatches: swatchRows, clusters: clusterRows, explanations: cards, labelMap: labelMap,
-                          reducedWidth: rw, reducedHeight: rh, notice: notice, header: header)
+                          swatches: swatchRows, garments: garmentRows, clusters: clusterRows, explanations: cards,
+                          labelMap: labelMap, reducedWidth: rw, reducedHeight: rh, notice: notice, header: header)
+    }
+
+    /// true si hubo máscara de persona pero sin pose utilizable: es el caso en el que la capa
+    /// «Prendas» no existe aunque sí hay recorte (recorte de cabeza).
+    private static func maskedWithoutPose(_ s: SubjectMaskResult) -> Bool {
+        s.mask != nil && !s.people.isEmpty && s.garmentRegions == nil
+    }
+
+    /// Filas de la capa 8: un color por prenda con los tonos que se agruparon en él.
+    static func garmentRows(_ o: ScanOutcome, dictionary: WadaDictionary) -> [GarmentRow] {
+        let labelCounts = o.debug.map { DiagnosticsSubject.counts($0.labelMap) } ?? [:]
+        let clusterCounts = o.debug.map { DiagnosticsSubject.counts($0.clusterMap) } ?? [:]
+        let clusters = o.debug?.debug.clusters ?? []
+        return o.garments.enumerated().map { i, g in
+            let tones = clusters.enumerated()
+                .filter { $0.element.finalIndex == i }
+                .map { j, c in
+                    GarmentToneRow(index: j, hex: c.hex.uppercased(), rgb: (c.r, c.g, c.b), weight: c.weight,
+                                   pixels: clusterCounts[j] ?? 0)
+                }
+            let share = g.regionShare > 0 ? min(1, g.swatch.weight / g.regionShare) : g.swatch.weight
+            return GarmentRow(index: i, swatch: g.swatch, region: g.region.rawValue,
+                              regionLabel: GarmentText.regionLabel(g.region), regionShare: g.regionShare,
+                              shareInRegion: share, mergedClusters: g.mergedClusterCount,
+                              pixels: labelCounts[i] ?? 0, tones: tones,
+                              reason: GarmentText.groupingReason(mergedClusters: g.mergedClusterCount))
+        }
+    }
+
+    /// Números de la capa 8: mapa de la pose, regiones y un renglón por color de prenda.
+    static func garmentFacts(_ o: ScanOutcome, rows: [GarmentRow]) -> [String] {
+        var facts: [String] = []
+        if let stats = o.subject.layers.primary?.garmentRegionStats {
+            let total = max(1, stats.maskPixels)
+            facts.append("Mapa de la pose: arriba \(SubjectExplanation.count(stats.upperPixels)) px · abajo "
+                         + "\(SubjectExplanation.count(stats.lowerPixels)) px de \(SubjectExplanation.count(total)) px de la máscara")
+            if stats.lowerMergedIntoUpper {
+                facts.append("Caderas estimadas (no se ve la parte de abajo): sus \(SubjectExplanation.count(stats.mergedLowerPixels)) px pasaron a la parte de arriba.")
+            }
+        }
+        let regions = Set(rows.map(\.region)).count
+        facts.append("\(regions) \(regions == 1 ? "prenda" : "prendas") · \(rows.count) \(rows.count == 1 ? "color" : "colores") en total")
+        for row in rows {
+            facts.append("\(row.index + 1). \(row.regionLabel): \(row.swatch.hex.uppercased()) · "
+                         + "\(SubjectExplanation.percent(row.shareInRegion)) de su prenda · "
+                         + "\(row.mergedClusters) \(row.mergedClusters == 1 ? "tono agrupado" : "tonos agrupados")")
+        }
+        return facts
     }
 
     static func illuminantText(_ illuminant: Int) -> String {

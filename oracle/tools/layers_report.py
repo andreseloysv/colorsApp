@@ -16,7 +16,12 @@ recorte ejecuta, sobre el Mac:
 2. ``ce match <raster> [--mask <foto>.<variante>.pgm] --top 3 --json --debug-dir DIR``: imagen
    reducida, peso por píxel, clusters de Lloyd con su destino (conservado, fusionado, descartado,
    recortado), label map, qué píxeles alimentan cada swatch y la explicación del top-3
-   (``ce_match_explain_combo``: ajuste + cobertura + penalización de hipótesis).
+   (``ce_match_explain_combo``: ajuste + cobertura + penalización de hipótesis);
+3. capa **Prendas** (CONTEXT §13, un color por prenda): con máscara y pose, ``ce garment-regions``
+   (1 arriba, 2 abajo; silueta corporal de la pose) y ``ce garments --regions --match --debug-dir``;
+   sin pose, ``ce garments`` con una sola región. Muestra el mapa de regiones, a qué swatch de
+   prenda va cada píxel, los tonos (clusters de Lloyd) agrupados en cada prenda con su tono
+   iluminado y la combinación ganadora por ese camino.
 
 y escribe ``OUT/index.html``: HTML estático autocontenido (imágenes PNG en base64, sin red ni
 JavaScript), un resumen arriba y, por foto, una fila por variante y una columna por capa: foto,
@@ -122,6 +127,13 @@ def load_expected(path: Path | None, images: list[Path]) -> dict[str, dict[str, 
             except (json.JSONDecodeError, TypeError):
                 continue
     return out
+
+
+def has_garments(cli: Path | None) -> bool:
+    """``ce garments`` existe (capa Prendas)."""
+    from oracle import garments as gm
+
+    return gm.has_garments(cli)
 
 
 def has_debug_dir(cli: Path | None) -> bool:
@@ -238,6 +250,49 @@ def run_ce_match(cli: Path, raster: Path, mask: Path | None, top: int, debug_dir
     return out
 
 
+REGION_ES = {0: "una región (sin pose)", 1: "parte de arriba", 2: "parte de abajo", 3: "prenda entera"}
+
+
+def run_ce_garments(cli: Path, raster: Path, mask: Path | None, layers_dir: str | None, top: int,
+                    debug_dir: Path) -> dict[str, Any]:
+    """Capa Prendas: regiones de la pose (si hay máscara y pose) + ``ce garments --match --debug-dir``."""
+    from oracle import garments as gm
+
+    out: dict[str, Any] = {"commands": [], "debug_dir": str(debug_dir), "regions": None}
+    regions: Path | None = None
+    pose = Path(layers_dir) / "pose.txt" if layers_dir else None
+    if mask is not None and pose is not None and pose.is_file():
+        with Image.open(raster) as im:
+            w, h = im.size
+        regions = debug_dir.parent / f"{debug_dir.name}.regions.pgm"
+        cmd = [str(cli), "garment-regions", "--size", f"{w}x{h}", "--mask", str(mask), "--pose", str(pose), "--out",
+               str(regions), *gm.PEOPLE_REGION_ARGS]
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=120)
+        out["commands"].append(shell_join(cmd))
+        if proc.returncode != 0:
+            out["regions_error"] = proc.stderr.strip()[:300]
+            regions = None
+        else:
+            try:
+                out["region_pixels"] = json.loads(proc.stdout)
+            except json.JSONDecodeError:
+                pass
+            out["regions"] = str(regions)
+    cmd = [str(cli), "garments", str(raster)] + (["--mask", str(mask)] if mask else []) + \
+        (["--regions", str(regions)] if regions else []) + ["--match", "--top", str(top), "--json", "--debug-dir", str(debug_dir)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=120)
+    out["commands"].append(shell_join(cmd))
+    if proc.returncode != 0:
+        out["error"] = f"ce garments -> exit {proc.returncode}: {proc.stderr.strip()[:300]}"
+        return out
+    try:
+        out["result"] = json.loads(proc.stdout)
+        out["debug"] = json.loads((debug_dir / "debug.json").read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        out["error"] = f"ce garments: salida ilegible ({exc})"
+    return out
+
+
 def shell_join(cmd: list[str]) -> str:
     return " ".join(c if re.fullmatch(r"[A-Za-z0-9_./=:,+-]+", c) else "'" + c.replace("'", "'\\''") + "'" for c in cmd)
 
@@ -296,6 +351,10 @@ def analyze_photo(index: int, photo: Path, *, cli: Path, visionmask: Path | None
         cell.update({k: m[k] for k in ("result", "debug", "error") if k in m})
         cell["debug_dir"] = str(debug_dir)
         rec["commands"].append(shell_join(m["cmd"]))
+        if has_garments(cli):
+            g = run_ce_garments(cli, raster, mask, cell.get("layers_dir"), top, work / f"{safe_name(stem)}.{v}.garments")
+            cell["garments"] = g
+            rec["commands"] += g["commands"]
         if cell.get("layers_dir") and (Path(cell["layers_dir"]) / "repro.sh").is_file():
             rec["commands"].append(shell_join(["sh", str(Path(cell["layers_dir"]) / "repro.sh"), str(cli)]) + "   # recalcula región/piel con ce y compara byte a byte")
         rec["variants"][v] = cell
@@ -581,6 +640,39 @@ class Renderer:
         ctab.append("</table>")
         return "".join(ctab)
 
+    def garments_html(self, cell: dict[str, Any]) -> str:
+        """Capa Prendas: regiones, swatch de prenda por píxel, tonos agrupados y top-1 por ese camino."""
+        g = cell.get("garments") or {}
+        if not g:
+            return '<div class="na">sin ce garments</div>'
+        if g.get("error"):
+            return f'<div class="err">{esc(g["error"])}</div>'
+        dbg = g.get("debug") or {}
+        res = g.get("result") or {}
+        dd = Path(g["debug_dir"])
+        clusters = (dbg.get("palette_debug") or {}).get("clusters") or []
+        parts = [img_tag(self.index_map_uri(dd, "garments.pgm", "garments.ppm"), "prendas", True),
+                 '<div class="cap">color de la prenda al que va cada píxel; cuadros = sin peso o tono descartado</div>']
+        if g.get("regions"):
+            parts.append(img_tag(self.debug_uri(dd, "regions.ppm"), "regiones", True))
+            rp = g.get("region_pixels") or {}
+            parts.append(f'<div class="cap">regiones de la pose: naranja = arriba ({rp.get("upper", "—")} px), azul = abajo '
+                         f'({rp.get("lower", "—")} px), verde = prenda entera</div>')
+        else:
+            parts.append('<div class="cap">' + (esc(g.get("regions_error")) if g.get("regions_error") else "sin pose: una sola región")
+                         + "</div>")
+        for k, s in enumerate(res.get("garments") or []):
+            tones = [c for c in clusters if c.get("final_index") == k]
+            tone_chips = "".join(chip(c.get("hex")) for c in tones)
+            parts.append(f'<div class="sw"><div>{chip(s["hex"], True)}<b>{esc(REGION_ES.get(int(s["region"]), s["region"]))} · '
+                         f'{100 * float(s["weight"]):.1f} %</b><br><code>{esc(s["hex"])}</code> tono iluminado · '
+                         f'{int(s["n_merged_clusters"])} tonos agrupados {tone_chips}</div></div>')
+        hits = res.get("hits") or []
+        if hits:
+            parts.append(f'<div class="cap">Top-1 por prendas: <b>{esc(combo_label(int(hits[0]["id"]), self.names))}</b> '
+                         f'({float(hits[0]["score"]):.2f})</div>')
+        return "".join(parts)
+
     def color_name(self, idx: int) -> tuple[str, str]:
         c = self.colors[idx]
         return c["hex"], c["name"]
@@ -648,7 +740,7 @@ def render_html(records: list[dict[str, Any]], args: argparse.Namespace, rendere
         pc = renderer.photo_cells(rec)
         head = ("<tr><th>variante</th><th>Foto</th><th>Raster del motor</th><th>Reducida (motor)</th><th>Personas (Vision)</th>"
                 "<th>Pose y región de ropa</th><th>Piel quitada</th><th>Máscara final</th><th>Peso por píxel</th><th>Clusters (Lloyd)</th>"
-                "<th>Label map</th><th>Paleta</th><th>Top-3 y por qué</th></tr>")
+                "<th>Label map</th><th>Paleta</th><th>Prendas</th><th>Top-3 y por qué</th></tr>")
         rows_html: list[str] = []
         first_masked = next((v for v in variants if v != "none"), None)
         n_masked = sum(1 for v in variants if v != "none")
@@ -666,7 +758,11 @@ def render_html(records: list[dict[str, Any]], args: argparse.Namespace, rendere
                                    "layers_dir": cell.get("layers_dir"), "skipped": cell.get("skipped"), "error": cell.get("error"),
                                    "swatches": [[s["hex"], round(float(s["weight"]), 4)] for s in (cell.get("result") or {}).get("swatches", [])],
                                    "top": [int(h["id"]) for h in (cell.get("result") or {}).get("hits", [])],
-                                   "ambiguous": (cell.get("result") or {}).get("ambiguous"), "dominant_vs_expected_de00": exp_de, "hints": hs}
+                                   "ambiguous": (cell.get("result") or {}).get("ambiguous"), "dominant_vs_expected_de00": exp_de, "hints": hs,
+                                   "garments": [[s["hex"], int(s["region"]), round(float(s["weight"]), 4), int(s["n_merged_clusters"])]
+                                                for s in ((cell.get("garments") or {}).get("result") or {}).get("garments", [])],
+                                   "garments_top": [int(h["id"]) for h in ((cell.get("garments") or {}).get("result") or {}).get("hits", [])],
+                                   "garments_regions": bool((cell.get("garments") or {}).get("regions"))}
             label = f'<b>{esc(v)}</b>{"<span class=badge>app</span>" if v == official else ""}<div class="muted">{esc(l4v.VARIANT_LABELS.get(v, v))}</div>'
             tr_class = ' class="official"' if v == official else ""
             cells: list[str] = []
@@ -745,13 +841,14 @@ def render_html(records: list[dict[str, Any]], args: argparse.Namespace, rendere
                 cells.append(f'<td>{img_tag(renderer.index_map_uri(dd, "labels.pgm", "labels.ppm"), "label map", True)}<div class="cap">color del swatch al que va cada píxel; cuadros = sin peso '
                              f'({100 * int(lc.get("none", 0)) / npx:.0f} %), rayas rojas = cluster descartado o recortado ({100 * int(lc.get("discarded", 0)) / npx:.0f} %)</div></td>')
                 cells.append(f"<td>{renderer.palette_html(cell)}</td>")
+                cells.append(f"<td>{renderer.garments_html(cell)}</td>")
                 cells.append(f"<td class=\"why\">{renderer.hits_html(cell)}</td>")
             elif cell.get("error") and not cell.get("vm"):
-                cells.append(f'<td colspan="5" class="err">{esc(cell["error"])}</td>')
+                cells.append(f'<td colspan="6" class="err">{esc(cell["error"])}</td>')
             elif cell.get("error"):
-                cells.append(f'<td colspan="5" class="err">{esc(cell["error"])}</td>')
+                cells.append(f'<td colspan="6" class="err">{esc(cell["error"])}</td>')
             else:
-                cells.append('<td colspan="5" class="na">sin análisis del motor</td>')
+                cells.append('<td colspan="6" class="na">sin análisis del motor</td>')
             vcell = label + (f'<div>{renderer.steps_html(steps)}</div>' if v != "none" and vm else "")
             if hs:
                 vcell += '<ul class="hints">' + "".join(f"<li>{esc(h)}</li>" for h in hs) + "</ul>"
@@ -769,6 +866,9 @@ def render_html(records: list[dict[str, Any]], args: argparse.Namespace, rendere
                     txt += f" · {100 * float(cov):.1f} %" if cell.get("mask") and isinstance(cov, (int, float)) else " · sin máscara"
                 s = f'{esc(txt)}<br>{chip(dom["hex"] if dom else None, True)}{100 * float(dom["weight"]):.0f} % · ' if dom else f"{esc(txt)}<br>"
                 s += f'<b>{esc(combo_label(int(top["id"]), renderer.names)) if top.get("id") else "—"}</b>'
+                gres = (cell.get("garments") or {}).get("result") or {}
+                if gres.get("garments"):
+                    s += "<br>prendas: " + "".join(chip(gg["hex"]) for gg in gres["garments"])
                 if exp_de is not None:
                     s += f"<br>ΔE00 dominante→ropa {exp_de:.1f}"
                 if hs:
@@ -799,6 +899,7 @@ def render_html(records: list[dict[str, Any]], args: argparse.Namespace, rendere
 <li><b>Clusters (Lloyd)</b>: grupos de color antes de fusionar; su tabla dice si cada uno se conservó, se fusionó, se descartó (&lt; 5 %) o se recortó (máx. 5 colores).</li>
 <li><b>Label map</b>: a qué color de la paleta alimenta cada píxel.</li>
 <li><b>Paleta</b>: swatches con su peso y los píxeles que los forman.</li>
+<li><b>Prendas</b>: la paleta por prenda (un color por prenda lisa): regiones de la pose (arriba, abajo; prenda entera si son la misma), el color de la prenda al que va cada píxel y, por prenda, su tono iluminado y los tonos de luz y sombra agrupados en él.</li>
 <li><b>Top-3 y por qué</b>: score = ajuste + cobertura + hipótesis de exposición/iluminante; para cada color de la combinación, su swatch más cercano y el ΔE00.</li>
 </ol>"""
     total = meta["seconds"]

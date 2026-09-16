@@ -1,0 +1,1939 @@
+{
+ "schema": 1,
+ "kind": "subjectkit-nopeople",
+ "dict_version": "fd95ac692777",
+ "n": 148,
+ "entries": [
+  {
+   "file": "np000_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    29,
+    49
+   ],
+   "sha256_rgb": "53d318b327db79ce0115b2a57e456d02b09fa66d292c58cfb7dd20e9539de535"
+  },
+  {
+   "file": "np001_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    7,
+    38,
+    47,
+    137
+   ],
+   "sha256_rgb": "c5bc27eb13d88534d7cfe2162337daad24f1cc223e6353308c8f9d1d0d646a81"
+  },
+  {
+   "file": "np002_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    62,
+    93,
+    131
+   ],
+   "sha256_rgb": "a9c8fc5845d512d555cc8af5361a1f7a93fc0f81e1d8261bca6d1de1908db75c"
+  },
+  {
+   "file": "np003_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    28,
+    38
+   ],
+   "sha256_rgb": "920c5921ec8c28078ff7485da524f5e67058cdf345fa69fe72ff8a8096dc89b9"
+  },
+  {
+   "file": "np004_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    1,
+    38,
+    76,
+    135
+   ],
+   "sha256_rgb": "0a66dd51880edf6ea6760dd0c1d374c8d69c498d7bd05b72f1ea89ef194e80a9"
+  },
+  {
+   "file": "np005_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    42,
+    70,
+    88
+   ],
+   "sha256_rgb": "3edec237aa739e0f17e83a10826a3efd2cf210842b110abdcb4bfbbb4568e7c1"
+  },
+  {
+   "file": "np006_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    45,
+    138,
+    154
+   ],
+   "sha256_rgb": "6d3d7c8a4a13f9aae02dd2dd583552fb9923da741c5e815fb419fc5fef455f04"
+  },
+  {
+   "file": "np007_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    85,
+    92
+   ],
+   "sha256_rgb": "82b8ce28583542c1eac4f3cd18392878991a7e10971896327bd97e7a7cbb6fee"
+  },
+  {
+   "file": "np008_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    35,
+    59,
+    93
+   ],
+   "sha256_rgb": "3a32f37e1714fe8104393467ee8b3c9336a7424cbc83df18f71a424357539eb0"
+  },
+  {
+   "file": "np009_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    1,
+    38,
+    76,
+    135
+   ],
+   "sha256_rgb": "0baf1803f77da69afa5094ce398afa7061a75ae07a0afcd14f82c233d53cf6c0"
+  },
+  {
+   "file": "np010_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    17,
+    39,
+    50,
+    124
+   ],
+   "sha256_rgb": "1a6363c6378be9c5e2986210cdaf5bfdf42e273b1879593fc41941f8708a1d12"
+  },
+  {
+   "file": "np011_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    72,
+    140
+   ],
+   "sha256_rgb": "e769e48af14296f9caba4cd58d0e2738d41dad35c020d0377100521e84f51f6b"
+  },
+  {
+   "file": "np012_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    55,
+    119,
+    123,
+    156
+   ],
+   "sha256_rgb": "741093d54b2060a63b3e3e49548bdfe32ecb60b81414966192d4b8fdfd8d08b0"
+  },
+  {
+   "file": "np013_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    28,
+    121
+   ],
+   "sha256_rgb": "e2a95ee39dc165f05f8e62ec27ddb7e83fb86f73dddc440e5c44684b43a17e26"
+  },
+  {
+   "file": "np014_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    78,
+    88,
+    158
+   ],
+   "sha256_rgb": "50da7ccb32ed8e50a15b8d6513c5c97dc16a7c43a8934f3a7d3235c849566819"
+  },
+  {
+   "file": "np015_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    8,
+    141,
+    154
+   ],
+   "sha256_rgb": "fb842828514b14b22f94cb2f2caed9972d0c38bac9dd4a037855070a07c921bc"
+  },
+  {
+   "file": "np016_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    9,
+    124,
+    147
+   ],
+   "sha256_rgb": "2014dc507cc1004c49c75c3def0d1584feb98637aea8472ace6bbde87eeb4145"
+  },
+  {
+   "file": "np017_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    45,
+    126,
+    139,
+    158
+   ],
+   "sha256_rgb": "739fe76757463fcec324955c7ee80776741772a837a9b207dc527aff223af178"
+  },
+  {
+   "file": "np018_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    29,
+    46,
+    89,
+    91
+   ],
+   "sha256_rgb": "62ce61384efca391d0eb655e0f4e93f89a729592b9a2e28e113c2c8c32f156ea"
+  },
+  {
+   "file": "np019_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    112,
+    129
+   ],
+   "sha256_rgb": "821978c2c215230c60b81fa740a595a2cdfee2581cc2469b47beb1d02b22d611"
+  },
+  {
+   "file": "np020_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    13,
+    55,
+    64,
+    158
+   ],
+   "sha256_rgb": "5ed8b3a40e837102088b39006af7e527a49630c43d0d5e30ba1d59ff96fb20f8"
+  },
+  {
+   "file": "np021_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    91,
+    151
+   ],
+   "sha256_rgb": "902d25a6ea877281e7efd07f0b9fbbf211fec7b930271b11d1dc153b6548ebfd"
+  },
+  {
+   "file": "np022_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    44,
+    56,
+    70,
+    87
+   ],
+   "sha256_rgb": "8ee6a3ec483a14af60f71cd3de4725a00a15f25718cc4ea36f839ac0dca9692f"
+  },
+  {
+   "file": "np023_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    5,
+    100
+   ],
+   "sha256_rgb": "45b315b7229e6669a069b5c00add24420eae8c39fdfa36ab5329346b488e849f"
+  },
+  {
+   "file": "np024_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    9,
+    39,
+    154
+   ],
+   "sha256_rgb": "40dc6f675bc6b659e20d2ca8810e29c93fd2f4a74beb0a6f1f7b45483a55a9f4"
+  },
+  {
+   "file": "np025_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    16,
+    60,
+    121,
+    139
+   ],
+   "sha256_rgb": "99c819c537341745c3ad99e73487b9fb5cfcc47d54ee7ff6ea9b5ffc25f99952"
+  },
+  {
+   "file": "np026_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    15,
+    102,
+    158
+   ],
+   "sha256_rgb": "27235450eb1cd0fdb26186dd453568655a20d6fe8cbbcfad19891b0dde01c741"
+  },
+  {
+   "file": "np027_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    46,
+    121,
+    137
+   ],
+   "sha256_rgb": "639ca74327807908b8c6cdbe63b7a75561e1110d658ab8752f2002c594f032ca"
+  },
+  {
+   "file": "np028_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    39,
+    48,
+    107
+   ],
+   "sha256_rgb": "ef3a9309fc2d96d404266f53fd5b5a1352dbc5bcef6b69b7f84d939ac513191b"
+  },
+  {
+   "file": "np029_blocks_rects.png",
+   "family": "blocks",
+   "layout": "rects",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    15,
+    42,
+    120
+   ],
+   "sha256_rgb": "f750267f4bf4e88c178e41234f2d0b5c025cd8d78f52351241f8d76488fae9b9"
+  },
+  {
+   "file": "np030_blocks_vbands.png",
+   "family": "blocks",
+   "layout": "vbands",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    56,
+    69,
+    113
+   ],
+   "sha256_rgb": "eeccb7673e2b72a2f2fff3b3574f0fd5bd64de785c721d13d445ed19e2f5a16d"
+  },
+  {
+   "file": "np031_blocks_hbands.png",
+   "family": "blocks",
+   "layout": "hbands",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    19,
+    61,
+    94,
+    123
+   ],
+   "sha256_rgb": "037e4ce0406f341cdaeb3a23784cb4e4fadbe03f54f70ce299a96b7d06559211"
+  },
+  {
+   "file": "np032_blocks_grid.png",
+   "family": "blocks",
+   "layout": "grid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    58,
+    63,
+    132
+   ],
+   "sha256_rgb": "d1fbe903516cac207075e384ab3d1941ebf9adb233ebccc5c21ee57ff3ed9dea"
+  },
+  {
+   "file": "np033_blocks_center.png",
+   "family": "blocks",
+   "layout": "center",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    41,
+    61,
+    113
+   ],
+   "sha256_rgb": "c261530eabca74c9269dca822c0454dd4b34da2ed5c848273b7b833097f8bbcc"
+  },
+  {
+   "file": "np034_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    62,
+    93,
+    131
+   ],
+   "sha256_rgb": "c47fc6a3f7a4d355372aa0be8e9db482f5051a6c19d9051d9450fa8c189b88cd"
+  },
+  {
+   "file": "np035_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    156,
+    158
+   ],
+   "sha256_rgb": "f97500f2dc94c21588edf75bebca01cfc62a0543a2ae1185f3f729a17a054537"
+  },
+  {
+   "file": "np036_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    13,
+    65,
+    118
+   ],
+   "sha256_rgb": "15b31f573d76ff7283ced09e6758a57de1243a516ee5f192790187929f0490c8"
+  },
+  {
+   "file": "np037_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    47,
+    55,
+    116
+   ],
+   "sha256_rgb": "837ff8c203fb9917e4fa02364cb91bd652222183160fc0469a952f65fe1085f1"
+  },
+  {
+   "file": "np038_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    58,
+    114,
+    149
+   ],
+   "sha256_rgb": "82d4a431c10c2dc3436a203a05f502503f7b162f4e52dbf29e423aa23576129c"
+  },
+  {
+   "file": "np039_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    28,
+    149,
+    151
+   ],
+   "sha256_rgb": "285be43ea963b78b2f5fb2257c5d2191d3f313be047396e4bda280b12564476f"
+  },
+  {
+   "file": "np040_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    122,
+    130
+   ],
+   "sha256_rgb": "f2dc9b9c4e955dd9a500e9d39393ba9dcd04097aad2f68b433ec494157bbef9d"
+  },
+  {
+   "file": "np041_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    22,
+    133,
+    139,
+    151
+   ],
+   "sha256_rgb": "e900d05c1b510df09db6945ebdb90151ecf4fe8260667479aa2cb60b16476e9b"
+  },
+  {
+   "file": "np042_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    19,
+    44,
+    87,
+    157
+   ],
+   "sha256_rgb": "01f688a616fd88a74ca97107826206e6bb28156a73c2e3ed37617227a7cc436e"
+  },
+  {
+   "file": "np043_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    41,
+    61,
+    134
+   ],
+   "sha256_rgb": "39c21ea3c2a173097a4f4e1a5f4c778ce2fc648dcc8291f5f00beff0f9eb260a"
+  },
+  {
+   "file": "np044_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    41,
+    125
+   ],
+   "sha256_rgb": "1abb2bf7cca8d7f6a6d80da137de6d9f98b5fe285809e53ddf543856cba05051"
+  },
+  {
+   "file": "np045_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    8,
+    69,
+    133,
+    146
+   ],
+   "sha256_rgb": "844cf254da1b0cc37a9190458a377073bc76d47941152adf890a53e27e95f1b8"
+  },
+  {
+   "file": "np046_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    63,
+    88
+   ],
+   "sha256_rgb": "2b571907c190c10dc93c4fed1a50f2d26472b695c2c97e1a4f869471522dbc20"
+  },
+  {
+   "file": "np047_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    24,
+    123
+   ],
+   "sha256_rgb": "3590ce1820ac531b735e6aedf714f4cb6989902f846764bf0ad7ca79aa20e213"
+  },
+  {
+   "file": "np048_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    55,
+    62,
+    151,
+    157
+   ],
+   "sha256_rgb": "c85b9efdd192a72f72681b8068f6956fb81f47d0d4c6c34133924340f326370f"
+  },
+  {
+   "file": "np049_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    27,
+    62,
+    86,
+    101
+   ],
+   "sha256_rgb": "0d3a3f8e13bde94cc1e2d5d00ff8e0117b79816560587e83480f0dbe2451596f"
+  },
+  {
+   "file": "np050_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    2,
+    29
+   ],
+   "sha256_rgb": "71d057ed26dd1088400bafc055ed736c31654587ebaf2b80526b03bb27b32151"
+  },
+  {
+   "file": "np051_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    13,
+    157
+   ],
+   "sha256_rgb": "05b234b03678527fe062ec6347f8c6edfc266acdeb7f51a94b145ced01a476f1"
+  },
+  {
+   "file": "np052_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    9,
+    124,
+    147
+   ],
+   "sha256_rgb": "0b2b33ddbcafd5a222f7550b26d2a8e77a98d44efb455180ec35aaaf50c03f58"
+  },
+  {
+   "file": "np053_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    41,
+    67
+   ],
+   "sha256_rgb": "7c2ff0f2cfe2e4eb4735e073042e0f8150b7c56cd6ae6b1be4147b90ff4737f7"
+  },
+  {
+   "file": "np054_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    41,
+    67
+   ],
+   "sha256_rgb": "6bda71163a6878140bb54edf693e6e9df246472b05fd6adaa54b373eeffb7e90"
+  },
+  {
+   "file": "np055_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    68,
+    82,
+    124
+   ],
+   "sha256_rgb": "935d17fb07713dad37bea1cf7986cb963819c22e069b7e195bdf8ea5abf60b7e"
+  },
+  {
+   "file": "np056_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    45,
+    82,
+    111
+   ],
+   "sha256_rgb": "2705b4b60ba22612260d31f0b6f1fba9663627b9be7f26cbed8f39d8f6fd8e37"
+  },
+  {
+   "file": "np057_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    38,
+    46,
+    106,
+    113
+   ],
+   "sha256_rgb": "ea7d9a74d7b690d818ca15e821fa42ffa39fb7e16c35914a326b791528523ae1"
+  },
+  {
+   "file": "np058_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    24,
+    87,
+    91,
+    95
+   ],
+   "sha256_rgb": "afceedafee6fd8f678be5e40482d178eb387721a9a76b9ef4ebbf531bb93a164"
+  },
+  {
+   "file": "np059_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    9,
+    124,
+    147
+   ],
+   "sha256_rgb": "9f6d33cba241829d269681ae9f7ab43bce4d528fc8ce9f5b81babab07641e65f"
+  },
+  {
+   "file": "np060_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    49,
+    92
+   ],
+   "sha256_rgb": "070b687185cec1ffebc691231197e06bee182e94c4cd6c07fd6562025bf61971"
+  },
+  {
+   "file": "np061_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    49,
+    65,
+    112,
+    127
+   ],
+   "sha256_rgb": "ca3a351e818b011f6d1e6703c0063efe3226f3a332f8c98a905031132acb726b"
+  },
+  {
+   "file": "np062_gradients_vignette.png",
+   "family": "gradients",
+   "layout": "vignette",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    38,
+    49,
+    82,
+    157
+   ],
+   "sha256_rgb": "fb759659767eacdc6b953d64a0a7d59166bbd9f907df72edf807cfabbe2d5e34"
+  },
+  {
+   "file": "np063_gradients_diagonal3.png",
+   "family": "gradients",
+   "layout": "diagonal3",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    58,
+    60,
+    117
+   ],
+   "sha256_rgb": "7136fff4350802d27beeac01de0ddd456deba9a4199352e22b43f9666e01e0b3"
+  },
+  {
+   "file": "np064_gradients_linear.png",
+   "family": "gradients",
+   "layout": "linear",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    20,
+    35,
+    97,
+    116
+   ],
+   "sha256_rgb": "0c9318a590ccbe12a31daf4263105e81d1d47d40b5d06e9e4465443c364b3c3e"
+  },
+  {
+   "file": "np065_gradients_radial.png",
+   "family": "gradients",
+   "layout": "radial",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    16,
+    27,
+    137,
+    142
+   ],
+   "sha256_rgb": "b16515ef1f969b74707366f8dc63bed25f5d244f0c968afe5edc81eeea6ffa68"
+  },
+  {
+   "file": "np066_gradients_flat.png",
+   "family": "gradients",
+   "layout": "flat",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    42,
+    76,
+    90,
+    122
+   ],
+   "sha256_rgb": "7f80411650ca07f60e7c8fa76888d3c9d5e791e63b699fe77f49c2b7acdbd55f"
+  },
+  {
+   "file": "np067_textures_stripes.png",
+   "family": "textures",
+   "layout": "stripes",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    3,
+    152
+   ],
+   "sha256_rgb": "5a06506408151ab611e0224d551d99ff0332e9357710bf278e77f76da0e1e423"
+  },
+  {
+   "file": "np068_textures_checker.png",
+   "family": "textures",
+   "layout": "checker",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    84,
+    131
+   ],
+   "sha256_rgb": "b7a7fed1f74a11a1f992e461cf0e35fa150787c82769dc8361450077bfc64015"
+  },
+  {
+   "file": "np069_textures_plaid.png",
+   "family": "textures",
+   "layout": "plaid",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    55,
+    109,
+    116
+   ],
+   "sha256_rgb": "185d4618e5cf08e7e39da77b3703219b977ab9b85fc328d2b82374d70f14962b"
+  },
+  {
+   "file": "np070_textures_weave.png",
+   "family": "textures",
+   "layout": "weave",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    63,
+    158
+   ],
+   "sha256_rgb": "ac5130f6302931eeabb4b38668b1c78ad92be902eab9c18d4bda2c8c60e8a0a1"
+  },
+  {
+   "file": "np071_textures_dots.png",
+   "family": "textures",
+   "layout": "dots",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    30,
+    54,
+    105,
+    157
+   ],
+   "sha256_rgb": "bb4e66b2cd5a7796eed5b3aa44ee591a6a26f5d2ca72ae1a550999fd7421a9df"
+  },
+  {
+   "file": "np072_textures_marble.png",
+   "family": "textures",
+   "layout": "marble",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    64,
+    73,
+    120,
+    138
+   ],
+   "sha256_rgb": "4f88f7fcccb05fe6ba68187bbf06071f033f1e371f3139aa4f610794e0d4416c"
+  },
+  {
+   "file": "np073_textures_blobs.png",
+   "family": "textures",
+   "layout": "blobs",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    22,
+    54,
+    121
+   ],
+   "sha256_rgb": "714a5484aa8a5398c9d31b9a781a08929b6fe0f38961ab339756b662ff0e32da"
+  },
+  {
+   "file": "np074_textures_stripes.png",
+   "family": "textures",
+   "layout": "stripes",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    144,
+    145,
+    150
+   ],
+   "sha256_rgb": "1de40d53823170cb0bd76e4d4e86efb288c61fde91d13f2cdcc0a1f35df027dc"
+  },
+  {
+   "file": "np075_textures_checker.png",
+   "family": "textures",
+   "layout": "checker",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    22,
+    54,
+    105,
+    158
+   ],
+   "sha256_rgb": "ffbba270ef77fe48dd4d301ad19155af113d42f41af76b11474e5f38ddf342c5"
+  },
+  {
+   "file": "np076_textures_plaid.png",
+   "family": "textures",
+   "layout": "plaid",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    17,
+    60,
+    149
+   ],
+   "sha256_rgb": "5cebc41902efb34e78cd1e541d9e385cb3616f541713f93b86e7b36b8e253d5e"
+  },
+  {
+   "file": "np077_textures_weave.png",
+   "family": "textures",
+   "layout": "weave",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    55,
+    62,
+    151,
+    157
+   ],
+   "sha256_rgb": "432b210315cc39cdeeae829feda8223443f094c3a664d3e8e6707d49871dbb49"
+  },
+  {
+   "file": "np078_textures_dots.png",
+   "family": "textures",
+   "layout": "dots",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    29,
+    46,
+    89,
+    91
+   ],
+   "sha256_rgb": "865af64f2a53f31c984700ee403580ba336e4d88915e71b7e35307c9fd67823d"
+  },
+  {
+   "file": "np079_textures_marble.png",
+   "family": "textures",
+   "layout": "marble",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    68,
+    87
+   ],
+   "sha256_rgb": "f4594b1943914e981f4783eda5d4a6232f9592353170926151a21d8154be9735"
+  },
+  {
+   "file": "np080_textures_blobs.png",
+   "family": "textures",
+   "layout": "blobs",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    29,
+    77,
+    113
+   ],
+   "sha256_rgb": "b59625902a9a7d8b2c8df556736133015254a87bc07ed8ed91db68b00643c387"
+  },
+  {
+   "file": "np081_textures_stripes.png",
+   "family": "textures",
+   "layout": "stripes",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    87,
+    114,
+    157
+   ],
+   "sha256_rgb": "96c24982858c370e89f4ce28e88c8b7f8529979c020176394dfaf64cf1db2e0a"
+  },
+  {
+   "file": "np082_textures_checker.png",
+   "family": "textures",
+   "layout": "checker",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    1,
+    47,
+    66
+   ],
+   "sha256_rgb": "453bf585b747a435497bb8cbbab0706891b3ff6cbdddc685213f2b23fda7ac44"
+  },
+  {
+   "file": "np083_textures_plaid.png",
+   "family": "textures",
+   "layout": "plaid",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    13,
+    86,
+    131
+   ],
+   "sha256_rgb": "b29251c38056b43e4655e6b4e1e16e4e3b06a6b455b78059610c641bd054c73d"
+  },
+  {
+   "file": "np084_textures_weave.png",
+   "family": "textures",
+   "layout": "weave",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    12,
+    128
+   ],
+   "sha256_rgb": "ba694b0800e2367dffb1c102e8c02f229c63909b295cd9517520923cab81c18a"
+  },
+  {
+   "file": "np085_textures_dots.png",
+   "family": "textures",
+   "layout": "dots",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    70,
+    111,
+    142
+   ],
+   "sha256_rgb": "f07ded0e4f740999ed4255407ee4dedeb06b528e7b2cb26824edc0ea240ac987"
+  },
+  {
+   "file": "np086_textures_marble.png",
+   "family": "textures",
+   "layout": "marble",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    12,
+    13,
+    68,
+    119
+   ],
+   "sha256_rgb": "22e8a19600c7bff5807df3d30d1c46aeb43dc3e150fd4183a9933a117c8a05c0"
+  },
+  {
+   "file": "np087_textures_blobs.png",
+   "family": "textures",
+   "layout": "blobs",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    1,
+    134,
+    147
+   ],
+   "sha256_rgb": "fcab8c6d7911c97b024df724275e82e4dc382182316dd9af60d33587756ca323"
+  },
+  {
+   "file": "np088_textures_stripes.png",
+   "family": "textures",
+   "layout": "stripes",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    8,
+    154
+   ],
+   "sha256_rgb": "9dac9367277f8f41cf2a0856d921cb871f55ea7537e4b271178daa191ea3cd69"
+  },
+  {
+   "file": "np089_textures_checker.png",
+   "family": "textures",
+   "layout": "checker",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    139,
+    141
+   ],
+   "sha256_rgb": "b89bb9f19c412d9c1e4d74ed170aec900fbe72ea98390bd5d14aa5f5b8662ba9"
+  },
+  {
+   "file": "np090_textures_plaid.png",
+   "family": "textures",
+   "layout": "plaid",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    2,
+    126
+   ],
+   "sha256_rgb": "9fd0faba43e2b75799044732846970a5c9aae28934fc5522fd2765397504a5b6"
+  },
+  {
+   "file": "np091_textures_weave.png",
+   "family": "textures",
+   "layout": "weave",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    62,
+    93,
+    131
+   ],
+   "sha256_rgb": "e716108861a9ab8da4dfdfc7876127004f3cade9f94ca23b16ec703a93d76a37"
+  },
+  {
+   "file": "np092_textures_dots.png",
+   "family": "textures",
+   "layout": "dots",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    28,
+    60,
+    125,
+    134
+   ],
+   "sha256_rgb": "e756257762ab023c18c771ba11b17365f67f9604094cd072bfdc2b86b945e356"
+  },
+  {
+   "file": "np093_textures_marble.png",
+   "family": "textures",
+   "layout": "marble",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    46,
+    53,
+    110,
+    122
+   ],
+   "sha256_rgb": "cf7cf6c1685e4deed574f5b3e63d3cd68074a6050535d32de5f221623d763783"
+  },
+  {
+   "file": "np094_textures_blobs.png",
+   "family": "textures",
+   "layout": "blobs",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    32,
+    53,
+    58,
+    124
+   ],
+   "sha256_rgb": "9db7638336f7d64452f7eb57ec7dc93c0375ed9a72aecbe1e612fd6d90b61e1d"
+  },
+  {
+   "file": "np095_textures_stripes.png",
+   "family": "textures",
+   "layout": "stripes",
+   "width": 256,
+   "height": 256,
+   "combo_colors": [
+    66,
+    73
+   ],
+   "sha256_rgb": "8aebb2c481b740ac4d301f8e352f43e8acbe618292d02c3a3b4e8d8ca67a2917"
+  },
+  {
+   "file": "np096_textures_checker.png",
+   "family": "textures",
+   "layout": "checker",
+   "width": 640,
+   "height": 480,
+   "combo_colors": [
+    46,
+    86,
+    144
+   ],
+   "sha256_rgb": "fa48e04fd071228065bf5a9ed7af8ecccbcd98726f46a19fa402e6d42c83a708"
+  },
+  {
+   "file": "np097_textures_plaid.png",
+   "family": "textures",
+   "layout": "plaid",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    84,
+    131
+   ],
+   "sha256_rgb": "c72c478cc0eb842874fbf314a9ed60b3cf4b8f3f1a3e9266714fcce5fef1b289"
+  },
+  {
+   "file": "np098_textures_weave.png",
+   "family": "textures",
+   "layout": "weave",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    0,
+    42,
+    115
+   ],
+   "sha256_rgb": "a00e84256a899d3f282f366c4df6d91d50031006a53e50d284c602a6195b4085"
+  },
+  {
+   "file": "np099_textures_dots.png",
+   "family": "textures",
+   "layout": "dots",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    39,
+    156
+   ],
+   "sha256_rgb": "65a3590f41c8278301562efaa153962a53c487077fb456aa3e2f15bd6131860e"
+  },
+  {
+   "file": "np100_garments_hanger_dress.png",
+   "family": "garments",
+   "layout": "hanger_dress",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    56,
+    87,
+    122
+   ],
+   "sha256_rgb": "0f324ff4f7bf9e9458edc62cb2b5e5d9387fe4499a588132ceba822262506765"
+  },
+  {
+   "file": "np101_garments_hanger_wide_dress.png",
+   "family": "garments",
+   "layout": "hanger_wide_dress",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    39,
+    156
+   ],
+   "sha256_rgb": "245008df6367de2897cbfcd8ec3f547d7178e4533e89ddfd7368fafeb51069e5"
+  },
+  {
+   "file": "np102_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    33,
+    71,
+    99
+   ],
+   "sha256_rgb": "4bbd60e2a0acc089c3dbd3406482303ca3995b0731b50a61a70fe9b7519a034b"
+  },
+  {
+   "file": "np103_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    9,
+    33,
+    87
+   ],
+   "sha256_rgb": "dc99446fa039fcb45841a784f68c97980cd28d60518abfb5af95b19a7441be2e"
+  },
+  {
+   "file": "np104_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    7,
+    38,
+    47,
+    137
+   ],
+   "sha256_rgb": "4da8225d8b2d596f2486ea6cfe62bce066de18eeabf93c018f49d9b25ab1cbdd"
+  },
+  {
+   "file": "np105_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    8,
+    32,
+    39,
+    108
+   ],
+   "sha256_rgb": "97852e01c7fa140019ad5822076fafb1dcce2aac165136358c432ce3f43bd4ed"
+  },
+  {
+   "file": "np106_garments_hanger_dress.png",
+   "family": "garments",
+   "layout": "hanger_dress",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    66,
+    152
+   ],
+   "sha256_rgb": "d77c2980a68904c343da6d83d3a4360736fb46a7966c857ec24dc5c60e6bc2d0"
+  },
+  {
+   "file": "np107_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    4,
+    13,
+    109,
+    110
+   ],
+   "sha256_rgb": "5985c47d52e26be3fb92120c74315ece80ff4dc867fe75704df8c8ef04075931"
+  },
+  {
+   "file": "np108_garments_hanger_coat.png",
+   "family": "garments",
+   "layout": "hanger_coat",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    46,
+    53,
+    110,
+    122
+   ],
+   "sha256_rgb": "6a1c8fefbd83e5e4c783e615fb530dae43b77ddcacd02e31a06eae36c296b1e8"
+  },
+  {
+   "file": "np109_garments_hanger_wide_coat.png",
+   "family": "garments",
+   "layout": "hanger_wide_coat",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    41,
+    61,
+    113
+   ],
+   "sha256_rgb": "29aeedbbb746ea6bb2e28794d616aba2e5328b5d06f474504f4e02a58b3f620e"
+  },
+  {
+   "file": "np110_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    13,
+    57,
+    115,
+    158
+   ],
+   "sha256_rgb": "489e07dc82b3ddfbad1e68234e343a9b88c613ae2a2a4a593a6f6a031f9611b7"
+  },
+  {
+   "file": "np111_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    13,
+    87,
+    94,
+    102
+   ],
+   "sha256_rgb": "e2d6153c57c8c411ba086e40c241f637f5cca7fa12b9ca67a20eed058f77dbc7"
+  },
+  {
+   "file": "np112_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    82,
+    96
+   ],
+   "sha256_rgb": "e2839c16dd2d63c201df5e87f3ac02ec7f8f66abc6678b870792b0269f67db72"
+  },
+  {
+   "file": "np113_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    46,
+    58,
+    106,
+    125
+   ],
+   "sha256_rgb": "a8474d1b1cd53bed8656d122311221d6a8001bc891e55d8728ab9aabd299f662"
+  },
+  {
+   "file": "np114_garments_hanger_coat.png",
+   "family": "garments",
+   "layout": "hanger_coat",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    37,
+    117
+   ],
+   "sha256_rgb": "d3dc6556509115839e7d6c530bc52df8e41009aad506f83979215066e93adbf1"
+  },
+  {
+   "file": "np115_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    63,
+    88
+   ],
+   "sha256_rgb": "e5fa0a2886ef9041f9a75ac4d97f0ed5dd360de2752625c704f619f4f73520cb"
+  },
+  {
+   "file": "np116_garments_hanger_shirt.png",
+   "family": "garments",
+   "layout": "hanger_shirt",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    29,
+    49
+   ],
+   "sha256_rgb": "152263cceff26dc128b73e781cc7d08d62d0f5802759c8f5aff4726dd7a145b7"
+  },
+  {
+   "file": "np117_garments_hanger_wide_shirt.png",
+   "family": "garments",
+   "layout": "hanger_wide_shirt",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    18,
+    53,
+    84,
+    147
+   ],
+   "sha256_rgb": "f4e1d62215b642ba1fefbec7e0f781e2455fe31e4c7967636a252ef682f761eb"
+  },
+  {
+   "file": "np118_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    8,
+    13,
+    53,
+    134
+   ],
+   "sha256_rgb": "17905d6bb3052b638e2a4bc08aab57f84241f4f8832e5f3c9143241f84769658"
+  },
+  {
+   "file": "np119_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    16,
+    41,
+    96,
+    139
+   ],
+   "sha256_rgb": "f11f7130935fcc84dac5b1b850d8436f2526f82fc9d153f3e460c1a679f9e66c"
+  },
+  {
+   "file": "np120_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    59,
+    61,
+    67
+   ],
+   "sha256_rgb": "22c2a8af8160cb1cf748104b9154fe89761d47cbaae291db064a148c08e2d541"
+  },
+  {
+   "file": "np121_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    39,
+    156
+   ],
+   "sha256_rgb": "711e42fe68c3c49f69c566a62f35b786d6272149a7051417ec472b093e69ff27"
+  },
+  {
+   "file": "np122_garments_hanger_shirt.png",
+   "family": "garments",
+   "layout": "hanger_shirt",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    18,
+    53,
+    84,
+    147
+   ],
+   "sha256_rgb": "f0f2b17a3fd6c7181e21d31d5fe85a0ac16d225cfcdadb9d766aa8c269911639"
+  },
+  {
+   "file": "np123_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    37,
+    67
+   ],
+   "sha256_rgb": "9fa3ac40c65cc5aa78e5f00adc6e53dc122b2af1d4e2832839a6f868a9ddfaec"
+  },
+  {
+   "file": "np124_garments_hanger_jumpsuit.png",
+   "family": "garments",
+   "layout": "hanger_jumpsuit",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    22,
+    133,
+    139,
+    151
+   ],
+   "sha256_rgb": "cc1603a7307eb2f449963f8a37b85b5f29b46e873ed65c4c6d6b46c69dc94282"
+  },
+  {
+   "file": "np125_garments_hanger_wide_jumpsuit.png",
+   "family": "garments",
+   "layout": "hanger_wide_jumpsuit",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    38,
+    119,
+    122
+   ],
+   "sha256_rgb": "2eafde1c56d096c33918f5404c5ba42ac57a864a8de6e31235fb7015b14cf39c"
+  },
+  {
+   "file": "np126_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    14,
+    122
+   ],
+   "sha256_rgb": "b880921dd2e6929758ec92e16eb3788344fa945c17bd07508436d5a672735d63"
+  },
+  {
+   "file": "np127_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    63,
+    158
+   ],
+   "sha256_rgb": "2dc55427f930aaed7d9f487b5605e6b0d18742c8345bf2c9180f5f5169a20cd1"
+  },
+  {
+   "file": "np128_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    24,
+    66,
+    112
+   ],
+   "sha256_rgb": "7a22d5403fee57bbd424f757741b93741fd738c2f66425a5dd5bb896381065ae"
+  },
+  {
+   "file": "np129_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    38,
+    46,
+    106,
+    113
+   ],
+   "sha256_rgb": "15e196bc285f3fb742fdd1a4b1f2aef1dc4084de506854a08bea2139a2534775"
+  },
+  {
+   "file": "np130_garments_hanger_jumpsuit.png",
+   "family": "garments",
+   "layout": "hanger_jumpsuit",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    7,
+    76,
+    114
+   ],
+   "sha256_rgb": "d9c3c56017fc3adff4f3a13b5185ce5a17dda5b0a1fd2efa5e1c7c4ecdffc853"
+  },
+  {
+   "file": "np131_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    13,
+    28,
+    149
+   ],
+   "sha256_rgb": "d70b461b5199d85d9fd3ad23f776d18087359d5299ee1e767230df297d768bad"
+  },
+  {
+   "file": "np132_garments_hanger_trousers.png",
+   "family": "garments",
+   "layout": "hanger_trousers",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    8,
+    57,
+    111,
+    115
+   ],
+   "sha256_rgb": "3ffda356880960d7f959b751504475f353d8cfafa6e786f286f2bbd1161ae107"
+  },
+  {
+   "file": "np133_garments_hanger_wide_trousers.png",
+   "family": "garments",
+   "layout": "hanger_wide_trousers",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    8,
+    32,
+    39,
+    108
+   ],
+   "sha256_rgb": "43feff9b576d55be3772ca7f9c5dfd79ddd45582edbaf45136483cd6080004e2"
+  },
+  {
+   "file": "np134_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    28,
+    104,
+    129,
+    157
+   ],
+   "sha256_rgb": "c7081b4ba09fa9aeb260e55d7c17cdda1a8268c31fc9d4caa3d5dadcf570d825"
+  },
+  {
+   "file": "np135_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    46,
+    53,
+    110,
+    122
+   ],
+   "sha256_rgb": "ba0b3f7cc7104cca500a5838441c2aafa09f8b94fe5213daf57baa703830f8f3"
+  },
+  {
+   "file": "np136_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    53,
+    111,
+    128
+   ],
+   "sha256_rgb": "4f1b08716e07ed8576a56a3e5fd63258dfde555b1be92ca7cbb5a308eef65829"
+  },
+  {
+   "file": "np137_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    38,
+    46,
+    106,
+    113
+   ],
+   "sha256_rgb": "d112994d5fef3bafeedff782d03acc61c48347972986605082020f60b98e0f7e"
+  },
+  {
+   "file": "np138_garments_hanger_trousers.png",
+   "family": "garments",
+   "layout": "hanger_trousers",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    58,
+    60,
+    117
+   ],
+   "sha256_rgb": "b7dda4f462e7ad33804ef3600c955b9187915d036345e6d3c3d5daac31cdb074"
+  },
+  {
+   "file": "np139_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    39,
+    108
+   ],
+   "sha256_rgb": "5745ae416c63bb297a6d7930d8f757b218f51dda7a7ff97c17648282a86add00"
+  },
+  {
+   "file": "np140_garments_hanger_skirt.png",
+   "family": "garments",
+   "layout": "hanger_skirt",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    91,
+    99,
+    114,
+    115
+   ],
+   "sha256_rgb": "25b9ba451dffbbbe9b748cce8046ad2817f3cc1d47f252ab2b8fdad58df40cc1"
+  },
+  {
+   "file": "np141_garments_hanger_wide_skirt.png",
+   "family": "garments",
+   "layout": "hanger_wide_skirt",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    30,
+    54,
+    105,
+    157
+   ],
+   "sha256_rgb": "96a779cabe7ff06ed502de7cb66018727f2ae0411725472b3c449ff9f0e4916c"
+  },
+  {
+   "file": "np142_garments_rack.png",
+   "family": "garments",
+   "layout": "rack",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    84,
+    119
+   ],
+   "sha256_rgb": "0f7b0ef53740ca6d3ebb2c616f9311c0b4f2b622ea4a51937678d8e386d16fa6"
+  },
+  {
+   "file": "np143_garments_flatlay.png",
+   "family": "garments",
+   "layout": "flatlay",
+   "width": 600,
+   "height": 800,
+   "combo_colors": [
+    122,
+    130
+   ],
+   "sha256_rgb": "6cf0a7f7648a04a34a6b18a87c37b2fec396b19e8308be53938d1d57ee822bd8"
+  },
+  {
+   "file": "np144_garments_outfit_flat.png",
+   "family": "garments",
+   "layout": "outfit_flat",
+   "width": 1024,
+   "height": 768,
+   "combo_colors": [
+    68,
+    82,
+    124
+   ],
+   "sha256_rgb": "65e20ef072d42bb7b327d3adaceca91f5129ed489d24ff08009b1cf1ad3806ca"
+  },
+  {
+   "file": "np145_garments_door_coat.png",
+   "family": "garments",
+   "layout": "door_coat",
+   "width": 720,
+   "height": 960,
+   "combo_colors": [
+    18,
+    134
+   ],
+   "sha256_rgb": "7a80b8d80152fbc36edf699b37a3ad3257a1f95af94d8a378e1b0d4fd138d599"
+  },
+  {
+   "file": "np146_garments_hanger_skirt.png",
+   "family": "garments",
+   "layout": "hanger_skirt",
+   "width": 512,
+   "height": 512,
+   "combo_colors": [
+    100,
+    112
+   ],
+   "sha256_rgb": "cde2012dd6408ed98cdf3fa7ccde9d2c06b763c35440e9447fdfb9e8bf89c94c"
+  },
+  {
+   "file": "np147_garments_pile.png",
+   "family": "garments",
+   "layout": "pile",
+   "width": 768,
+   "height": 1024,
+   "combo_colors": [
+    39,
+    117
+   ],
+   "sha256_rgb": "56d6b0ba4efe6388f5dda6d3cfdb2139c8e83a8bf4176803254c7205b1a36eb1"
+  }
+ ]
+}

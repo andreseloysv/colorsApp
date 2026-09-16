@@ -213,7 +213,8 @@ SUBJECT_SCREENS := result-people:-uiScreen,result-people \
   result-people-mask:-uiScreen,result-people-mask \
   layers-people-04:-uiScreen,layers-people,-uiLayer,4 \
   layers-people-07:-uiScreen,layers-people,-uiLayer,7 \
-  layers-people-11:-uiScreen,layers-people,-uiLayer,11 \
+  layers-people-08:-uiScreen,layers-people,-uiLayer,8 \
+  layers-people-12:-uiScreen,layers-people,-uiLayer,12 \
   result-demo-person:-uiScreen,result-demo-person \
   result-demo-people:-uiScreen,result-demo-people \
   result-demo-people-mask:-uiScreen,result-demo-people-mask \
@@ -227,6 +228,7 @@ SUBJECT_SCREENS := result-people:-uiScreen,result-people \
   layers-demo-09:-uiScreen,layers-demo,-uiLayer,9 \
   layers-demo-10:-uiScreen,layers-demo,-uiLayer,10 \
   layers-demo-11:-uiScreen,layers-demo,-uiLayer,11 \
+  layers-demo-12:-uiScreen,layers-demo,-uiLayer,12 \
   ajustes-recorte:-uiScreen,ajustes
 
 ios-screens-subject: $(IOS_PROJ)/project.pbxproj

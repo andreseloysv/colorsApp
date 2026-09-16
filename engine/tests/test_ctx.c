@@ -85,6 +85,7 @@ static void test_opts_default(void)
     TEST_ASSERT_EQUAL_DOUBLE(5.0, o.merge_de);
     TEST_ASSERT_EQUAL_DOUBLE(0.05, o.min_weight);
     TEST_ASSERT_EQUAL_INT(0, o.skin_rule);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, o.merge_light_de); /* experimento de fusión de sombras: apagado */
     ce_match_opts_default(&m);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.kL);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.kC);
@@ -93,7 +94,8 @@ static void test_opts_default(void)
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.ambiguous_gap);
     TEST_ASSERT_EQUAL_DOUBLE(1.0, m.exposure_ev_max);
     TEST_ASSERT_EQUAL_DOUBLE(2.0, m.exposure_penalty);
-    TEST_ASSERT_EQUAL_INT(1, m.illuminant_search);
+    /* ADR-009 (2026-09-15): la hipótesis de iluminante queda como opción, no por defecto. */
+    TEST_ASSERT_EQUAL_INT(0, m.illuminant_search);
     TEST_ASSERT_EQUAL_DOUBLE(2.0, m.illuminant_penalty);
     /* NULL no revienta. */
     ce_palette_opts_default(NULL);
@@ -211,6 +213,8 @@ static void test_extract_errors(void)
     ce_palette_opts_default(&o); o.merge_de = NAN;
     TEST_ASSERT_EQUAL_INT(CE_ERR_OPTS, ce_palette_extract(ctx, &img, &o, out, 8));
     ce_palette_opts_default(&o); o.min_weight = NAN;
+    TEST_ASSERT_EQUAL_INT(CE_ERR_OPTS, ce_palette_extract(ctx, &img, &o, out, 8));
+    ce_palette_opts_default(&o); o.merge_light_de = NAN;
     TEST_ASSERT_EQUAL_INT(CE_ERR_OPTS, ce_palette_extract(ctx, &img, &o, out, 8));
     /* Ningún error escribió en la salida. */
     TEST_ASSERT_EQUAL_MEMORY(sentinel, out, sizeof out);

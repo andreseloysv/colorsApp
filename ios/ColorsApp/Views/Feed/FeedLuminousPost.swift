@@ -89,6 +89,9 @@ struct FeedLuminousPostCard: View {
                         .accessibilityHidden(true)
                 }
                 Text(content.metadata).textRole(.bodySM).foregroundStyle(Theme.onSurfaceVariant).lineLimit(2)
+                if let outdated = content.outdatedNotice {
+                    OutdatedScanChip(title: outdated)
+                }
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: Spacing.sm)

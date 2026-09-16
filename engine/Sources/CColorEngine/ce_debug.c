@@ -135,15 +135,16 @@ int ce_debug_weight_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
 static int ce_debug_pixel_center(const ce_ctx *ctx, size_t i)
 {
     const uint8_t *p = ctx->reduced + i * 3u;
-    const ce_hist_bin *bin;
+    int idx, center;
     if (!(ctx->weights[i] > 0.0)) {
         return -1;
     }
-    bin = &ctx->hist[CE_HIST_INDEX(p[0] >> CE_HIST_SHIFT, p[1] >> CE_HIST_SHIFT, p[2] >> CE_HIST_SHIFT)];
-    if (!(bin->wsum > 0.0) || bin->center < 0 || bin->center >= CE_PALETTE_K_MAX) {
+    idx = CE_HIST_INDEX(p[0] >> CE_HIST_SHIFT, p[1] >> CE_HIST_SHIFT, p[2] >> CE_HIST_SHIFT);
+    center = ctx->hist_center[idx];
+    if (!(ctx->hist[idx].wsum > 0.0) || center < 0 || center >= CE_PALETTE_K_MAX) {
         return -1;
     }
-    return bin->center;
+    return center;
 }
 
 int ce_debug_label_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
@@ -156,6 +157,19 @@ int ce_debug_label_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
     n = ce_debug_npixels(ctx);
     if (out == NULL || cap < n) {
         return CE_ERR_ARG;
+    }
+    if (ctx->dbg.garment) {
+        /* Paleta por prenda: píxel -> cluster (registrado por ce_garment.c) -> swatch. */
+        for (i = 0; i < n; ++i) {
+            const int c = ctx->pixel_cluster[i];
+            if (c >= ctx->dbg.n_clusters || c >= CE_PALETTE_K_MAX) {
+                out[i] = (uint8_t)CE_LABEL_NONE;
+            } else {
+                const int fi = ctx->dbg.clusters[c].final_index;
+                out[i] = (fi >= 0) ? (uint8_t)fi : (uint8_t)CE_LABEL_DISCARDED;
+            }
+        }
+        return (int)n;
     }
     for (i = 0; i < n; ++i) {
         const int c = ce_debug_pixel_center(ctx, i);
@@ -175,9 +189,70 @@ int ce_debug_cluster_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
     if (out == NULL || cap < n) {
         return CE_ERR_ARG;
     }
+    if (ctx->dbg.garment) {
+        for (i = 0; i < n; ++i) {
+            const int c = ctx->pixel_cluster[i];
+            out[i] = (c < ctx->dbg.n_clusters && c < CE_PALETTE_K_MAX) ? (uint8_t)c : (uint8_t)CE_LABEL_NONE;
+        }
+        return (int)n;
+    }
     for (i = 0; i < n; ++i) {
         const int c = ce_debug_pixel_center(ctx, i);
         out[i] = (c < 0) ? (uint8_t)CE_LABEL_NONE : ctx->dbg.center_cluster[c];
+    }
+    return (int)n;
+}
+
+int ce_debug_garment_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
+{
+    int rc = ce_debug_check(ctx);
+    size_t i, n;
+    if (rc != CE_OK) {
+        return rc;
+    }
+    if (!ctx->dbg.garment) {
+        return CE_ERR_CTX;
+    }
+    n = ce_debug_npixels(ctx);
+    if (out == NULL || cap < n) {
+        return CE_ERR_ARG;
+    }
+    for (i = 0; i < n; ++i) {
+        const int c = ctx->pixel_cluster[i];
+        int fi = -1;
+        if (c < ctx->dbg.n_clusters && c < CE_PALETTE_K_MAX) {
+            fi = ctx->dbg.clusters[c].final_index;
+        }
+        out[i] = (fi >= 0) ? (uint8_t)fi : (uint8_t)CE_LABEL_NONE;
+    }
+    return (int)n;
+}
+
+int ce_debug_region_map(const ce_ctx *ctx, uint8_t *out, size_t cap)
+{
+    int rc = ce_debug_check(ctx);
+    size_t i, n;
+    if (rc != CE_OK) {
+        return rc;
+    }
+    if (!ctx->dbg.garment) {
+        return CE_ERR_CTX;
+    }
+    n = ce_debug_npixels(ctx);
+    if (out == NULL || cap < n) {
+        return CE_ERR_ARG;
+    }
+    for (i = 0; i < n; ++i) {
+        const int label = ctx->region_label[i];
+        if (label == 0) {
+            out[i] = (uint8_t)CE_LABEL_NONE;
+        } else if (!ctx->garment.has_map) {
+            out[i] = (uint8_t)CE_GARMENT_REGION_NONE;
+        } else if (ctx->garment.fused) {
+            out[i] = (uint8_t)CE_GARMENT_REGION_WHOLE;
+        } else {
+            out[i] = (uint8_t)label;
+        }
     }
     return (int)n;
 }

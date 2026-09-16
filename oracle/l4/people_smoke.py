@@ -22,6 +22,13 @@ Usa ``harness/people/*.png`` (8 fotos CC0 con varias personas) y ``expected.json
    ``de_garments`` y ``garment_weight``, fotos con persona detectada y con máscara, pasos más
    frecuentes y el delta de la mediana frente a ``none``.
 
+4. **Prendas** (``ce batch --garments``, CONTEXT §13): para cada variante con máscara y pose
+   (``visionmask --layers`` escribe ``pose.txt``), el mapa de regiones de ``ce garment-regions``
+   (silueta corporal de la pose) y la paleta por prenda: colores por región (1 arriba, 2 abajo,
+   3 prenda entera), ``de_garment_region`` (media, sobre las prendas anotadas, del ΔE00 al swatch
+   de prenda de su región: torso -> arriba o entera, piernas -> abajo o entera) y el top-1 por
+   ese camino. Sin pose la variante usa una sola región (``none``).
+
 Escribe ``<out>/l4_people_smoke.json`` y ``.md``. Es el único número disponible hoy para saber si
 el recorte ayuda; con 8 fotos y colores anotados a mano solo sirve para detectar regresiones
 gruesas. Exit: 0 ok (también con variantes ``skipped`` si no hay visionmask); 1 error de
@@ -50,6 +57,13 @@ DEFAULT_PEOPLE = REPO_ROOT / "harness" / "people"
 DEFAULT_OUT = REPO_ROOT / "harness" / "out"
 GARMENT_DE = 10.0
 PHOTO_SUFFIXES = (".png", ".jpg", ".jpeg")
+
+
+def sc_read_ppm_shape(path: Path) -> tuple[int, int]:
+    """(alto, ancho) de un PPM P6 leyendo solo la cabecera."""
+    from synth import compose as sc
+
+    return sc.read_ppm(path).shape[:2]
 
 
 def hex_to_lab(hex_color: str) -> np.ndarray:
@@ -82,6 +96,35 @@ def photo_metrics(result: dict[str, Any], garments: list[dict[str, Any]]) -> dic
     out["de_garments"] = float(np.mean([min(de00(g, s) for s in sw_labs) for g in labs]))
     out["garment_weight"] = float(sum(float(s["weight"]) for s, lab in zip(swatches, sw_labs)
                                       if min(de00(lab, g) for g in labs) <= GARMENT_DE))
+    return out
+
+
+#: Región de prenda que corresponde a cada parte anotada en expected.json (3 = prenda entera vale siempre).
+PART_REGIONS: dict[str, tuple[int, ...]] = {"torso": (1, 3), "legs": (2, 3), "full": (1, 2, 3)}
+
+
+def garment_metrics(result: dict[str, Any], garments: list[dict[str, Any]]) -> dict[str, Any]:
+    """Colores por región y ΔE00 de cada prenda anotada al swatch de prenda de su región."""
+    gs = result.get("garments") if isinstance(result.get("garments"), list) else []
+    if not gs:
+        return {"garments_error": result.get("error") or "sin swatches de prenda"}
+    counts: Counter = Counter(int(g["region"]) for g in gs)
+    out: dict[str, Any] = {
+        "garment_swatches": [[g.get("hex"), int(g["region"]), round(float(g["weight"]), 4), int(g["n_merged_clusters"])]
+                             for g in gs],
+        "garment_counts": {str(k): v for k, v in sorted(counts.items())},
+        "garment_max_per_region": max(counts.values()),
+        "garment_top": l3.ranked_ids(result),
+        "garment_regions": bool(result.get("regions")),
+    }
+    des = []
+    for g in garments:
+        if not isinstance(g.get("color_hex"), str):
+            continue
+        allowed = PART_REGIONS.get(str(g.get("part")), (0, 1, 2, 3))
+        pool = [s for s in gs if int(s["region"]) in allowed or int(s["region"]) == 0] or gs
+        des.append(min(de00(hex_to_lab(g["color_hex"]), np.asarray(s["lab"], dtype=float)) for s in pool))
+    out["de_garment_region"] = float(np.mean(des)) if des else None
     return out
 
 
@@ -118,6 +161,13 @@ def aggregate(variants: list[str], rows: list[dict[str, Any]]) -> dict[str, Any]
             "top_steps": [[s, n] for s, n in sorted(steps.items(), key=lambda kv: (-kv[1], kv[0]))[:4]],
             "distinct_top1": len(top1),
         }
+        gdone = [c for c in done if c.get("garment_swatches")]
+        entry["garments_n"] = len(gdone)
+        entry["garments_with_regions"] = sum(1 for c in gdone if c.get("garment_regions"))
+        entry["garment_swatches_median"] = _stat([float(len(c["garment_swatches"])) for c in gdone])
+        entry["garment_max_per_region_max"] = max((int(c["garment_max_per_region"]) for c in gdone), default=None)
+        entry["de_garment_region_median"] = _stat([c["de_garment_region"] for c in gdone if c.get("de_garment_region") is not None])
+        entry["palette_swatches_median"] = _stat([float(len(c["swatches"])) for c in done if c.get("swatches")])
         out[v] = entry
     base = out.get("none", {})
     for v, e in out.items():
@@ -178,9 +228,21 @@ def render_markdown(doc: dict[str, Any]) -> str:
         if e["official"]:
             cells = [c if c.startswith("**") else f"**{c}**" for c in cells]
         lines.append("| " + " | ".join(cells) + " |")
+    lines += ["", "## Prendas (paleta por prenda, `ce batch --garments`)", "",
+              "Con pose, regiones de `ce garment-regions` (1 arriba, 2 abajo; 3 = prenda entera si arriba y abajo son la misma); "
+              "sin pose, una sola región. ΔE00 prenda→su región: media por foto del ΔE00 de cada prenda anotada al swatch de "
+              "prenda de su región (torso → arriba o entera, piernas → abajo o entera).", "",
+              "| variante | fotos con prendas | con regiones | colores de paleta (mediana) | colores de prenda (mediana) | máx. colores en una región | ΔE00 prenda→su región mediana |",
+              "|---|---|---|---|---|---|---|"]
+    for v in variants:
+        e = agg[v]
+        lines.append(f"| {v} | {e.get('garments_n', 0)}/{e['n_photos']} | {e.get('garments_with_regions', 0)} | "
+                     f"{_f(e.get('palette_swatches_median'), 0)} | {_f(e.get('garment_swatches_median'), 0)} | "
+                     f"{e.get('garment_max_per_region_max') if e.get('garment_max_per_region_max') is not None else '—'} | "
+                     f"{_f(e.get('de_garment_region_median'))} |")
     lines += ["", "## Por foto", "",
-              "| foto | personas (Vision / anotadas) | variante | pasos | cobertura | dominante (peso) | ΔE00 dominante | ΔE00 prendas→paleta | peso ropa | top-3 |",
-              "|---|---|---|---|---|---|---|---|---|---|"]
+              "| foto | personas (Vision / anotadas) | variante | pasos | cobertura | dominante (peso) | ΔE00 dominante | ΔE00 prendas→paleta | peso ropa | top-3 | prendas (región: color peso) | ΔE00 prenda→región | top-3 prendas |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for p in doc["photos"]:
         garments = "; ".join(f"{g.get('part')} {g.get('color_hex')}" for g in p["garments"]) or "—"
         for j, v in enumerate(variants):
@@ -189,14 +251,18 @@ def render_markdown(doc: dict[str, Any]) -> str:
             ppl = f"{p['people'] if p['people'] is not None else '—'} / {p['expected_people'] if p['expected_people'] is not None else '—'}" if j == 0 else ""
             name = f"**{v}**" if v == l4v.OFFICIAL_VARIANT else v
             if c.get("status") != "ok" or "error" in c:
-                lines.append(f"| {head} | {ppl} | {name} | {c.get('status', '—')}: {c.get('reason') or c.get('error') or '—'} | — | — | — | — | — | — |")
+                lines.append(f"| {head} | {ppl} | {name} | {c.get('status', '—')}: {c.get('reason') or c.get('error') or '—'} | — | — | — | — | — | — | — | — | — |")
                 continue
             steps = " → ".join(c.get("steps") or []) or ("—" if v == "none" else "persona completa")
             cov = "sin máscara" if not c.get("mask") else f"{100 * float(c.get('coverage') or 0):.1f} %"
             dom = f"`{c['dominant_hex']}` ({100 * c['dominant_weight']:.0f} %)"
             gw = "—" if c.get("garment_weight") is None else f"{100 * c['garment_weight']:.0f} %"
+            region_names = {0: "única", 1: "arriba", 2: "abajo", 3: "entera"}
+            gsw = "; ".join(f"{region_names.get(r, r)}: `{h}` {100 * w:.0f} %" for h, r, w, _n in c.get("garment_swatches") or []) \
+                or (c.get("garments_error") or "—")
             lines.append(f"| {head} | {ppl} | {name} | {steps} | {cov} | {dom} | {_f(c.get('de_dominant'))} | {_f(c.get('de_garments'))} | {gw} | "
-                         + ", ".join(str(t) for t in c.get("top", [])[:3]) + " |")
+                         + ", ".join(str(t) for t in c.get("top", [])[:3])
+                         + f" | {gsw} | {_f(c.get('de_garment_region'))} | " + ", ".join(str(t) for t in c.get("garment_top", [])[:3]) + " |")
     lines += ["", f"Detalle: `{doc['out_json']}`. Capas visuales de cada paso: `make layers-report`.", ""]
     return "\n".join(lines)
 
@@ -240,7 +306,8 @@ def run_smoke(cli: Path, people_dir: Path, out_dir: Path, *, variants: list[str]
         doc = None
         if vm_path is not None:
             try:
-                doc = l4v.run_visionmask(vm_path, photo, masks_dir, [v for v in variants if v != "none"] or ["none"])
+                doc = l4v.run_visionmask(vm_path, photo, masks_dir, [v for v in variants if v != "none"] or ["none"],
+                                         layers=True)
             except l4v.VariantError as exc:
                 log(f"  [error] {exc}")
                 exit_code = 1
@@ -272,7 +339,8 @@ def run_smoke(cli: Path, people_dir: Path, out_dir: Path, *, variants: list[str]
                 continue
             mask = Path(ve["mask"]) if isinstance(ve.get("mask"), str) else None
             row["variants"][v] = {"status": "ok", "mask": str(mask) if mask else None, "steps": list(ve.get("steps") or []),
-                                  "coverage": ve.get("mask_coverage"), "people": row["people"]}
+                                  "coverage": ve.get("mask_coverage"), "people": row["people"],
+                                  "layers_dir": ve.get("layers") if isinstance(ve.get("layers"), str) else None}
             lines.append((raster, mask))
             where.append((i, v))
         photo_rows.append(row)
@@ -285,6 +353,36 @@ def run_smoke(cli: Path, people_dir: Path, out_dir: Path, *, variants: list[str]
             continue
         engine, dict_version = r.get("engine", engine), r.get("dict_version", dict_version)
         cell.update(photo_metrics(r, photo_rows[i]["garments"]))
+    # Paleta por prenda: regiones de la pose (si la hay) y ce batch --garments en una invocación.
+    from oracle import garments as gm
+
+    if gm.has_garments(cli) and lines:
+        entries: list[tuple[Path, Path | None, Path | None]] = []
+        for (i, v), (img, mask) in zip(where, lines):
+            cell = photo_rows[i]["variants"][v]
+            regions = None
+            layers_dir = Path(cell["layers_dir"]) if cell.get("layers_dir") else None
+            if mask is not None and layers_dir is not None and (layers_dir / "pose.txt").is_file():
+                regions = work / "garment_regions" / f"{Path(img).stem}.{v}.regions.pgm"
+                regions.parent.mkdir(parents=True, exist_ok=True)
+                h, w = sc_read_ppm_shape(Path(img))
+                import subprocess
+
+                proc = subprocess.run([str(cli), "garment-regions", "--size", f"{w}x{h}", "--mask", str(mask), "--pose",
+                                       str(layers_dir / "pose.txt"), "--out", str(regions), *gm.PEOPLE_REGION_ARGS],
+                                      capture_output=True, text=True, check=False, timeout=120)
+                if proc.returncode != 0:
+                    cell["garment_regions_error"] = proc.stderr.strip()[:200]
+                    regions = None
+            entries.append((Path(img), mask, regions))
+        try:
+            g_results = gm.run_batch_garments(cli, entries)
+        except gm.GarmentError as exc:
+            log(f"  [error] {exc}")
+            exit_code = 1
+            g_results = []
+        for (i, v), r in zip(where, g_results):
+            photo_rows[i]["variants"][v].update(garment_metrics(r, photo_rows[i]["garments"]))
     doc_out: dict[str, Any] = {
         "schema": 1, "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"), "engine": engine, "dict_version": dict_version,
         "people_dir": str(people_dir), "visionmask": str(vm_path) if vm_path else None,

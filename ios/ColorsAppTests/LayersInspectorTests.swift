@@ -3,8 +3,9 @@
 //  - la escena y la máscara de su cadena (persona principal + solo ropa + piel)
 //    son byte a byte las fixtures Fixtures/layers/layers_demo.ppm y
 //    layers_demo.mask.pgm (make ios-layers-fixtures las regenera);
-//  - el inspector construye 11 capas en orden, con mapa de bits en las de imagen;
-//  - el swatch por píxel (capa 9) y la tabla de "por qué ganó" (capa 11)
+//  - el inspector construye 12 capas en orden (la 8, «Prendas», es nueva), con mapa de bits
+//    en las de imagen;
+//  - el swatch por píxel (capa 10) y la tabla de "por qué ganó" (capa 12)
 //    coinciden con `ce match layers_demo.ppm --mask layers_demo.mask.pgm --top 3
 //    --json --debug-dir` sobre el mismo raster (labels.pgm y debug.json copiados a
 //    Fixtures/layers/ como layers_demo.labels.pgm y layers_demo.debug.json);
@@ -77,15 +78,18 @@ final class LayersInspectorTests: XCTestCase {
         XCTAssertEqual(outcome.subject.mask, maskFixture.bytes)
         let debug = try XCTUnwrap(outcome.debug)
 
-        // 11 capas en orden, con imagen en las que se superponen.
+        // 12 capas en orden, con imagen en las que se superponen. Este análisis usa
+        // `region: .wholePerson`, así que NO hay regiones de prenda: la capa 8 avisa.
         let dictionary = env.dictionary
         let stack = await Task.detached { LayerStack.build(outcome: outcome, dictionary: dictionary) }.value
-        XCTAssertEqual(stack.layers.count, 11)
+        XCTAssertEqual(stack.layers.count, 12)
         XCTAssertEqual(stack.layers.map(\.kind), InspectorLayer.Kind.allCases)
-        XCTAssertEqual(stack.layers.map(\.number), Array(1...11))
+        XCTAssertEqual(stack.layers.map(\.number), Array(1...12))
         XCTAssertEqual(stack.layers.map(\.title), ["Foto", "Lo que ve el motor", "Imagen reducida", "Personas detectadas",
-                                                   "Pose y región de ropa", "Piel excluida", "Máscara final",
+                                                   "Pose y región de ropa", "Piel excluida", "Máscara final", "Prendas",
                                                    "Peso por píxel", "Asignación a colores", "Paleta final", "Por qué ganó"])
+        XCTAssertTrue(stack.garments.isEmpty, "sin regiones de prenda con region: .wholePerson")
+        XCTAssertNotNil(stack.layer(.garments)?.warning)
         XCTAssertTrue(stack.layers.allSatisfy { !$0.meaning.isEmpty })
         for kind in [InspectorLayer.Kind.raster, .reduced, .people, .finalMask, .weights, .labels] {
             XCTAssertNotNil(stack.layer(kind)?.overlay, "capa \(kind.rawValue) con imagen")
@@ -94,13 +98,13 @@ final class LayersInspectorTests: XCTestCase {
         XCTAssertEqual(stack.swatches.count, outcome.result.swatches.count)
         XCTAssertEqual(stack.explanations.count, 3)
 
-        // Capa 9 == labels.pgm del CLI.
+        // Capa 10 == labels.pgm del CLI.
         let labels = try pgm(try fixture("layers_demo.labels", "pgm"))
         XCTAssertEqual(labels.width, debug.debug.reducedWidth)
         XCTAssertEqual(labels.height, debug.debug.reducedHeight)
         XCTAssertEqual(stack.labelMap, labels.bytes, "swatch por píxel idéntico al del CLI")
 
-        // Capa 11 == explain de debug.json del CLI.
+        // Capa 12 == explain de debug.json del CLI.
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: try fixture("layers_demo.debug", "json")) as? [String: Any])
         let hits = try XCTUnwrap(json["hits"] as? [[String: Any]])
         XCTAssertEqual(outcome.result.hits.map(\.comboId), hits.compactMap { $0["id"] as? Int })
@@ -146,12 +150,12 @@ final class LayersInspectorTests: XCTestCase {
         XCTAssertEqual((ours["label_counts"] as? [String: Int]), (json["label_counts"] as? [String: Int]))
         XCTAssertEqual(((ours["palette_debug"] as? [String: Any])?["clusters"] as? [[String: Any]])?.compactMap { $0["pixels"] as? Int },
                        clusters.compactMap { $0["pixels"] as? Int })
-        print(String(format: "LayersInspectorTests: 11 capas; label map %dx%d idéntico al CLI; explicación top-3 máx |Δ| = %.3g", labels.width, labels.height, maxDiff))
+        print(String(format: "LayersInspectorTests: 12 capas; label map %dx%d idéntico al CLI; explicación top-3 máx |Δ| = %.3g", labels.width, labels.height, maxDiff))
 
         // Aislar un swatch; PNG de "Compartir capas".
         let model = LayersInspectorModel(outcome: outcome, dictionary: env.dictionary)
         await model.load()
-        XCTAssertEqual(model.stack?.layers.count, 11)
+        XCTAssertEqual(model.stack?.layers.count, 12)
         model.toggleIsolation(0)
         XCTAssertEqual(model.isolatedSwatch, 0)
         XCTAssertNotNil(model.isolatedOverlay)
@@ -172,20 +176,33 @@ final class LayersInspectorTests: XCTestCase {
         let scene = SyntheticPersonScene.make()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("colorsapp-layers-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
-        let outcome = try await ScanAnalyzer.run(image: try XCTUnwrap(scene.image), source: .manual, subject: .default,
+        // Las opciones REALES de la app (SubjectSettings): persona principal, solo ropa, piel
+        // adaptativa y mapa de regiones de prenda (ADR-011).
+        let outcome = try await ScanAnalyzer.run(image: try XCTUnwrap(scene.image), source: .manual,
+                                                 subject: SubjectSettings.default.subjectOptions,
                                                  people: [scene.person], env: env,
                                                  timing: TimingLog(url: dir.appendingPathComponent("t.txt")))
         let stack = LayerStack.build(outcome: outcome, dictionary: env.dictionary)
-        XCTAssertEqual(stack.layers.count, 11)
+        XCTAssertEqual(stack.layers.count, 12)
         XCTAssertEqual(stack.poses.count, 1, "esqueleto de la persona elegida")
+        // Capa 8: con pose hay mapa de prendas, un color por prenda y sus tonos agrupados.
+        XCTAssertFalse(stack.garments.isEmpty, "capa Prendas con regiones")
+        XCTAssertTrue(stack.garments.allSatisfy { ["Parte de arriba", "Parte de abajo", "Prenda entera"].contains($0.regionLabel) },
+                      stack.garments.map(\.regionLabel).joined(separator: ", "))
+        XCTAssertTrue(stack.garments.allSatisfy { $0.mergedClusters >= 1 })
+        XCTAssertEqual(stack.garments.count, outcome.result.swatches.count)
+        let garmentFacts = try XCTUnwrap(stack.layer(.garments)?.facts)
+        XCTAssertTrue(garmentFacts.contains { $0.hasPrefix("Mapa de la pose:") }, garmentFacts.joined(separator: " | "))
+        print("LayersInspectorTests capa Prendas: " + stack.garments.map { "\($0.regionLabel) \($0.swatch.hex) \($0.mergedClusters) tonos" }.joined(separator: " · "))
         for kind in InspectorLayer.Kind.allCases where ![.photo, .palette, .explanation].contains(kind) {
             XCTAssertNotNil(stack.layer(kind)?.overlay, "capa \(kind.rawValue) con imagen")
             XCTAssertNil(stack.layer(kind)?.warning, "capa \(kind.rawValue) sin aviso: \(stack.layer(kind)?.warning ?? "")")
         }
         let skinFact = try XCTUnwrap(stack.layer(.skin)?.facts.first)
         XCTAssertTrue(skinFact.contains("px de piel quitados"), skinFact)
-        XCTAssertEqual(stack.notice.text, "Solo ropa · piel excluida")
+        XCTAssertEqual(stack.notice.text, "Solo ropa · piel excluida · un color por prenda")
         let image = try XCTUnwrap(LayersShareRenderer.render(stack: stack, title: "Escena sintética"))
+        print("LayersInspectorTests hoja: \(image.size.width) x \(image.size.height) pt, escala \(image.scale)")
         try saveScreen(try XCTUnwrap(image.pngData()), name: "layers-share-demo.png")
     }
 

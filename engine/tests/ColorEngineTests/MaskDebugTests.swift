@@ -1,5 +1,5 @@
 // Tests XCTest del wrapper Swift de máscaras (regiones de ropa, recorte de
-// cabeza, piel adaptativa) y de las capas de depuración. La batería completa
+// cabeza, piel adaptativa, separación de instancias) y de las capas de depuración. La batería completa
 // (rasterizador de referencia, invariancias, fuzz, paridad WASM) vive en
 // engine/tests/test_mask.c y test_debug.c; aquí se comprueba que el puente
 // Swift pasa los datos sin perder bits y que los errores llegan como
@@ -304,5 +304,67 @@ final class DebugLayerTests: XCTestCase {
                 XCTAssertEqual(error as? ColorEngineError, .bufferTooSmall(required: 64, actual: 16))
             }
         }
+    }
+}
+
+final class SplitInstanceTests: XCTestCase {
+    /// Escena (b) de test_mask.c: adulto 240x320 y niña delante abajo a la izquierda.
+    private func smallFrontScene() -> [UInt8] {
+        let w = 240, h = 320
+        var m = [UInt8](repeating: 0, count: w * h)
+        func box(_ x0: Int, _ y0: Int, _ x1: Int, _ y1: Int, _ v: UInt8) {
+            for y in y0..<y1 { for x in x0..<x1 { m[y * w + x] = v } }
+        }
+        func disk(_ cx: Double, _ cy: Double, _ r: Double, _ v: UInt8) {
+            for y in 0..<h {
+                for x in 0..<w {
+                    let dx = Double(x) + 0.5 - cx, dy = Double(y) + 0.5 - cy
+                    if dx * dx + dy * dy <= r * r { m[y * w + x] = v }
+                }
+            }
+        }
+        box(80, 60, 200, 320, 255)
+        disk(140, 35, 25, 255)
+        box(40, 180, 120, 320, 230)
+        disk(80, 160, 18, 230)
+        return m
+    }
+
+    private let seeds = [PersonSeed(x0: 140, y0: 60, x1: 140, y1: 220, halfWidth: 66),
+                         PersonSeed(x0: 80, y0: 180, x1: 80.25, y1: 300.5, halfWidth: 33)]
+
+    func testSmallPersonInFrontMatchesCGolden() throws {
+        let mask = smallFrontScene()
+        let r = try splitInstance(mask: mask, width: 240, height: 320, seeds: seeds)
+        XCTAssertEqual(r.count, 2)
+        XCTAssertEqual(r.labels.count, 240 * 320)
+        XCTAssertEqual(r.labels.filter { $0 == 1 }.count, 28889, "dorado de test_mask.c (adulto)")
+        XCTAssertEqual(r.labels.filter { $0 == 2 }.count, 10397, "dorado de test_mask.c (niña)")
+        for i in mask.indices {
+            XCTAssertEqual(mask[i] >= 128, r.labels[i] != 0)
+        }
+        XCTAssertEqual(r.labels[250 * 240 + 60], 2)
+        XCTAssertEqual(r.labels[35 * 240 + 140], 1)
+        XCTAssertEqual(splitMaxSeeds, 8)
+    }
+
+    func testErrors() {
+        let mask = smallFrontScene()
+        let arg = ColorEngineError.engine(code: -1)
+        XCTAssertThrowsError(try splitInstance(mask: mask, width: 240, height: 320, seeds: [])) { XCTAssertEqual($0 as? ColorEngineError, arg) }
+        XCTAssertThrowsError(try splitInstance(mask: mask, width: 240, height: 320,
+                                               seeds: Array(repeating: seeds[0], count: 9))) { XCTAssertEqual($0 as? ColorEngineError, arg) }
+        var bad = seeds
+        bad[1].halfWidth = 0
+        XCTAssertThrowsError(try splitInstance(mask: mask, width: 240, height: 320, seeds: bad)) { XCTAssertEqual($0 as? ColorEngineError, arg) }
+        bad = seeds
+        bad[0].x1 = .nan
+        XCTAssertThrowsError(try splitInstance(mask: mask, width: 240, height: 320, seeds: bad)) { XCTAssertEqual($0 as? ColorEngineError, arg) }
+        XCTAssertThrowsError(try splitInstance(mask: mask, width: 0, height: 320, seeds: seeds)) { XCTAssertEqual($0 as? ColorEngineError, arg) }
+        XCTAssertThrowsError(try splitInstance(mask: Array(mask.prefix(100)), width: 240, height: 320, seeds: seeds)) {
+            XCTAssertEqual($0 as? ColorEngineError, .maskTooSmall(required: 240 * 320, actual: 100))
+        }
+        // Máscara vacía: 0 etiquetas.
+        XCTAssertEqual(try? splitInstance(mask: [UInt8](repeating: 127, count: 16), width: 4, height: 4, seeds: seeds).count, 0)
     }
 }

@@ -12,7 +12,18 @@
  *       válidas e inválidas y dimensiones 0..512;
  *   (4) ce_skin_model_fit y ce_mask_exclude_skin: imágenes y máscaras de
  *       muestra aleatorias y modelos degenerados (covarianza singular o
- *       indefinida, n pequeño, NaN/inf, valores enormes o diminutos).
+ *       indefinida, n pequeño, NaN/inf, valores enormes o diminutos);
+ *   (5) paleta por prenda: ce_palette_extract_garments y ce_analyze_garments
+ *       con mapas de regiones aleatorios (ruido, bandas, todo 0, etiquetas
+ *       > n_regions, NULL), n_regions -1..3, opciones de paleta, de prenda
+ *       (NaN, ±inf, kL <= 0, percentiles cruzados, max_colors_per_region 0..16)
+ *       y de match absurdas, capas de prenda (garment/region/label/cluster map)
+ *       y ce_mask_garment_regions frente a ce_mask_clothing_regions (mismo
+ *       soporte y mismos códigos de error);
+ *   (6) ce_mask_split_instance: dimensiones 0..512, n_seeds -2..10, semillas
+ *       plausibles, degeneradas (eje de un punto, idénticas) o absurdas (NaN,
+ *       ±inf, fuera de ±CE_POSE_COORD_MAX, half_width 0/negativo/diminuto/
+ *       enorme), punteros nulos y el mismo buffer de entrada y salida.
  * Tras cada extracción de (1) se leen además las capas de depuración
  * (ce_palette_debug_info, reduced/weight/label/cluster map con capacidades
  * aleatorias) y, a veces, ce_match_explain_combo contra ce_match.
@@ -36,7 +47,15 @@
  *     extracción fallida; explicación con el mismo score bit a bit;
  *   - máscaras: códigos de error documentados sin tocar la máscara; en éxito
  *     cada píxel queda igual o a 0 (regiones, piel) y el recuento coincide;
- *     CE_SKIN_GUARD sin tocar la máscara; determinismo cada 8 casos.
+ *     CE_SKIN_GUARD sin tocar la máscara; determinismo cada 8 casos;
+ *   - prendas: errores documentados sin escribir; 1 <= n <= min(max_colors,
+ *     cap, 8), Σ weight = 1, región 0..3 (0 sin mapa), region_share en (0, 1],
+ *     capas coherentes con los swatches; determinismo cada 8 casos;
+ *   - separación: CE_ERR_ARG exactamente donde el contrato lo pide sin tocar
+ *     la salida; en éxito etiqueta 0 <=> mask < 128, etiquetas en 1..n_seeds,
+ *     recuento de etiquetas usadas == retorno, argmin comprobado en píxeles al
+ *     azar (cociente de la etiqueta <= el de cualquier otra semilla, empate al
+ *     índice menor), in situ == fuera de sitio, determinismo cada 8 casos.
  * Salida: iteraciones de cada entrada e iteraciones/segundo; exit 1 si una
  * invariante falla (con la semilla y el número de caso para reproducir).
  */
@@ -125,6 +144,7 @@ static int expected_error(const ce_ctx *ctx, int ctx_uninit, const ce_image *img
         if (o->max_colors < 1 || o->max_colors > CE_PALETTE_MAX_COLORS) return CE_ERR_OPTS;
         if (o->max_side < 1 || o->max_side > CE_PALETTE_MAX_SIDE) return CE_ERR_OPTS;
         if (isnan(o->center_sigma) || isnan(o->merge_de) || isnan(o->min_weight)) return CE_ERR_OPTS;
+        if (isnan(o->merge_light_de)) return CE_ERR_OPTS;
     }
     return CE_OK;
 }
@@ -160,6 +180,7 @@ static void random_opts(ce_palette_opts *o)
     o->merge_de = rnd_double_opt(-1.0, 40.0);
     o->min_weight = rnd_double_opt(-0.5, 1.5);
     o->skin_rule = (int)rnd(3) - 1;              /* -1, 0, 1 */
+    if (rnd(2) == 0) o->merge_light_de = rnd_double_opt(-1.0, 40.0); /* fusión de sombras */
 }
 
 /* Rellena los canales RGB con distintos modos (ruido, bandas, degradado,
@@ -232,7 +253,10 @@ static void check_debug_layers(const ce_ctx *ctx, const ce_swatch *sw, int n)
         if (cd->fate < CE_FATE_KEPT || cd->fate > CE_FATE_TRUNCATED) fail("debug fate");
         if ((cd->fate <= CE_FATE_MERGED) != (cd->final_index >= 0 && cd->final_index < n)) fail("debug final_index");
         if (cd->group_head < 0 || cd->group_head > c) fail("debug group_head");
-        if (!(cd->weight > 0.0 && cd->weight <= 1.0)) fail("debug weight");
+        /* >= 0 y no > 0: el peso normalizado de un cluster puede desbordar a cero cuando es
+         * subnormal frente al total (center_sigma diminuto reparte pesos de 1e-302 junto a otros
+         * de 0,5; encontrado por este fuzz con la semilla 20260916 y documentado en ce.h). */
+        if (!(cd->weight >= 0.0 && cd->weight <= 1.0)) fail("debug weight");
     }
     np = (size_t)info.reduced_width * (size_t)info.reduced_height;
     if (np < 1 || np > (size_t)CE_PALETTE_MAX_SIDE * CE_PALETTE_MAX_SIDE) fail("debug dims");
@@ -624,6 +648,229 @@ static void fuzz_regions_once(void)
 }
 
 /* ------------------------------------------------------------------------
+ * Entrada 5: paleta por prenda
+ * ---------------------------------------------------------------------- */
+
+static void random_garment_opts(ce_garment_opts *o)
+{
+    ce_garment_opts_default(o);
+    if (rnd(4) == 0) return;
+    o->shade_kL = rnd(6) == 0 ? rnd_double_opt(-1.0, 20.0) : 0.5 + 8.0 * rnd_unit();
+    o->shade_merge_de = rnd(6) == 0 ? rnd_double_opt(-5.0, 60.0) : 15.0 * rnd_unit();
+    o->lit_low_pct = rnd(8) == 0 ? rnd_double_opt(-0.5, 1.5) : rnd_unit();
+    o->lit_high_pct = rnd(8) == 0 ? rnd_double_opt(-0.5, 1.5) : o->lit_low_pct + (1.0 - o->lit_low_pct) * rnd_unit();
+    if (rnd(10) == 0) o->lit_high_pct = o->lit_low_pct * 0.5; /* cruzados */
+    o->secondary_min_share = rnd(8) == 0 ? rnd_double_opt(-0.5, 1.5) : rnd_unit();
+    o->max_colors_per_region = rnd(10) == 0 ? (int)rnd(17) : 1 + (int)rnd(CE_PALETTE_MAX_COLORS);
+}
+
+static int garment_opts_valid(const ce_garment_opts *o)
+{
+    if (!(isfinite(o->shade_kL) && o->shade_kL > 0.0)) return 0;
+    if (!isfinite(o->shade_merge_de)) return 0;
+    if (!(o->lit_low_pct >= 0.0 && o->lit_low_pct <= 1.0)) return 0;
+    if (!(o->lit_high_pct >= o->lit_low_pct && o->lit_high_pct <= 1.0)) return 0;
+    if (!(o->secondary_min_share >= 0.0 && o->secondary_min_share <= 1.0)) return 0;
+    return o->max_colors_per_region >= 1 && o->max_colors_per_region <= CE_PALETTE_MAX_COLORS;
+}
+
+static void check_garment_layers(const ce_ctx *ctx, const ce_garment_swatch *g, int n, int has_map)
+{
+    ce_palette_debug info;
+    size_t np, i;
+    uint8_t *gmap, *rmap, *lmap, *cmap;
+    int c;
+    if (ce_palette_debug_info(ctx, &info) != CE_OK) fail("prendas: debug_info");
+    if (info.n_swatches != n) fail("prendas: debug n_swatches");
+    if (info.n_clusters < 0 || info.n_clusters > CE_PALETTE_K_MAX) fail("prendas: n_clusters");
+    for (c = 0; c < info.n_clusters; ++c) {
+        const ce_cluster_debug *cd = &info.clusters[c];
+        if (cd->fate < CE_FATE_KEPT || cd->fate > CE_FATE_TRUNCATED) fail("prendas: fate");
+        if ((cd->fate <= CE_FATE_MERGED) != (cd->final_index >= 0 && cd->final_index < n)) fail("prendas: final_index");
+        if (cd->group_head < 0 || cd->group_head > c) fail("prendas: group_head");
+        if (!(cd->weight > 0.0 && cd->weight <= 1.0)) fail("prendas: weight del cluster");
+    }
+    np = (size_t)info.reduced_width * (size_t)info.reduced_height;
+    gmap = (uint8_t *)malloc(np);
+    rmap = (uint8_t *)malloc(np);
+    lmap = (uint8_t *)malloc(np);
+    cmap = (uint8_t *)malloc(np);
+    if (!gmap || !rmap || !lmap || !cmap) fail("malloc");
+    if (np > 1 && ce_debug_garment_map(ctx, gmap, rnd((uint32_t)np)) != CE_ERR_ARG) fail("prendas: garment_map cap corto");
+    if (ce_debug_garment_map(ctx, gmap, np) != (int)np) fail("prendas: garment_map");
+    if (ce_debug_region_map(ctx, rmap, np) != (int)np) fail("prendas: region_map");
+    if (ce_debug_label_map(ctx, lmap, np) != (int)np) fail("prendas: label_map");
+    if (ce_debug_cluster_map(ctx, cmap, np) != (int)np) fail("prendas: cluster_map");
+    for (i = 0; i < np; ++i) {
+        if (gmap[i] != CE_LABEL_NONE && gmap[i] >= n) fail("prendas: garment_map fuera de rango");
+        if (rmap[i] != CE_LABEL_NONE && rmap[i] > CE_GARMENT_REGION_WHOLE) fail("prendas: region_map fuera de rango");
+        if (!has_map && rmap[i] != CE_GARMENT_REGION_NONE && rmap[i] != CE_LABEL_NONE) fail("prendas: region sin mapa");
+        if (lmap[i] != gmap[i] && !(lmap[i] == CE_LABEL_DISCARDED && gmap[i] == CE_LABEL_NONE)) fail("prendas: label != garment");
+        if (cmap[i] != CE_LABEL_NONE && cmap[i] >= info.n_clusters) fail("prendas: cluster_map fuera de rango");
+        if (cmap[i] == CE_LABEL_NONE && gmap[i] != CE_LABEL_NONE) fail("prendas: swatch sin cluster");
+        if (gmap[i] != CE_LABEL_NONE && rmap[i] != g[gmap[i]].region) fail("prendas: region del pixel != region del swatch");
+    }
+    free(gmap);
+    free(rmap);
+    free(lmap);
+    free(cmap);
+}
+
+static void fuzz_garments_once(ce_ctx *ctx, ce_ctx *ctx_zero)
+{
+    ce_image img;
+    ce_palette_opts po, *pop = &po;
+    ce_garment_opts go, *gop = &go;
+    ce_garment_swatch out[12], sentinel[12];
+    uint8_t *px = NULL, *mask = NULL, *map = NULL;
+    int w = 1 + (int)rnd(200), h = 1 + (int)rnd(200), n_regions = (int)rnd(5) - 1, cap = (int)rnd(12) - 1;
+    int rc, want = CE_OK, i, bad_img = 0;
+    ce_ctx *use_ctx = ctx;
+    size_t j;
+
+    if (rnd(40) == 0) {
+        w = -(int)rnd(3);
+        bad_img = 1;
+    }
+    memset(&img, 0, sizeof img);
+    img.width = w;
+    img.height = h;
+    img.fmt = CE_RGB8;
+    img.stride_bytes = w * 3;
+    if (!bad_img) {
+        px = (uint8_t *)malloc((size_t)w * (size_t)h * 3u);
+        if (px == NULL) fail("malloc");
+        random_pixels(px, w, h, w * 3, 3);
+        if (rnd(3) == 0) {
+            mask = (uint8_t *)malloc((size_t)w * (size_t)h);
+            if (mask == NULL) fail("malloc");
+            for (j = 0; j < (size_t)w * (size_t)h; ++j) mask[j] = rnd(3) ? (uint8_t)rnd64() : 0;
+            img.mask = mask;
+        }
+        if (rnd(6) != 0) {
+            const int mode = (int)rnd(4);
+            map = (uint8_t *)malloc((size_t)w * (size_t)h);
+            if (map == NULL) fail("malloc");
+            for (j = 0; j < (size_t)w * (size_t)h; ++j) {
+                const int y = (int)(j / (size_t)w);
+                map[j] = mode == 0 ? (uint8_t)rnd64() : mode == 1 ? (uint8_t)(y * 2 < h ? 1 : 2)
+                       : mode == 2 ? 0 : (uint8_t)rnd(4);
+            }
+        }
+    } else {
+        px = (uint8_t *)malloc(1);
+        if (px == NULL) fail("malloc");
+    }
+    img.pixels = px;
+    random_opts(&po);
+    random_garment_opts(&go);
+    if (rnd(6) == 0) pop = NULL;
+    if (rnd(6) == 0) gop = NULL;
+    if (rnd(40) == 0) use_ctx = ctx_zero;
+
+    memset(sentinel, 0x3C, sizeof sentinel);
+    memcpy(out, sentinel, sizeof out);
+    if (cap < 1 || (map != NULL && (n_regions < 1 || n_regions > CE_GARMENT_MAX_REGIONS))) want = CE_ERR_ARG;
+    else if (use_ctx == ctx_zero) want = CE_ERR_CTX;
+    else if (bad_img) want = CE_ERR_DIMS;
+    else if ((pop != NULL && expected_error(use_ctx, 0, &img, pop, (ce_swatch *)(void *)out, cap) == CE_ERR_OPTS)
+             || (gop != NULL && !garment_opts_valid(gop))) want = CE_ERR_OPTS;
+
+    rc = ce_palette_extract_garments(use_ctx, &img, map, n_regions, pop, gop, out, cap);
+    if (rc < 0) {
+        if (rc != want) fail("prendas: codigo de error distinto del documentado");
+        if (memcmp(out, sentinel, sizeof out) != 0) fail("prendas: error con escritura en out");
+    } else {
+        const int max_colors = pop != NULL ? pop->max_colors : 5;
+        int n_max = max_colors < cap ? max_colors : cap;
+        double sum = 0.0;
+        if (want != CE_OK) fail("prendas: exito con entrada invalida");
+        if (n_max > CE_PALETTE_MAX_COLORS) n_max = CE_PALETTE_MAX_COLORS;
+        if (rc < 1 || rc > n_max) fail("prendas: n fuera de rango");
+        for (i = 0; i < rc; ++i) {
+            uint8_t r, g, b;
+            const ce_garment_swatch *s = &out[i];
+            if (!isfinite(s->swatch.lab.L) || !isfinite(s->swatch.lab.a) || !isfinite(s->swatch.lab.b)) fail("prendas: Lab no finito");
+            if (!(s->swatch.weight > 0.0 && s->swatch.weight <= 1.0 + 1e-12)) fail("prendas: peso");
+            if (i > 0 && out[i - 1].swatch.weight < s->swatch.weight) fail("prendas: orden");
+            if (!(s->region_share > 0.0 && s->region_share <= 1.0 + 1e-12)) fail("prendas: region_share");
+            if (s->region < 0 || s->region > CE_GARMENT_REGION_WHOLE) fail("prendas: region");
+            if (map == NULL && s->region != CE_GARMENT_REGION_NONE) fail("prendas: region sin mapa");
+            if (s->n_merged_clusters < 0 || s->n_merged_clusters > CE_PALETTE_K_MAX) fail("prendas: n_merged");
+            ce_lab_to_srgb8(s->swatch.lab, &r, &g, &b);
+            if (r != s->swatch.rgb[0] || g != s->swatch.rgb[1] || b != s->swatch.rgb[2]) fail("prendas: rgb");
+            sum += s->swatch.weight;
+        }
+        if (fabs(sum - 1.0) > 1e-9) fail("prendas: suma de pesos");
+        for (i = rc; i < 12; ++i) {
+            if (memcmp(&out[i], &sentinel[i], sizeof out[i]) != 0) fail("prendas: escritura mas alla de n");
+        }
+        check_garment_layers(use_ctx, out, rc, map != NULL);
+        if (g_case % 8 == 0) {
+            ce_garment_swatch again[12];
+            memcpy(again, sentinel, sizeof again);
+            if (ce_palette_extract_garments(use_ctx, &img, map, n_regions, pop, gop, again, cap) != rc
+                || memcmp(again, out, sizeof again) != 0) {
+                fail("prendas: no determinista");
+            }
+        }
+        if (g_case % 4 == 0) {
+            ce_match_opts mo;
+            ce_result res;
+            ce_garment_swatch g2[CE_PALETTE_MAX_COLORS];
+            int rc2;
+            ce_match_opts_default(&mo);
+            if (rnd(3) == 0) mo.coverage_lambda = rnd_double_opt(-1.0, 3.0);
+            rc2 = ce_analyze_garments(use_ctx, &img, map, n_regions, pop, gop, &mo, &res, rnd(2) ? g2 : NULL,
+                                      CE_PALETTE_MAX_COLORS);
+            if (!(isfinite(mo.coverage_lambda) && mo.coverage_lambda >= 0.0)) {
+                if (rc2 != CE_ERR_OPTS) fail("analyze_garments: opciones de match");
+            } else if (rc2 != CE_MATCH_MAX_HITS || res.n_swatches < 1
+                       || res.n_swatches > (max_colors < CE_PALETTE_MAX_COLORS ? max_colors : CE_PALETTE_MAX_COLORS)) {
+                fail("analyze_garments: resultado");
+            }
+        }
+    }
+    /* Regiones de prenda: mismo soporte y códigos que las regiones de ropa. */
+    if (!bad_img) {
+        ce_pose pose;
+        ce_region_opts ro;
+        const size_t np = (size_t)w * (size_t)h;
+        uint8_t *person = (uint8_t *)malloc(np), *cloth = (uint8_t *)malloc(np), *regions = (uint8_t *)malloc(np);
+        int k, rc_c, rc_g;
+        if (!person || !cloth || !regions) fail("malloc");
+        for (j = 0; j < np; ++j) person[j] = rnd(5) ? (uint8_t)(1 + rnd(255)) : 0;
+        for (k = 0; k < CE_JOINT_COUNT; ++k) {
+            pose.k[k].x = ((double)w + 1.0) * rnd_unit();
+            pose.k[k].y = ((double)h + 1.0) * rnd_unit();
+            pose.k[k].confidence = 0.5 + 0.5 * rnd_unit();
+            if (rnd(8) == 0) pose.k[k].x = rnd_coord(w);
+            if (rnd(8) == 0) pose.k[k].confidence = rnd_conf();
+        }
+        random_region_opts(&ro);
+        memcpy(cloth, person, np);
+        memset(regions, 0x77, np);
+        rc_c = ce_mask_clothing_regions(&pose, &ro, cloth, w, h);
+        rc_g = ce_mask_garment_regions(&pose, &ro, person, w, h, regions);
+        if (rc_c != rc_g) fail("garment_regions: codigo/recuento distinto de clothing_regions");
+        if (rc_g < 0) {
+            for (j = 0; j < np; ++j) if (regions[j] != 0x77) fail("garment_regions: error con escritura");
+        } else {
+            for (j = 0; j < np; ++j) {
+                if (regions[j] > CE_GARMENT_REGION_LOWER) fail("garment_regions: etiqueta");
+                if ((regions[j] != 0) != (cloth[j] != 0)) fail("garment_regions: soporte distinto");
+            }
+        }
+        free(person);
+        free(cloth);
+        free(regions);
+    }
+    free(px);
+    free(mask);
+    free(map);
+}
+
+/* ------------------------------------------------------------------------
  * Entrada 4: piel adaptativa con modelos degenerados
  * ---------------------------------------------------------------------- */
 
@@ -754,13 +1001,149 @@ static void fuzz_skin_once(ce_ctx *ctx)
 }
 
 /* ------------------------------------------------------------------------
+ * Entrada 6: separación de instancias fusionadas
+ * ---------------------------------------------------------------------- */
+
+static double rnd_seed_coord(int side)
+{
+    switch (rnd(24)) {
+    case 0: return NAN;
+    case 1: return HUGE_VAL;
+    case 2: return -HUGE_VAL;
+    case 3: return CE_POSE_COORD_MAX;
+    case 4: return -CE_POSE_COORD_MAX;
+    case 5: return CE_POSE_COORD_MAX * 1.0000001;
+    case 6: return 1e300;
+    case 7: return -1e-310;
+    default: return ((double)side + 40.0) * rnd_unit() - 20.0;
+    }
+}
+
+static double rnd_half_width(int side)
+{
+    switch (rnd(20)) {
+    case 0: return NAN;
+    case 1: return 0.0;
+    case 2: return -0.0;
+    case 3: return -1.0;
+    case 4: return HUGE_VAL;
+    case 5: return 5e-324;
+    case 6: return 1e-300;
+    case 7: return CE_POSE_COORD_MAX;
+    case 8: return CE_POSE_COORD_MAX * 2.0;
+    default: return 0.5 + ((double)side * 0.5 + 1.0) * rnd_unit();
+    }
+}
+
+static int seed_valid(const ce_person_seed *s)
+{
+    return isfinite(s->x0) && fabs(s->x0) <= CE_POSE_COORD_MAX && isfinite(s->y0) && fabs(s->y0) <= CE_POSE_COORD_MAX
+        && isfinite(s->x1) && fabs(s->x1) <= CE_POSE_COORD_MAX && isfinite(s->y1) && fabs(s->y1) <= CE_POSE_COORD_MAX
+        && s->half_width > 0.0 && s->half_width <= CE_POSE_COORD_MAX;
+}
+
+/* Cociente d/half_width con la misma aritmética que el contrato (proyección
+ * acotada relativa a (x0, y0)). */
+static double split_quotient(const ce_person_seed *s, double px, double py)
+{
+    const double dx = s->x1 - s->x0, dy = s->y1 - s->y0, dd = dx * dx + dy * dy;
+    const double qx = px - s->x0, qy = py - s->y0;
+    double t = 0.0, ex, ey;
+    if (dd > 0.0) {
+        t = (qx * dx + qy * dy) / dd;
+        if (t < 0.0) t = 0.0; else if (t > 1.0) t = 1.0;
+    }
+    ex = qx - t * dx;
+    ey = qy - t * dy;
+    return sqrt(ex * ex + ey * ey) / s->half_width;
+}
+
+static void fuzz_split_once(void)
+{
+    ce_person_seed seeds[CE_SPLIT_MAX_SEEDS + 2];
+    int w = (int)rnd(513), h = (int)rnd(513), n_seeds, k, rc, expect_arg;
+    const int valid_dims = (w >= 1 && h >= 1);
+    size_t n = valid_dims ? (size_t)w * (size_t)h : 1u, i;
+    uint8_t *m = (uint8_t *)malloc(n), *out = (uint8_t *)malloc(n), *orig = (uint8_t *)malloc(n);
+    const int mode = (int)rnd(4);
+    const int null_mask = rnd(100) == 0, null_seeds = rnd(100) == 0, null_out = rnd(100) == 0;
+
+    if (m == NULL || out == NULL || orig == NULL) fail("malloc");
+    for (i = 0; i < n; ++i) {
+        m[i] = (mode == 0) ? (uint8_t)rnd64() : (mode == 1) ? 255 : (mode == 2) ? (uint8_t)(127 + rnd(2)) : (uint8_t)(rnd(3) ? 255 : 0);
+        out[i] = (uint8_t)rnd64();
+    }
+    memcpy(orig, out, n);
+    n_seeds = rnd(10) == 0 ? (int)rnd(13) - 2 : 1 + (int)rnd(CE_SPLIT_MAX_SEEDS);
+    for (k = 0; k < CE_SPLIT_MAX_SEEDS + 2; ++k) {
+        seeds[k].x0 = ((double)w + 1.0) * rnd_unit();
+        seeds[k].y0 = ((double)h + 1.0) * rnd_unit();
+        seeds[k].x1 = rnd(5) == 0 ? seeds[k].x0 : ((double)w + 1.0) * rnd_unit();
+        seeds[k].y1 = rnd(5) == 0 ? seeds[k].y0 : ((double)h + 1.0) * rnd_unit();
+        seeds[k].half_width = 1.0 + 0.5 * (double)(w > h ? w : h) * rnd_unit();
+        if (rnd(12) == 0) seeds[k].x0 = rnd_seed_coord(w);
+        if (rnd(12) == 0) seeds[k].y0 = rnd_seed_coord(h);
+        if (rnd(12) == 0) seeds[k].x1 = rnd_seed_coord(w);
+        if (rnd(12) == 0) seeds[k].y1 = rnd_seed_coord(h);
+        if (rnd(10) == 0) seeds[k].half_width = rnd_half_width(w);
+        if (k > 0 && rnd(10) == 0) seeds[k] = seeds[k - 1]; /* semillas idénticas: empates */
+    }
+    expect_arg = null_mask || null_seeds || null_out || !valid_dims || n_seeds < 1 || n_seeds > CE_SPLIT_MAX_SEEDS;
+    for (k = 0; !expect_arg && k < n_seeds; ++k) {
+        if (!seed_valid(&seeds[k])) expect_arg = 1;
+    }
+    rc = ce_mask_split_instance(null_mask ? NULL : m, w, h, null_seeds ? NULL : seeds, n_seeds, null_out ? NULL : out);
+    if (rc < 0) {
+        if (rc != CE_ERR_ARG) fail("split: codigo de error no documentado");
+        if (!expect_arg) fail("split: CE_ERR_ARG con entrada valida");
+        if (memcmp(out, orig, n) != 0) fail("split: error con la salida modificada");
+    } else {
+        int used[CE_SPLIT_MAX_SEEDS + 1] = {0}, n_used = 0, probe;
+        if (expect_arg) fail("split: exito con entrada invalida");
+        for (i = 0; i < n; ++i) {
+            if ((m[i] >= 128) != (out[i] != 0)) fail("split: etiqueta 0 no coincide con mask < 128");
+            if (out[i] > n_seeds) fail("split: etiqueta fuera de 1..n_seeds");
+            used[out[i]] = 1;
+        }
+        for (k = 1; k <= n_seeds; ++k) n_used += used[k];
+        if (n_used != rc) fail("split: recuento de etiquetas usadas");
+        for (probe = 0; probe < 16 && valid_dims; ++probe) {
+            const size_t j = (size_t)rnd64() % n;
+            const double px = (double)(j % (size_t)w) + 0.5, py = (double)(j / (size_t)w) + 0.5;
+            int lab = out[j] - 1;
+            if (out[j] == 0) continue;
+            {
+                const double ql = split_quotient(&seeds[lab], px, py);
+                for (k = 0; k < n_seeds; ++k) {
+                    const double qk = split_quotient(&seeds[k], px, py);
+                    if (qk < ql || (qk == ql && k < lab)) fail("split: la etiqueta no es el argmin (empate al indice menor)");
+                }
+            }
+        }
+        if (g_case % 8 == 0) {
+            uint8_t *again = (uint8_t *)malloc(n);
+            if (again == NULL) fail("malloc");
+            memcpy(again, m, n);
+            /* In situ (mismo buffer) y repetición: mismos bytes y retorno. */
+            if (ce_mask_split_instance(again, w, h, seeds, n_seeds, again) != rc || memcmp(again, out, n) != 0) {
+                fail("split no determinista o distinto in situ");
+            }
+            free(again);
+        }
+    }
+    free(m);
+    free(out);
+    free(orig);
+}
+
+/* ------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
 int main(int argc, char **argv)
 {
     double seconds = 600.0, t0, elapsed, last_report;
-    uint64_t it_extract = 0, it_pnm = 0, it_regions = 0, it_skin = 0;
+    uint64_t it_extract = 0, it_pnm = 0, it_regions = 0, it_skin = 0, it_garments = 0, it_split = 0;
     void *mem, *mem_zero;
     ce_ctx *ctx, *ctx_zero;
 
@@ -796,12 +1179,19 @@ int main(int argc, char **argv)
         ++g_case;
         fuzz_skin_once(ctx);
         ++it_skin;
+        ++g_case;
+        fuzz_garments_once(ctx, ctx_zero);
+        ++it_garments;
+        ++g_case;
+        fuzz_split_once();
+        ++it_split;
         if ((g_case & 63) == 0) {
             now = now_s();
             if (now - t0 >= seconds) break;
             if (now - last_report >= 60.0) {
-                printf("  %.0f s: extract %" PRIu64 " it, pnm %" PRIu64 " it, regions %" PRIu64 " it, skin %" PRIu64 " it\n",
-                       now - t0, it_extract, it_pnm, it_regions, it_skin);
+                printf("  %.0f s: extract %" PRIu64 " it, pnm %" PRIu64 " it, regions %" PRIu64 " it, skin %" PRIu64
+                       " it, garments %" PRIu64 " it, split %" PRIu64 " it\n", now - t0, it_extract, it_pnm, it_regions,
+                       it_skin, it_garments, it_split);
                 fflush(stdout);
                 last_report = now;
             }
@@ -809,8 +1199,10 @@ int main(int argc, char **argv)
     }
     elapsed = now_s() - t0;
     printf("fuzz_palette OK: %.1f s, extract %" PRIu64 " it (%.0f it/s), pnm %" PRIu64 " it (%.0f it/s), "
-           "regions %" PRIu64 " it, skin %" PRIu64 " it, 0 fallos\n",
-           elapsed, it_extract, (double)it_extract / elapsed, it_pnm, (double)it_pnm / elapsed, it_regions, it_skin);
+           "regions %" PRIu64 " it, skin %" PRIu64 " it, garments %" PRIu64 " it (%.0f it/s), split %" PRIu64
+           " it, 0 fallos\n",
+           elapsed, it_extract, (double)it_extract / elapsed, it_pnm, (double)it_pnm / elapsed, it_regions, it_skin,
+           it_garments, (double)it_garments / elapsed, it_split);
     free(mem);
     free(mem_zero);
     return 0;

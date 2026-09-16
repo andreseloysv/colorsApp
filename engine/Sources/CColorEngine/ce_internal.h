@@ -36,13 +36,13 @@
 
 /* Un bin del histograma. Durante la acumulación `c` guarda Σw·r, Σw·g, Σw·b
  * (r, g, b en 0..255); tras la finalización guarda L, a, b del color medio
- * ponderado del bin. `count` cuenta píxeles con o sin peso; `center` es el
- * centro asignado por Lloyd (-1 si el bin no tiene peso). */
+ * ponderado del bin. El centro asignado por Lloyd vive aparte, en
+ * ce_ctx.hist_center (-1 si el bin no tiene peso): así el bin ocupa 32 bytes
+ * y el contexto deja sitio a las capas de la paleta por prenda sin salir de
+ * los 2 MiB (las operaciones de coma flotante no cambian). */
 typedef struct ce_hist_bin {
     double wsum;
     double c[3];
-    uint32_t count;
-    int32_t center;
 } ce_hist_bin;
 
 /* Caja del median cut en coordenadas de bin (extremos inclusivos, ya
@@ -73,6 +73,7 @@ typedef struct ce_center {
  *    estaba vacío). */
 typedef struct ce_debug_state {
     int valid;
+    int garment;     /* 1: la última extracción fue ce_palette_extract_garments (ce_garment.c) */
     int lloyd_iterations;
     int n_clusters;
     int n_swatches;
@@ -82,6 +83,18 @@ typedef struct ce_debug_state {
     uint8_t center_label[CE_PALETTE_K_MAX];
     uint8_t center_cluster[CE_PALETTE_K_MAX];
 } ce_debug_state;
+
+/* Bins del histograma de L* (ancho 0,1) de los percentiles del tono iluminado. */
+#define CE_GARMENT_L_BINS 1000
+
+/* Estado de la última ce_palette_extract_garments (lo leen las capas de
+ * depuración): región de cada cluster registrado en dbg.clusters, si hubo
+ * mapa de regiones y si las regiones 1 y 2 se fusionaron en la 3. */
+typedef struct ce_garment_state {
+    int has_map;
+    int fused;
+    uint8_t cluster_region[CE_PALETTE_K_MAX];
+} ce_garment_state;
 
 struct ce_ctx {
     uint32_t magic;
@@ -96,6 +109,14 @@ struct ce_ctx {
     uint8_t reduced[CE_CTX_MAX_PIXELS * 3];   /* imagen reducida, RGB8 empaquetado */
     double weights[CE_CTX_MAX_PIXELS];        /* peso por píxel reducido */
     ce_hist_bin hist[CE_HIST_BINS];
+    int8_t hist_center[CE_HIST_BINS];         /* centro de Lloyd de cada bin, -1 sin centro */
+    /* Paleta por prenda (ce_garment.c). */
+    ce_garment_state garment;
+    uint8_t region_label[CE_CTX_MAX_PIXELS];  /* región de cada píxel reducido (0 = fuera) */
+    uint8_t pixel_cluster[CE_CTX_MAX_PIXELS]; /* cluster (índice en dbg.clusters) o CE_LABEL_NONE */
+    double lit_hist[CE_GARMENT_L_BINS];       /* histograma de L* de los percentiles del tono iluminado */
+    double shade_dist[CE_PALETTE_K_MAX * CE_PALETTE_K_MAX]; /* ΔE00 (kL = shade_kL) entre clusters, i < j */
+    uint8_t shade_ok[CE_PALETTE_K_MAX * CE_PALETTE_K_MAX];  /* par "agrupable" */
 };
 
 /* ---- ce_image.c ---------------------------------------------------------- */
@@ -118,6 +139,32 @@ void ce_image_apply_center_weight(ce_ctx *ctx, double sigma_px);
 
 /* Anula el peso de los píxeles de piel (Chai y Ngan, YCbCr JFIF). */
 void ce_image_apply_skin_rule(ce_ctx *ctx);
+
+/* ---- ce_palette.c (compartido con ce_garment.c) --------------------------- */
+
+int ce_palette_opts_valid(const ce_palette_opts *o);
+void ce_hist_clear(ce_ctx *ctx);
+void ce_hist_accumulate(ce_ctx *ctx);
+void ce_hist_accumulate_labels(ce_ctx *ctx, unsigned sel);
+double ce_hist_finalize(ce_ctx *ctx);
+int ce_mmcq(ce_ctx *ctx, int k);
+void ce_assign_from_boxes(ce_ctx *ctx, int nboxes);
+void ce_lloyd_update(ce_ctx *ctx, int k);
+int ce_lloyd_assign(ce_ctx *ctx, int k);
+int ce_palette_fallback_mean(const ce_ctx *ctx, ce_swatch *out);
+uint64_t ce_fnv1a_bytes(uint64_t h, const unsigned char *p, size_t n);
+uint64_t ce_fnv1a_double(uint64_t h, double v);
+
+/* ---- ce_image.c (paleta por prenda) -------------------------------------- */
+
+/* Como ce_image_reduce con un mapa de regiones (width*height bytes, 0 fuera,
+ * 1..n_regions región; otros valores cuentan como fuera): máscara efectiva
+ * em(p) = (máscara o 255 sin máscara) si p está en una región, 0 si no; peso
+ * del bloque = media entera de em; etiqueta del bloque = la región con mayor
+ * Σ em (empates: la menor), 0 si todas suman 0. region_map NULL: ce_image_reduce
+ * y etiqueta 1 en todos los píxeles. */
+void ce_image_reduce_regions(ce_ctx *ctx, const ce_image *img, const uint8_t *region_map, int n_regions,
+                             int max_side);
 
 /* ---- ce_mask.c ----------------------------------------------------------- */
 

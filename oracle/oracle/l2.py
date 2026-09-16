@@ -20,6 +20,17 @@ La lógica de esta capa vive aquí para que la usen ``oracle.eval`` (scorecard) 
     emparejado; espejo y rotación 180° -> ΔE00 < 0,5; ruido gaussiano sigma = 2 ->
     ΔE00 < 1,5; dos ejecuciones -> mismo hash y mismo JSON.
 
+(c) **Prendas** (``oracle.garments``, paleta por prenda de ``ce batch --garments``): 170
+    composiciones de una figura sombreada (liso, rayas, vestido, sombras duras, dos prendas de
+    tono cercano, sombra proyectada contigua, sombra abierta de exterior que AZULEA, estampado
+    oscuro + motivo claro con esa sombra, degradado de color, y las informativas bicolor tonal y
+    banda de fusión) con mapa de regiones arriba/abajo: colores exactos por prenda, ΔE00 al tono
+    iluminado verdadero, fusiones erróneas, vestidos sin fusionar, prendas lisas partidas en dos
+    por una sombra (proyectada o azul), estampados que pierden el motivo y degradados colapsados.
+    Umbrales en
+    ``L2.garments`` (propuestos en ``harness/out/thresholds.proposed.json``, sección
+    ``L2_garments``). Si el CLI no tiene ``garments`` el bloque queda ``skipped``.
+
 Los umbrales salen de ``harness/thresholds.json`` (sección ``L2``); si falta una clave se
 usa el valor del contrato de la fase 2 (``DEFAULTS``) y el scorecard lo anota como default
 no promovido. ``--fast``: 40 composiciones y 8 invariancias (debe tardar < 60 s).
@@ -661,6 +672,19 @@ def run_layer2(cli: Path, thresholds: dict[str, Any] | None, out_dir: Path | Non
                 log("           " + c.detail.replace("\n", "\n           "))
         checks += inv_checks
         detail["invariances"] = inv_rows
+        from oracle import garments
+
+        if garments.has_garments(cli):
+            t0 = time.perf_counter()
+            g_checks, g_detail = garments.run_block(cli, thresholds, work, log=log)
+            if g_checks:
+                g_checks[0].seconds = round(time.perf_counter() - t0, 3)
+            checks += g_checks
+            detail["garments"] = g_detail
+        else:
+            c = Check("prendas (ce batch --garments)", "skipped", f"{cli} no tiene el subcomando 'garments'")
+            checks.append(c)
+            log(f"  [{c.status:>7}] {c.name}: {c.detail}")
     seconds = round(time.perf_counter() - started, 1)
     detail["seconds"] = seconds
     if fast:

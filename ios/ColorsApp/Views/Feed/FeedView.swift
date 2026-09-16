@@ -107,6 +107,7 @@ struct FeedView: View {
                 ResultView(model: {
                     let model = ResultViewModel(outcome: route.outcome, env: env)
                     model.showMask = route.showMask
+                    model.banner = route.banner
                     return model
                 }())
             }
@@ -304,10 +305,13 @@ struct FeedView: View {
             defer { reopeningId = nil }
             do {
                 let fallback = ((try? await env.settings.subjectSettings()) ?? .default).subjectOptions
-                let reopened = try await FeedServices.reopen(scan: item.scan, image: photo, fallback: fallback)
-                path.append(ResultRoute(outcome: reopened.outcome))
-                if reopened.recalculated {
-                    flash("Recalculado con el motor actual", systemImage: "arrow.triangle.2.circlepath")
+                // Con un scan de una versión anterior, `reopen` lo re-analiza Y lo guarda
+                // actualizado (CONTEXT §13: no seguir enseñando resultados como el Nº 067).
+                let reopened = try await FeedServices.reopen(scan: item.scan, image: photo, fallback: fallback,
+                                                             scans: env.scans)
+                path.append(ResultRoute(outcome: reopened.outcome, banner: reopened.banner))
+                if let banner = reopened.banner {
+                    flash(banner, systemImage: "arrow.triangle.2.circlepath")
                 }
             } catch {
                 flash(ErrorText.describe(error), systemImage: "exclamationmark.triangle.fill")

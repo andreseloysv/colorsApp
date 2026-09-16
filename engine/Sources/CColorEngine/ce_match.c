@@ -13,6 +13,12 @@
  *
  *   score(C) = min_h score_h(C)
  *
+ * Por defecto (ce_match_opts_default, desde 2026-09-15) solo hay hipótesis de
+ * exposición: illuminant_search = 0, porque las fotos del teléfono ya llegan
+ * con balance de blancos y la hipótesis de iluminante giraba tonos en fotos
+ * reales (rosa palo + negro -> Nº 067 azul; ADR-009). Sigue disponible con
+ * illuminant_search = 1.
+ *
  * La hipótesis identidad (EV = 0, D65) siempre está y se evalúa la primera:
  * con exposure_ev_max = 0 e illuminant_search = 0 el score es exactamente el
  * de la fase 3 (match v0), bit a bit. Menor es mejor. Se evalúan las 348
@@ -70,7 +76,7 @@ void ce_match_opts_default(ce_match_opts *o)
     o->ambiguous_gap = 1.0;
     o->exposure_ev_max = 1.0;
     o->exposure_penalty = 2.0;
-    o->illuminant_search = 1;
+    o->illuminant_search = 0; /* ADR-009: desactivada por defecto (doble corrección del balance de blancos) */
     o->illuminant_penalty = 2.0;
 }
 

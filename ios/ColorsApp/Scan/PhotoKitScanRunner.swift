@@ -105,7 +105,9 @@ struct AssetRef: @unchecked Sendable {
 final class PhotoKitScanRunner: ScanRunning {
     /// Resultado de una tarea del TaskGroup.
     enum WorkerResult: Sendable {
-        case analyzed(id: String?, AnalysisResult, subject: ScanSubjectInfo, timings: AnalysisTimings, usedFallback: Bool)
+        /// `garments`: paleta por prenda del análisis (nil en el camino clásico, sin pose).
+        case analyzed(id: String?, AnalysisResult, subject: ScanSubjectInfo, timings: AnalysisTimings, usedFallback: Bool,
+                      garments: ScanGarmentInfo?)
         /// No hay imagen disponible sin red (iCloud) o no se pudo decodificar.
         case skipped(id: String?, reason: String)
         /// El motor o el puente fallaron.
@@ -234,14 +236,16 @@ final class PhotoKitScanRunner: ScanRunning {
                 while let result = try await group.next() {
                     try Task.checkCancellation()
                     switch result {
-                    case .analyzed(let id, let analysis, let subject, let t, let usedFallback):
+                    case .analyzed(let id, let analysis, let subject, let t, let usedFallback, let garments):
                         totals.visionMs += t.visionMs
                         totals.maskMs += t.maskMs
                         totals.engineMs += t.engineMs
                         totals.rasterMs += t.rasterMs
                         for step in subject.steps { stepCounts[step.rawValue, default: 0] += 1 }
                         if usedFallback { fallbacks += 1 }
-                        let record = ScanRecord.make(from: analysis, source: .library, assetLocalId: id, subject: subject)
+                        // Con la versión de la política: los scans del carrete no nacen «antiguos».
+                        let record = ScanRecord.make(from: analysis, source: .library, assetLocalId: id, subject: subject,
+                                                     garments: garments, policyVersion: AnalysisPolicy.current)
                         try await scans.insert(record)
                         scanned += 1
                         if let top = analysis.hits.first {
@@ -433,7 +437,8 @@ final class PhotoKitScanRunner: ScanRunning {
             if !analysis.subject.steps.isEmpty {
                 logger.debug("scan.subject \(id ?? "-", privacy: .public): \(analysis.subject.steps.map(\.rawValue).joined(separator: ","), privacy: .public) personas \(analysis.subject.people.count, privacy: .public)")
             }
-            return .analyzed(id: id, analysis.result, subject: info, timings: analysis.timings, usedFallback: usedFallback)
+            return .analyzed(id: id, analysis.result, subject: info, timings: analysis.timings, usedFallback: usedFallback,
+                             garments: analysis.garmentInfo)
         } catch {
             return .failed(id: id, error: String(describing: error))
         }

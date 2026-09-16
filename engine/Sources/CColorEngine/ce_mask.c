@@ -2,7 +2,9 @@
  * ce_mask.c — máscaras de ropa: regiones del cuerpo a partir de la pose
  * (ce_mask_clothing_regions), recorte de cabeza sin pose (ce_mask_cut_head) y
  * exclusión de piel con un modelo gaussiano adaptativo en CIELAB muestreado de
- * la cara de cada persona (ce_skin_model_fit, ce_mask_exclude_skin).
+ * la cara de cada persona (ce_skin_model_fit, ce_mask_exclude_skin) y separación
+ * de instancias que juntan a varias personas con semillas de cara o pose
+ * (ce_mask_split_instance).
  *
  * Geometría: todo se evalúa en el centro de cada píxel (x + 0.5, y + 0.5),
  * sin antialiasing, con distancias al cuadrado relativas a un punto de
@@ -187,6 +189,9 @@ typedef struct ce_region {
     ce_capsule torso_edges[6];               /* los 6 pares, radio = margen */
     ce_capsule limbs[CE_REGION_MAX_CAPSULES];
     int n_limbs;
+    int n_arm_limbs;                         /* limbs[0..n_arm_limbs) son brazos; el resto, piernas */
+    ce_pt hips2;                             /* LH + RH (2 · punto medio de caderas) */
+    ce_pt axis2;                             /* (LH + RH) − (LS + RS) (2 · eje hombros -> caderas) */
     ce_capsule hands[2];
     int n_hands;
     ce_pt side_origin;                       /* LS */
@@ -266,6 +271,14 @@ static int ce_region_build(const ce_pose *pose, const ce_region_opts *o, ce_regi
         return CE_ERR_POSE;
     }
     r->side_sign = side_h > 0.0 ? 1.0 : -1.0;
+    /* Corte arriba/abajo de ce_mask_garment_regions: recta perpendicular al eje
+     * cuerpo (punto medio de hombros -> punto medio de caderas) por las caderas.
+     * El eje no es nulo: side_h != 0 implica que las caderas no están sobre la
+     * recta de hombros. Duplicado para no multiplicar por 0.5. */
+    r->hips2.x = lh.x + rh.x;
+    r->hips2.y = lh.y + rh.y;
+    r->axis2.x = r->hips2.x - (ls.x + rs.x);
+    r->axis2.y = r->hips2.y - (ls.y + rs.y);
 
     margin = o->torso_margin * sw;
     limb_r = o->limb_width * sw * 0.5;
@@ -296,6 +309,7 @@ static int ce_region_build(const ce_pose *pose, const ce_region_opts *o, ce_regi
     if (o->include_forearms && ce_joint_ok(pose, CE_JOINT_RELBOW, mc)) {
         ce_region_add_limb(r, pose, ce_joint_pt(pose, CE_JOINT_RELBOW), CE_JOINT_RWRIST, mc, limb_r);
     }
+    r->n_arm_limbs = r->n_limbs;
     if (o->include_legs) {
         ce_region_add_limb(r, pose, lh, CE_JOINT_LKNEE, mc, limb_r);
         ce_region_add_limb(r, pose, rh, CE_JOINT_RKNEE, mc, limb_r);
@@ -341,6 +355,62 @@ static int ce_region_contains(const ce_region *r, double px, double py)
         }
     }
     return 0;
+}
+
+/* Etiqueta de prenda de ce_mask_garment_regions: 0 fuera de la región de ropa
+ * (mismos predicados que ce_region_contains), 2 = abajo, 1 = arriba. Abajo:
+ * p está en una cápsula de pierna y no en el torso ni en un brazo, o p está
+ * en el torso o en una pierna y más allá de la recta de corte (perpendicular
+ * al eje hombros -> caderas por el punto medio de las caderas):
+ * (2p − (LH + RH)) · ((LH + RH) − (LS + RS)) > 0. Sobre la recta: arriba. Un
+ * muslo en horizontal (persona sentada) sigue siendo "abajo" porque la cápsula
+ * de pierna fuera del torso no depende del corte. */
+static int ce_region_label(const ce_region *r, double px, double py)
+{
+    const double s = ce_cross(r->side_dir.x, r->side_dir.y, px - r->side_origin.x, py - r->side_origin.y);
+    int i, torso = 0, arm = 0, leg = 0;
+    if (r->side_sign > 0.0 ? !(s >= 0.0) : !(s <= 0.0)) {
+        return 0;
+    }
+    for (i = 0; i < r->n_hands; ++i) {
+        if (ce_capsule_contains(&r->hands[i], px, py)) {
+            return 0;
+        }
+    }
+    if (ce_triangle_contains(r->torso[0], r->torso[1], r->torso[2], px, py)
+        || ce_triangle_contains(r->torso[0], r->torso[2], r->torso[3], px, py)
+        || ce_triangle_contains(r->torso[0], r->torso[1], r->torso[3], px, py)
+        || ce_triangle_contains(r->torso[1], r->torso[2], r->torso[3], px, py)) {
+        torso = 1;
+    }
+    for (i = 0; !torso && i < 6; ++i) {
+        if (ce_capsule_contains(&r->torso_edges[i], px, py)) {
+            torso = 1;
+        }
+    }
+    for (i = 0; i < r->n_limbs; ++i) {
+        if (ce_capsule_contains(&r->limbs[i], px, py)) {
+            if (i < r->n_arm_limbs) {
+                arm = 1;
+            } else {
+                leg = 1;
+            }
+        }
+    }
+    if (!torso && !arm && !leg) {
+        return 0;
+    }
+    if (leg && !torso && !arm) {
+        return 2;
+    }
+    if (torso || leg) {
+        const double qx = (px + px) - r->hips2.x;
+        const double qy = (py + py) - r->hips2.y;
+        if (qx * r->axis2.x + qy * r->axis2.y > 0.0) {
+            return 2;
+        }
+    }
+    return 1;
 }
 
 /* Límite entero conservador de una coordenada: v acotado a [lo, hi]. */
@@ -395,6 +465,50 @@ int ce_mask_clothing_regions(const ce_pose *pose, const ce_region_opts *o, uint8
             } else {
                 *m = 0;
             }
+        }
+    }
+    return count;
+}
+
+int ce_mask_garment_regions(const ce_pose *pose, const ce_region_opts *o, const uint8_t *person_mask,
+                            int width, int height, uint8_t *regions_out)
+{
+    ce_region r;
+    int rc, x, y, x0, x1, y0, y1, count = 0;
+
+    if (pose == NULL || o == NULL || person_mask == NULL || regions_out == NULL) {
+        return CE_ERR_ARG;
+    }
+    if (!ce_dims_valid(width, height) || !ce_region_opts_valid(o)) {
+        return CE_ERR_ARG;
+    }
+    rc = ce_region_build(pose, o, &r);
+    if (rc != CE_OK) {
+        return rc;
+    }
+    /* Misma bbox conservadora que ce_mask_clothing_regions. */
+    x0 = ce_clamp_int(r.min_x - 2.0, 0, width - 1);
+    x1 = ce_clamp_int(r.max_x + 2.0, 0, width - 1);
+    y0 = ce_clamp_int(r.min_y - 2.0, 0, height - 1);
+    y1 = ce_clamp_int(r.max_y + 2.0, 0, height - 1);
+    if (!(r.max_x + 2.0 >= 0.0) || !(r.max_y + 2.0 >= 0.0) || !(r.min_x - 2.0 <= (double)width)
+        || !(r.min_y - 2.0 <= (double)height)) {
+        x0 = 1;
+        x1 = 0;
+    }
+    for (y = 0; y < height; ++y) {
+        const size_t row = (size_t)y * (size_t)width;
+        const int row_in = (y >= y0 && y <= y1);
+        const double py = (double)y + 0.5;
+        for (x = 0; x < width; ++x) {
+            /* Se lee la máscara antes de escribir: regions_out puede ser person_mask. */
+            const uint8_t m = person_mask[row + (size_t)x];
+            int label = 0;
+            if (m != 0 && row_in && x >= x0 && x <= x1) {
+                label = ce_region_label(&r, (double)x + 0.5, py);
+            }
+            regions_out[row + (size_t)x] = (uint8_t)label;
+            count += (label != 0);
         }
     }
     return count;
@@ -613,6 +727,82 @@ static int ce_skin_model_check(const ce_skin_model *m)
         return CE_ERR_ARG;
     }
     return CE_OK;
+}
+
+/* ------------------------------------------------------------------------
+ * Separación de instancias fusionadas
+ * ---------------------------------------------------------------------- */
+
+/* Umbral de "dentro" de la máscara de instancia (el de la cobertura en SubjectKit). */
+#define CE_SPLIT_INSIDE 128u
+
+static int ce_split_coord_ok(double v)
+{
+    return isfinite(v) && fabs(v) <= CE_POSE_COORD_MAX;
+}
+
+int ce_mask_split_instance(const uint8_t *mask, int width, int height, const ce_person_seed *seeds,
+                           int n_seeds, uint8_t *labels_out)
+{
+    ce_capsule axes[CE_SPLIT_MAX_SEEDS];
+    double half[CE_SPLIT_MAX_SEEDS];
+    int used[CE_SPLIT_MAX_SEEDS];
+    int k, x, y, n_used = 0;
+
+    if (mask == NULL || seeds == NULL || labels_out == NULL) {
+        return CE_ERR_ARG;
+    }
+    if (!ce_dims_valid(width, height) || n_seeds < 1 || n_seeds > CE_SPLIT_MAX_SEEDS) {
+        return CE_ERR_ARG;
+    }
+    for (k = 0; k < n_seeds; ++k) {
+        const ce_person_seed *s = &seeds[k];
+        ce_pt a;
+        if (!ce_split_coord_ok(s->x0) || !ce_split_coord_ok(s->y0) || !ce_split_coord_ok(s->x1)
+            || !ce_split_coord_ok(s->y1)) {
+            return CE_ERR_ARG;
+        }
+        /* NaN falla las dos comparaciones. */
+        if (!(s->half_width > 0.0 && s->half_width <= CE_POSE_COORD_MAX)) {
+            return CE_ERR_ARG;
+        }
+        a.x = s->x0;
+        a.y = s->y0;
+        axes[k] = ce_capsule_make(a, s->x1 - s->x0, s->y1 - s->y0, 0.0);
+        half[k] = s->half_width;
+        used[k] = 0;
+    }
+    /* Distancias <= ~3·2^20 px y half_width > 0: cada cociente es finito o
+     * +inf (half_width diminuto), nunca NaN; argmin estricto = empate al
+     * índice menor. */
+    for (y = 0; y < height; ++y) {
+        const double py = (double)y + 0.5;
+        const size_t row = (size_t)y * (size_t)width;
+        for (x = 0; x < width; ++x) {
+            const size_t i = row + (size_t)x;
+            const double px = (double)x + 0.5;
+            double best_q;
+            int best = 0;
+            if (mask[i] < CE_SPLIT_INSIDE) {
+                labels_out[i] = 0;
+                continue;
+            }
+            best_q = sqrt(ce_capsule_dist2(&axes[0], px, py)) / half[0];
+            for (k = 1; k < n_seeds; ++k) {
+                const double q = sqrt(ce_capsule_dist2(&axes[k], px, py)) / half[k];
+                if (q < best_q) {
+                    best_q = q;
+                    best = k;
+                }
+            }
+            labels_out[i] = (uint8_t)(best + 1);
+            used[best] = 1;
+        }
+    }
+    for (k = 0; k < n_seeds; ++k) {
+        n_used += used[k];
+    }
+    return n_used;
 }
 
 /* d² de Mahalanobis <= umbral² (NaN o inf: no es piel). */

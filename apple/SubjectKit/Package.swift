@@ -10,6 +10,8 @@
 //   - SubjectKit (librería, iOS 17 / macOS 14): SubjectExtractor.
 //   - visionmask (ejecutable macOS): máscaras, capas y raster exactos de la app
 //     para analizarlos con `ce batch` (make visionmask-people).
+// Target interno SubjectMetrics (sin producto; la app no lo enlaza): métricas de medida de
+// piel, prenda y fondo en la paleta para visionmask report y los tests.
 // Sin unsafeFlags ni capabilities de cuenta de pago; sin red.
 import PackageDescription
 
@@ -29,14 +31,19 @@ let package = Package(
             dependencies: [.product(name: "ColorEngine", package: "engine")],
             path: "Sources/SubjectKit"
         ),
+        .target(
+            name: "SubjectMetrics",
+            dependencies: [.product(name: "ColorEngine", package: "engine")],
+            path: "Sources/SubjectMetrics"
+        ),
         .executableTarget(
             name: "visionmask",
-            dependencies: ["SubjectKit", .product(name: "ColorEngine", package: "engine")],
+            dependencies: ["SubjectKit", "SubjectMetrics", .product(name: "ColorEngine", package: "engine")],
             path: "Sources/visionmask"
         ),
         .testTarget(
             name: "SubjectKitTests",
-            dependencies: ["SubjectKit", .product(name: "ColorEngine", package: "engine")],
+            dependencies: ["SubjectKit", "SubjectMetrics", .product(name: "ColorEngine", package: "engine")],
             path: "Tests/SubjectKitTests"
         ),
     ]

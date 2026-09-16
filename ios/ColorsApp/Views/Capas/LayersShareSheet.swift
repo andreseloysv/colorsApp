@@ -1,5 +1,5 @@
-// "Compartir capas": una imagen PNG vertical con las 11 capas, sus números y la
-// explicación del top-3 (ImageRenderer), para enviarla cuando algo sale mal.
+// "Compartir capas": una imagen PNG vertical con las 12 capas, sus números, las prendas
+// (capa 8) y la explicación del top-3 (ImageRenderer), para enviarla cuando algo sale mal.
 // Sin @EnvironmentObject (ImageRenderer no tiene el entorno de la app).
 import SwiftUI
 import UIKit
@@ -32,6 +32,16 @@ struct LayersShareSheet: View {
                     } else {
                         Spacer().frame(width: cardWidth)
                     }
+                }
+            }
+            if let garments = stack.layer(.garments), !stack.garments.isEmpty {
+                header(garments)
+                ForEach(stack.garments) { row in
+                    Text("\(row.index + 1). \(row.regionLabel) · \(row.swatch.hex.uppercased()) · "
+                         + "\(SubjectExplanation.percent(row.shareInRegion)) de su prenda · "
+                         + "\(row.mergedClusters) \(row.mergedClusters == 1 ? "tono" : "tonos"): "
+                         + row.tones.map { "\($0.hex) (\(SubjectExplanation.percent($0.weight)))" }.joined(separator: " + "))
+                        .font(.system(size: 12).monospacedDigit())
                 }
             }
             if let palette = stack.layer(.palette) {

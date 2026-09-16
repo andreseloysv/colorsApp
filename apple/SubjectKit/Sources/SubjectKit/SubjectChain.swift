@@ -2,17 +2,31 @@
 // recibe el motor, con capas y pasos. Toda la geometría y la piel se delegan
 // en el motor C (ColorEngine); aquí solo se eligen entradas y candidatas.
 //
-// Por persona (runChain), sobre su máscara BINARIA B (>= 128 -> 255):
+// Por persona (runChain), sobre su máscara BINARIA B (>= 128 -> 255). Si Vision
+// juntó a esta persona con otras y se separó (PersonSplit.swift), el primer paso
+// es [splitByPose] o [splitByFace]:
 //   suelo = max(ceil(minCoverage·W·H), 1)
 //   muestra de piel: la propia o, con < 50 muestras y shareSkinModel, la de la
 //     persona con más muestras (skinSampleSource); modelo = fitSkinModel(muestra).
-//   region == .clothing, opciones ro = regionOptions (sin brazos si se pidió piel
-//   y no hay muestra con >= 50 muestras: con manga corta serían piel):
+//   region == .clothing, opciones ro = regionOptions:
 //     con pose: pose' = regionPose(pose) (caderas estimadas en planos medios)
+//       sin modelo (se pidió piel y no hay muestra con >= 50 muestras) y ro con brazos:
+//         prueba de mangas: T = clothingRegions(pose', ro sin brazos ni piernas, B) (torso),
+//         A = clothingRegions(pose', ro) − clothingRegions(pose', ro sin brazos);
+//         parecidos = excludeSkin(fitSkinModel(T), Mahalanobis sleeveMatchMahalanobis, maxExcluded 1, A).excluded;
+//         si parecidos >= ceil(sleeveMatchFraction·|A|) los brazos se quedan (mangas); si no,
+//         ro sin brazos (con manga corta serían piel que nadie quita)
 //       R = clothingRegions(pose', ro, B)
-//       brazos desnudos (modelo y ro con brazos): A = R − clothingRegions(pose', ro sin brazos, B);
-//         piel(A) = excludeSkin(modelo, maxExcluded 1, A).excluded;
-//         si piel(A) >= ceil(bareArmsSkinFraction·|A|): ro sin brazos, R sin brazos
+//       con modelo M0 (cara): piel(Z) = excludeSkin(M, Mahalanobis maxMahalanobis, maxExcluded 1, Z).excluded
+//         brazos A = R − clothingRegions(pose', ro sin brazos) (si ro tiene brazos),
+//         piernas P = R − clothingRegions(pose', ro sin piernas) (si ro tiene piernas);
+//         desnudo(Z) = piel(Z) >= ceil(bareArmsSkinFraction·|Z|)  (con M0)
+//         si desnudo(A) o desnudo(P): aprendizaje, hasta skinLearningIterations pasadas sobre R:
+//           C = candidatos de excludeSkin(M, Mahalanobis skinLearningMahalanobis, maxExcluded 1, R);
+//           parar si |C| = 0, |C| > maxExcludedFraction·|R| o no añade píxeles;
+//           M' = fitSkinModel(muestra ∪ C); parar (sin aceptar) si piel(R) con M' > maxExcludedFraction·|R|;
+//           muestra = muestra ∪ C; M = M'
+//         brazos desnudos con el modelo final M: si desnudo(A): ro sin brazos, R sin brazos
 //       S = clothingRegions(pose', silhouetteOptions(ro), B)            (silueta)
 //       requerido = max(ceil(minRegionFraction·|S|), suelo)
 //       |S| >= suelo:  |R| >= requerido -> R [poseRegions]; si no -> S [poseRegions] (silueta)
@@ -20,14 +34,27 @@
 //       (CE_ERR_POSE: sin candidatas de pose -> 3.)
 //     3. cutHead(B, cutHeadFraction(bbox(B), cara))                        -> [.., headCut]
 //   region == .wholePerson: B
-//   modelo: excludeSkin -> [skinExcluded] si quitó algún píxel, o [skinGuard]
-//     (máscara intacta); con < 50 muestras no se aplica (skinNote).
+//   modelo: F = final; E = excludeSkin(M, skinOptions, F) -> [skinExcluded] si quitó algún píxel, o
+//     [skinGuard] (máscara intacta); con < 50 muestras no se aplica (skinNote). Con piel quitada S:
+//     crecimiento (histéresis): C = candidatos de excludeSkin(M, Mahalanobis skinGrowMahalanobis,
+//     maxExcluded 1, E); G = píxeles de C alcanzables desde S por vecindad de 8 dentro de C en
+//     <= skinGrowRadius pasos; si |S| + |G| <= maxExcludedFraction·|F| y |G| <= skinGrowMaxRatio·|S|:
+//     E = E − G. Después el halo:
+//     fuera los píxeles a Chebyshev <= skinHaloRadius de S ∪ G.
 //   respaldo de la persona: S si hay silueta >= suelo, si no B (fallbackSource).
 // largestPerson / selectedPerson: la salida de la persona si |salida| >= suelo;
 //   si no, el respaldo si llega al suelo [wholePerson]; si no, sin máscara [none].
 // allPeople: la unión (máximo por píxel) de las salidas con |salida| >= suelo; si
 //   ninguna llega, la unión de los respaldos que lleguen [wholePerson]; si no, [none].
-// off: sin máscara [none]. Sin personas: sin máscara [noPeople].
+// off: sin máscara [none]. Sin personas: sin máscara [noPeople]. Si la detección descartó
+// personas fantasma (`mask(detection:)`/`compute`), los pasos empiezan por [rejectedPhantom].
+// Regiones de prenda (computeGarmentRegions, ADR-011): con la máscara ya decidida, para cada
+// persona que aporta máscara y cuya región sale de la pose (poseRegions / poseSilhouette, también
+// el respaldo con la silueta): mapa = ce_mask_garment_regions(pose', silhouetteOptions(ro), máscara
+// de esa persona) con 1 arriba y 2 abajo; si pose' tiene caderas estimadas, 2 -> 1 (no se ve la
+// parte de abajo). largestPerson / selectedPerson: el mapa de la persona es
+// SubjectMaskResult.garmentRegions y los pasos terminan en [garmentRegions]; allPeople: un mapa
+// por persona en sus capas (SubjectMaskResult.garmentRegions nil). Sin pose: nil y sin paso.
 // La suficiencia de las regiones se mide frente a la SILUETA de la pose (la
 // persona que describe la pose), no frente al raster ni a la instancia de Vision:
 // una persona pequeña conserva su región de ropa y un objeto pegado a ella en la
@@ -51,7 +78,8 @@ public enum SubjectExtractor {
     }
 
     static func mask(people unsorted: [PersonInstance], rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int,
-                     stride: Int, options: SubjectOptions, detectTimings: [String: Double]) throws -> SubjectMaskResult {
+                     stride: Int, options: SubjectOptions, detectTimings: [String: Double],
+                     rejected: [RejectedPerson] = []) throws -> SubjectMaskResult {
         let clock = Stopwatch()
         guard width >= 1, height >= 1, width <= Int(Int32.max), height <= Int(Int32.max),
               width.multipliedReportingOverflow(by: height).overflow == false else {
@@ -66,6 +94,28 @@ public enum SubjectExtractor {
         guard options.bareArmsSkinFraction.isFinite, options.bareArmsSkinFraction >= 0,
               options.bareArmsSkinFraction <= 1 else {
             throw SubjectError.invalidOptions("bareArmsSkinFraction debe estar en 0...1")
+        }
+        guard options.sleeveMatchFraction.isFinite, options.sleeveMatchFraction >= 0, options.sleeveMatchFraction <= 1 else {
+            throw SubjectError.invalidOptions("sleeveMatchFraction debe estar en 0...1")
+        }
+        guard (0...maxLearningIterations).contains(options.skinLearningIterations) else {
+            throw SubjectError.invalidOptions("skinLearningIterations debe estar en 0...\(maxLearningIterations)")
+        }
+        guard (0...maxHaloRadius).contains(options.skinHaloRadius) else {
+            throw SubjectError.invalidOptions("skinHaloRadius debe estar en 0...\(maxHaloRadius)")
+        }
+        guard (0...maxGrowRadius).contains(options.skinGrowRadius) else {
+            throw SubjectError.invalidOptions("skinGrowRadius debe estar en 0...\(maxGrowRadius)")
+        }
+        guard options.skinGrowMahalanobis.isFinite, options.skinGrowMahalanobis >= 0 else {
+            throw SubjectError.invalidOptions("skinGrowMahalanobis debe ser finito y >= 0")
+        }
+        guard options.skinGrowMaxRatio.isFinite, options.skinGrowMaxRatio >= 0, options.skinGrowMaxRatio <= 1 else {
+            throw SubjectError.invalidOptions("skinGrowMaxRatio debe estar en 0...1")
+        }
+        guard options.skinLearningMahalanobis.isFinite, options.skinLearningMahalanobis >= 0,
+              options.sleeveMatchMahalanobis.isFinite, options.sleeveMatchMahalanobis >= 0 else {
+            throw SubjectError.invalidOptions("skinLearningMahalanobis y sleeveMatchMahalanobis deben ser finitos y >= 0")
         }
         let count = width * height
         let required = (height - 1) * stride + width * 4
@@ -87,14 +137,17 @@ public enum SubjectExtractor {
         var timings = detectTimings
         let overlay = MaskOps.instanceOverlay(people, width: width, height: height)
 
-        func finish(chosen: Int?, mask: [UInt8]?, steps: [MaskFallback], persons: [PersonLayers]) -> SubjectMaskResult {
+        func finish(chosen: Int?, mask: [UInt8]?, steps: [MaskFallback], persons: [PersonLayers],
+                    garmentRegions: [UInt8]? = nil) -> SubjectMaskResult {
             let coverage = mask.map { MaskOps.coverage($0, width: width, height: height) } ?? 0
             timings["mask"] = clock.elapsedMs
             timings["total"] = (detectTimings["detect"] ?? 0) + clock.elapsedMs
             let layers = SubjectLayers(width: width, height: height, persons: persons, allPeopleOverlay: overlay,
                                        finalMask: mask)
+            let allSteps = rejected.isEmpty ? steps : [.rejectedPhantom] + steps
             return SubjectMaskResult(width: width, height: height, people: people, chosenIndex: chosen, mask: mask,
-                                     steps: steps, timings: timings, maskCoverage: coverage, layers: layers)
+                                     steps: allSteps, timings: timings, maskCoverage: coverage, layers: layers,
+                                     rejectedPhantoms: rejected, garmentRegions: garmentRegions)
         }
 
         if options.mode == .off {
@@ -133,8 +186,17 @@ public enum SubjectExtractor {
             timings["regions"] = regionMs
             timings["skin"] = skinMs
             timings["coverage"] = clock.elapsedMs - t0
-            let layer = chain.layers(steps: steps, used: mask != nil && fallback == nil, fallback: fallback)
-            return finish(chosen: index, mask: mask, steps: steps, persons: [layer])
+            var garment: (regions: [UInt8], stats: GarmentRegionStats)? = nil
+            if options.computeGarmentRegions, let m = mask {
+                let tg = clock.elapsedMs
+                garment = try garmentRegionMap(decision: chain.decision, region: options.region, mask: m, width: width,
+                                               height: height)
+                if garment != nil { steps.append(.garmentRegions) }
+                timings["garments"] = clock.elapsedMs - tg
+            }
+            let layer = chain.layers(steps: steps, used: mask != nil && fallback == nil, fallback: fallback,
+                                     garment: garment)
+            return finish(chosen: index, mask: mask, steps: steps, persons: [layer], garmentRegions: garment?.regions)
         } else {
             var chains: [ChainOutput] = []
             for (i, p) in people.enumerated() {
@@ -166,8 +228,25 @@ public enum SubjectExtractor {
             timings["regions"] = regionMs
             timings["skin"] = skinMs
             timings["coverage"] = clock.elapsedMs - t0
-            let persons = chains.indices.map { chains[$0].layers(steps: chains[$0].steps, used: used[$0],
-                                                                 fallback: fallbacks[$0]) }
+            // Regiones de prenda por persona: sobre la máscara que cada una aporta a la unión
+            // (su salida, o su respaldo si la unión volvió a los respaldos).
+            var garments = [(regions: [UInt8], stats: GarmentRegionStats)?](repeating: nil, count: chains.count)
+            if options.computeGarmentRegions, mask != nil {
+                let tg = clock.elapsedMs
+                for (i, c) in chains.enumerated() {
+                    let contributed: [UInt8]? = used[i] ? c.final : (fallbacks[i] != nil ? c.fallback : nil)
+                    guard let m = contributed else { continue }
+                    garments[i] = try garmentRegionMap(decision: c.decision, region: options.region, mask: m,
+                                                       width: width, height: height)
+                }
+                if garments.contains(where: { $0 != nil }) { steps.append(.garmentRegions) }
+                timings["garments"] = clock.elapsedMs - tg
+            }
+            let persons = chains.indices.map { i -> PersonLayers in
+                var personSteps = chains[i].steps
+                if garments[i] != nil { personSteps.append(.garmentRegions) }
+                return chains[i].layers(steps: personSteps, used: used[i], fallback: fallbacks[i], garment: garments[i])
+            }
             return finish(chosen: nil, mask: mask, steps: steps, persons: persons)
         }
     }
@@ -193,6 +272,18 @@ public enum SubjectExtractor {
 
     /// Muestras mínimas de una muestra de cara utilizable (CE_SKIN_MIN_SAMPLES).
     public static let minSkinSamples = 50
+    /// Cota de `skinLearningIterations`.
+    public static let maxLearningIterations = 8
+    /// Cota de `skinHaloRadius`.
+    public static let maxHaloRadius = 8
+    /// Cota de `skinGrowRadius`.
+    public static let maxGrowRadius = 64
+
+    /// Píxeles de brazo parecidos al torso para conservar los brazos sin modelo de piel:
+    /// max(1, ceil(sleeveMatchFraction · armPixels)).
+    public static func sleeveThreshold(armPixels: Int, options: SubjectOptions) -> Int {
+        max(1, Int((options.sleeveMatchFraction * Double(armPixels)).rounded(.up)))
+    }
 
     /// Para cada persona, la otra persona con más muestras de cara (>= 128) si
     /// llega a `minSkinSamples` (desempate: índice menor); nil si no hay.
@@ -232,13 +323,28 @@ public enum SubjectExtractor {
         /// Máscara de respaldo si la final no llega al suelo: silueta (con pose) o persona binaria.
         var fallback: [UInt8]
         var fallbackSource: RegionSource
+        var learnedSamples: [[UInt8]] = []
+        var learningPixels: [Int] = []
+        var legs: [UInt8]? = nil
+        var skinExcludedMask: [UInt8]? = nil
+        var haloPixels = 0
+        var sleeveTorso: [UInt8]? = nil
+        var grownPixels = 0
+        var grownMask: [UInt8]? = nil
+        var growCandidates: Int? = nil
 
-        func layers(steps: [MaskFallback], used: Bool, fallback: RegionSource?) -> PersonLayers {
+        func layers(steps: [MaskFallback], used: Bool, fallback: RegionSource?,
+                    garment: (regions: [UInt8], stats: GarmentRegionStats)? = nil) -> PersonLayers {
             PersonLayers(personIndex: index, instanceId: person.id, personMask: body, pose: person.pose,
                          regionMask: region, faceSampleMask: sample, skinRemovedMask: removed, finalMask: final,
                          steps: steps, skinModel: model, skinExcludedPixels: excluded, skinNote: note,
                          regionDecision: decision, usedInMask: used, skinSampleSource: sampleSource,
-                         silhouetteMask: silhouette, armsMask: arms, fallbackSource: fallback)
+                         silhouetteMask: silhouette, armsMask: arms, fallbackSource: fallback,
+                         learnedSampleMasks: learnedSamples, skinLearningPixels: learningPixels,
+                         skinExcludedMask: skinExcludedMask, skinHaloPixels: haloPixels, sleeveTorsoMask: sleeveTorso,
+                         legsMask: legs, skinGrownPixels: grownPixels, skinGrownMask: grownMask,
+                         skinGrowCandidatePixels: growCandidates, garmentRegions: garment?.regions,
+                         garmentRegionStats: garment?.stats)
         }
     }
 
@@ -263,6 +369,11 @@ public enum SubjectExtractor {
         var out = ChainOutput(person: person, index: index, body: body, region: nil, sample: nil, removed: nil,
                               final: body, steps: [], model: nil, excluded: 0, note: nil, decision: nil,
                               fallback: body, fallbackSource: .wholePerson)
+        // Persona separada de una instancia que Vision juntó con otras: el paso va
+        // primero (PersonSplit.swift, ADR-010).
+        if let split = person.splitStep {
+            out.steps.append(split)
+        }
 
         // Muestra de piel: la propia o, sin muestra utilizable, la de otra persona.
         var skinSample = person.faceSampleMask
@@ -290,11 +401,9 @@ public enum SubjectExtractor {
 
         if options.region == .clothing {
             let clock = Stopwatch()
-            // Se pidió quitar la piel pero no hay modelo: los brazos (a menudo desnudos
-            // con manga corta) quedan fuera; las piernas se mantienen (pantalón).
             var ro = options.regionOptions
-            let upperArmsDropped = options.adaptiveSkin && !skinAvailable && ro.includeUpperArms
-            if upperArmsDropped { ro.includeUpperArms = false }
+            let skinProbe = SkinOptions(maxMahalanobis: options.skinOptions.maxMahalanobis, maxExcludedFraction: 1)
+            var upperArmsDropped = false
             var poseRegionPixels: Int? = nil, silhouettePixels: Int? = nil
             var regionPose: Pose? = nil
             var hipsEstimated = false
@@ -302,45 +411,133 @@ public enum SubjectExtractor {
             var cutFraction: Double? = nil
             var required = floor
             var armPixels: Int? = nil, armSkinPixels: Int? = nil
+            var legPixels: Int? = nil, legSkinPixels: Int? = nil
+            var sleevePixels: Int? = nil, sleeveMatchPixels: Int? = nil
+            var sleevesKept = false
             var bareArmsDropped = false
             if let pose = person.pose {
                 let planned = SubjectExtractor.regionPose(pose, minConfidence: ro.minConfidence)
                 do {
-                    var r = try clothingRegions(pose: planned.pose, options: ro, mask: body, width: width, height: height)
-                    regionPose = planned.pose
-                    hipsEstimated = planned.hipsEstimated
-                    if ro.includeUpperArms, let model = out.model {
-                        // Brazos desnudos: la piel del brazo que el modelo reconoce en luz
-                        // directa delata la manga corta; la que queda en sombra no la alcanza.
-                        var noArms = ro
-                        noArms.includeUpperArms = false
-                        let r0 = try clothingRegions(pose: planned.pose, options: noArms, mask: body, width: width,
-                                                     height: height)
-                        let arms = MaskOps.removed(before: r.mask, after: r0.mask)
+                    func regions(_ o: RegionOptions) throws -> (mask: [UInt8], pixels: Int) {
+                        try clothingRegions(pose: planned.pose, options: o, mask: body, width: width, height: height)
+                    }
+                    func probe(_ model: SkinModel, _ opts: SkinOptions, _ zone: [UInt8]) throws -> Int {
+                        let probeClock = Stopwatch()
+                        defer { skinMs += probeClock.elapsedMs }
+                        return try excludeSkin(rgba: rgba, width: width, height: height, stride: stride, model: model,
+                                               options: opts, mask: zone).excluded
+                    }
+                    var noArms = ro
+                    noArms.includeUpperArms = false
+                    // Se pidió quitar la piel pero no hay modelo: los brazos se quitan salvo que
+                    // sean mangas de la prenda del torso (con manga corta serían piel que nadie quita).
+                    if options.adaptiveSkin && !skinAvailable && ro.includeUpperArms {
+                        var torsoOptions = noArms
+                        torsoOptions.includeLegs = false
+                        torsoOptions.includeLowerLegs = false
+                        let torso = try regions(torsoOptions)
+                        let arms = MaskOps.removed(before: try regions(ro).mask, after: try regions(noArms).mask)
                         let n = MaskOps.nonZero(arms)
-                        armPixels = n
+                        sleevePixels = n
                         if n > 0 {
                             out.arms = arms
-                            let probeClock = Stopwatch()
-                            let probe = try excludeSkin(rgba: rgba, width: width, height: height, stride: stride,
-                                                        model: model,
-                                                        options: SkinOptions(maxMahalanobis: options.skinOptions.maxMahalanobis,
-                                                                             maxExcludedFraction: 1),
-                                                        mask: arms)
-                            skinMs += probeClock.elapsedMs
-                            armSkinPixels = probe.excluded
-                            if probe.excluded >= bareArmsThreshold(armPixels: n, options: options) {
+                            out.sleeveTorso = torso.mask
+                            if torso.pixels >= minSkinSamples, options.sleeveMatchFraction < 1 {
+                                let torsoModel = try fitSkinModel(rgba: rgba, width: width, height: height, stride: stride,
+                                                                  sampleMask: torso.mask)
+                                let match = try probe(torsoModel, SkinOptions(maxMahalanobis: options.sleeveMatchMahalanobis,
+                                                                              maxExcludedFraction: 1), arms)
+                                sleeveMatchPixels = match
+                                sleevesKept = match >= sleeveThreshold(armPixels: n, options: options)
+                            }
+                        }
+                        if !sleevesKept {
+                            ro = noArms
+                            upperArmsDropped = true
+                        }
+                    }
+                    var r = try regions(ro)
+                    regionPose = planned.pose
+                    hipsEstimated = planned.hipsEstimated
+                    if let faceModel = out.model {
+                        var armsZone: [UInt8]? = nil, r0: (mask: [UInt8], pixels: Int)? = nil
+                        var bareArms = false, bareLegs = false
+                        if ro.includeUpperArms {
+                            let without = try regions(noArms)
+                            r0 = without
+                            let arms = MaskOps.removed(before: r.mask, after: without.mask)
+                            let n = MaskOps.nonZero(arms)
+                            armPixels = n
+                            armSkinPixels = 0
+                            if n > 0 {
+                                out.arms = arms
+                                armsZone = arms
+                                armSkinPixels = try probe(faceModel, skinProbe, arms)
+                                bareArms = armSkinPixels! >= bareArmsThreshold(armPixels: n, options: options)
+                            }
+                        }
+                        if ro.includeLegs || ro.includeLowerLegs {
+                            var noLegs = ro
+                            noLegs.includeLegs = false
+                            noLegs.includeLowerLegs = false
+                            let legs = MaskOps.removed(before: r.mask, after: try regions(noLegs).mask)
+                            let n = MaskOps.nonZero(legs)
+                            legPixels = n
+                            if n > 0 { out.legs = legs }
+                            legSkinPixels = n > 0 ? try probe(faceModel, skinProbe, legs) : 0
+                            bareLegs = n > 0 && legSkinPixels! >= bareArmsThreshold(armPixels: n, options: options)
+                        }
+                        // Piel del cuerpo: con brazos o piernas desnudos, la muestra se amplía con la
+                        // piel de la región según el modelo vigente y se reajusta el modelo.
+                        if (bareArms || bareLegs), options.skinLearningIterations > 0, var sample = out.sample {
+                            let zonePixels = r.pixels
+                            let learnOptions = SkinOptions(maxMahalanobis: options.skinLearningMahalanobis,
+                                                           maxExcludedFraction: 1)
+                            var model = faceModel
+                            for _ in 0..<options.skinLearningIterations {
+                                let learnClock = Stopwatch()
+                                let candidates = try excludeSkin(rgba: rgba, width: width, height: height, stride: stride,
+                                                                 model: model, options: learnOptions, mask: r.mask)
+                                skinMs += learnClock.elapsedMs
+                                guard candidates.excluded > 0,
+                                      Double(candidates.excluded) <= options.skinOptions.maxExcludedFraction * Double(zonePixels)
+                                else { break }
+                                let grown = MaskOps.union([sample, MaskOps.removed(before: r.mask, after: candidates.mask)]) ?? sample
+                                let added = samplePixels(grown) - samplePixels(sample)
+                                guard added > 0 else { break }
+                                let fitClock = Stopwatch()
+                                let grownModel = try fitSkinModel(rgba: rgba, width: width, height: height, stride: stride,
+                                                                  sampleMask: grown)
+                                skinMs += fitClock.elapsedMs
+                                // El modelo ampliado no puede disparar la salvaguarda en la región: si
+                                // quitaría más de maxExcludedFraction, la pasada no se acepta (aprender
+                                // nunca deja más piel que no aprender).
+                                guard Double(try probe(grownModel, skinProbe, r.mask))
+                                        <= options.skinOptions.maxExcludedFraction * Double(zonePixels) else { break }
+                                model = grownModel
+                                sample = grown
+                                out.learningPixels.append(candidates.excluded)
+                                out.learnedSamples.append(grown)
+                            }
+                            if !out.learnedSamples.isEmpty {
+                                out.model = model
+                            }
+                        }
+                        // Brazos desnudos con el modelo final: la piel del brazo que el modelo
+                        // reconoce delata la manga corta; la que queda en sombra no la alcanza.
+                        if let arms = armsZone, let without = r0, let n = armPixels, let model = out.model {
+                            if !out.learnedSamples.isEmpty {
+                                armSkinPixels = try probe(model, skinProbe, arms)
+                            }
+                            if armSkinPixels! >= bareArmsThreshold(armPixels: n, options: options) {
                                 bareArmsDropped = true
                                 ro = noArms
-                                r = r0
+                                r = without
                             }
-                        } else {
-                            armSkinPixels = 0
                         }
                     }
                     poseRegionPixels = r.pixels
-                    let s = try clothingRegions(pose: planned.pose, options: silhouetteOptions(ro), mask: body,
-                                                width: width, height: height)
+                    let s = try regions(silhouetteOptions(ro))
                     silhouettePixels = s.pixels
                     out.silhouette = s.mask
                     out.steps.append(.poseRegions)
@@ -373,7 +570,9 @@ public enum SubjectExtractor {
                                               regionOptions: regionPose == nil ? nil : ro,
                                               upperArmsDropped: upperArmsDropped && regionPose != nil,
                                               armPixels: armPixels, armSkinPixels: armSkinPixels,
-                                              bareArmsDropped: bareArmsDropped)
+                                              bareArmsDropped: bareArmsDropped, legPixels: legPixels,
+                                              legSkinPixels: legSkinPixels, sleevePixels: sleevePixels,
+                                              sleeveMatchPixels: sleeveMatchPixels, sleevesKept: sleevesKept)
             }
             regionMs += clock.elapsedMs
         } else {
@@ -388,9 +587,35 @@ public enum SubjectExtractor {
             if r.guardTriggered {
                 out.steps.append(.skinGuard)
             } else if r.excluded > 0 {
-                out.removed = MaskOps.removed(before: out.final, after: r.mask)
-                out.excluded = r.excluded
-                out.final = r.mask
+                out.skinExcludedMask = r.mask
+                let seeds = MaskOps.removed(before: out.final, after: r.mask)
+                var kept = r.mask
+                var skin = seeds
+                // Piel en sombra conectada con la quitada (histéresis con el mismo modelo).
+                if options.skinGrowRadius > 0, options.skinGrowMahalanobis > options.skinOptions.maxMahalanobis {
+                    let weak = try excludeSkin(rgba: rgba, width: width, height: height, stride: stride, model: model,
+                                               options: SkinOptions(maxMahalanobis: options.skinGrowMahalanobis,
+                                                                    maxExcludedFraction: 1), mask: r.mask)
+                    out.growCandidates = weak.excluded
+                    if weak.excluded > 0 {
+                        let candidates = MaskOps.removed(before: r.mask, after: weak.mask)
+                        let grown = MaskOps.geodesicGrow(seeds: seeds, allowed: candidates, width: width, height: height,
+                                                         radius: options.skinGrowRadius)
+                        let n = MaskOps.nonZero(grown)
+                        let limit = options.skinOptions.maxExcludedFraction * Double(MaskOps.nonZero(out.final))
+                        if n > 0, Double(r.excluded + n) <= limit, Double(n) <= options.skinGrowMaxRatio * Double(r.excluded) {
+                            for i in 0..<kept.count where grown[i] != 0 { kept[i] = 0 }
+                            skin = MaskOps.union([seeds, grown]) ?? seeds
+                            out.grownPixels = n
+                            out.grownMask = grown
+                        }
+                    }
+                }
+                let halo = MaskOps.removeHalo(kept, around: skin, width: width, height: height, radius: options.skinHaloRadius)
+                out.haloPixels = halo.removed
+                out.removed = MaskOps.removed(before: out.final, after: halo.mask)
+                out.excluded = r.excluded + out.grownPixels + halo.removed
+                out.final = halo.mask
                 out.steps.append(.skinExcluded)
             }
             // Con 0 píxeles de piel en la región no hay paso (la máscara no cambió);

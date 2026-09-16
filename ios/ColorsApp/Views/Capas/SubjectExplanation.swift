@@ -86,6 +86,10 @@ enum SubjectExplanation {
             let index = result.chosenIndex ?? 0
             parts.append(index == 0 ? "Persona principal de \(n)" : "Persona \(index + 1) de \(n)")
         }
+        if steps.contains(.splitByPose) || steps.contains(.splitByFace) {
+            parts.append(steps.contains(.splitByPose) ? "personas separadas por su pose"
+                                                      : "personas separadas por su cara")
+        }
         let persons = result.layers.persons
         parts.append(contentsOf: unique(persons.compactMap { regionNotice($0, options: options) }))
         // Brazos fuera de la región (se ven en la paleta: mangas cortas o sin modelo de piel).
@@ -126,6 +130,10 @@ enum SubjectExplanation {
         }
         if phantoms > 0 {
             parts.append(plural(phantoms, "silueta sin cuerpo descartada", "siluetas sin cuerpo descartadas"))
+        }
+        // Paleta por prenda (ADR-011): el mapa de la pose reparte la máscara en arriba y abajo.
+        if steps.contains(.garmentRegions) {
+            parts.append("un color por prenda")
         }
         let text = MaskStepsText.capitalizedFirst(parts.joined(separator: " · "))
         let icon = result.mask == nil ? "person.crop.rectangle.badge.xmark" : "person.crop.rectangle"
@@ -189,7 +197,16 @@ enum SubjectExplanation {
             case .garmentRegions:
                 // Paso aditivo de SubjectKit (mapa de regiones de prenda con la pose: 1 arriba,
                 // 2 abajo). No cambia la máscara; reparte sus píxeles entre prendas.
+                let stats = persons.compactMap(\.garmentRegionStats)
+                if stats.contains(where: { $0.lowerMergedIntoUpper }) {
+                    return "Regiones de prenda (solo se ve la parte de arriba)"
+                }
                 return "Regiones de prenda (arriba / abajo)"
+            case .splitByPose:
+                // Una instancia de Vision que juntaba a varias personas, separada con su POSE.
+                return "Personas separadas por su pose"
+            case .splitByFace:
+                return "Personas separadas por su cara"
             @unknown default:
                 return step.rawValue
             }

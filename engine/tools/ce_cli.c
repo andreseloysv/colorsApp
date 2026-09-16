@@ -32,6 +32,20 @@
  *                                   impresos (idéntico en nativo y WASM:
  *                                   ce_libm.c). --top K en 1..10 (defecto 3).
  *   ce analyze ...                  alias exacto de `ce match`.
+ *   ce match-palette [lista.txt] [--top K] [opciones de match] [--json]
+ *                                   match de paletas dadas como texto, sin
+ *                                   imagen (tests de regresión de casos
+ *                                   reales y métrica de giro de tono de L3).
+ *                                   Una paleta por línea (sin fichero: stdin;
+ *                                   vacías y las que empiezan por ';'
+ *                                   ignoradas): 1..8 tokens "#rrggbb:peso" o
+ *                                   "L,a,b:peso" separados por espacios. Los
+ *                                   pesos (finitos, >= 0, suma > 0) se
+ *                                   normalizan a suma 1; el orden de los
+ *                                   swatches se respeta. Con --json una
+ *                                   línea por paleta: {line, swatches,
+ *                                   opts: {match}, hits, ambiguous, hash} o
+ *                                   {line, error}; exit 1 si alguna falló.
  *   ce palette|match|analyze ... --debug-dir DIR
  *                                   además de la salida normal (idéntica),
  *                                   escribe las capas de depuración en DIR
@@ -75,6 +89,43 @@
  *                                   escribe la máscara intacta (excluded 0).
  *   ce cut-head --mask in.pgm --fraction F --out out.pgm
  *                                   ce_mask_cut_head; imprime {"pixels"}.
+ *   ce split --mask in.pgm --seeds seeds.txt --out labels.pgm
+ *                                   ce_mask_split_instance. seeds.txt: una
+ *                                   línea de datos por semilla "x0 y0 x1 y1
+ *                                   half_width" (1..8; vacías y '#'
+ *                                   ignoradas). labels.pgm: 0 fondo, k = semilla
+ *                                   k. Imprime {"labels", "mask_pixels",
+ *                                   "counts"}; CE_ERR_ARG: exit 1 sin escribir.
+ *   ce garments img.ppm [--mask m.pgm] [--regions r.pgm] [--n-regions N]
+ *            [opciones de palette] [--shade-kl F] [--shade-merge-de F] [--lit-low F]
+ *            [--lit-high F] [--secondary-min-share F] [--max-colors-per-region N]
+ *            [--match [--top K] [opciones de match]] [--debug-dir DIR] [--json]
+ *                                   paleta por prenda (ce_palette_extract_garments;
+ *                                   con --match, ce_analyze_garments). r.pgm: P5 de
+ *                                   las dimensiones de la imagen, 0 fuera y 1..N
+ *                                   región (1 arriba, 2 abajo); sin --n-regions,
+ *                                   N = máximo valor del mapa (>= 1; > 2 es error
+ *                                   de uso). Con --json: {engine, dict_version,
+ *                                   file, mask, regions, width, height, reduced_*,
+ *                                   n_regions (0 sin mapa), opts: {palette, garment,
+ *                                   match|null}, garments: [{region, region_name,
+ *                                   region_share, n_merged_clusters, rgb, hex, lab,
+ *                                   weight}], hash (ce_garment_hash)} y, con --match,
+ *                                   swatches, hits, ambiguous y result_hash
+ *                                   (ce_result_hash de los K hits). --debug-dir
+ *                                   añade garments.pgm/.ppm (swatch de prenda por
+ *                                   píxel reducido; NONE = 255 / negro), regions.pgm/
+ *                                   .ppm (región por píxel reducido) y el bloque
+ *                                   "garments" de debug.json.
+ *   ce batch lista.txt --garments [mismas opciones que garments] [--json]
+ *                                   como batch, por el camino de prendas y siempre con
+ *                                   match: líneas "imagen [mascara|-] [regiones]" (el
+ *                                   "-" deja la máscara vacía); JSONL con los campos
+ *                                   de `ce garments --match --json` en una línea.
+ *   ce garment-regions --size WxH --mask person.pgm --pose pose.txt --out regions.pgm
+ *            [opciones de regions]    ce_mask_garment_regions; imprime {"pixels",
+ *                                   "upper", "lower", "mask_pixels"}. CE_ERR_POSE:
+ *                                   exit 1 sin escribir --out.
  *
  * Salida: 0 ok, 1 error del motor (código negativo; en batch, si alguna
  * imagen falló por cualquier motivo), 2 uso o fichero inválido (en batch,
@@ -119,11 +170,14 @@ static int usage(void)
             "  ce dict --version | --list | --id N\n"
             "  ce palette <imagen.ppm> [--mask <mascara.pgm>] [--raw WxH]\n"
             "             [--center-sigma F] [--max-colors N] [--min-weight F] [--merge-de F]\n"
-            "             [--k-init N] [--max-iters N] [--max-side N] [--skin-rule 0|1] [--json]\n"
+            "             [--k-init N] [--max-iters N] [--max-side N] [--skin-rule 0|1]\n"
+            "             [--merge-light-de F] [--json]\n"
             "  ce match|analyze <imagen.ppm> [opciones de palette] [--top K(1..10)]\n"
             "             [--kL F] [--kC F] [--kH F] [--coverage-lambda F] [--ambiguous-gap F]\n"
             "             [--exposure-ev-max F] [--exposure-penalty F] [--illuminant-search 0|1]\n"
             "             [--illuminant-penalty F] [--json]\n"
+            "  ce match-palette [lista.txt] [--top K] [opciones de match] [--json]\n"
+            "             (stdin o fichero: una paleta por linea, tokens \"#rrggbb:peso\" o \"L,a,b:peso\")\n"
             "  ce palette|match|analyze ... --debug-dir <DIR>   (capas de depuracion en DIR)\n"
             "  ce batch <lista.txt> [mismas opciones que match] [--json]   (JSONL; lineas \"imagen [mascara]\")\n"
             "  ce regions --size WxH --mask <in.pgm> --pose <pose.txt> --out <out.pgm>\n"
@@ -131,7 +185,15 @@ static int usage(void)
             "             [--upper-arms 0|1] [--forearms 0|1] [--legs 0|1] [--lower-legs 0|1]\n"
             "  ce skin --image <img.ppm> --sample <muestra.pgm> --mask <in.pgm> --out <out.pgm>\n"
             "             [--max-mahalanobis F] [--max-excluded F]\n"
-            "  ce cut-head --mask <in.pgm> --fraction F --out <out.pgm>\n");
+            "  ce cut-head --mask <in.pgm> --fraction F --out <out.pgm>\n"
+            "  ce split --mask <in.pgm> --seeds <semillas.txt> --out <etiquetas.pgm>\n"
+            "  ce garments <imagen.ppm> [--mask <m.pgm>] [--regions <r.pgm>] [--n-regions N] [opciones de palette]\n"
+            "             [--shade-kl F] [--shade-merge-de F] [--lit-low F] [--lit-high F]\n"
+            "             [--secondary-min-share F] [--max-colors-per-region N]\n"
+            "             [--match [--top K] [opciones de match]] [--debug-dir <DIR>] [--json]\n"
+            "  ce batch <lista.txt> --garments [opciones de garments] [--json]   (lineas \"imagen [mascara|-] [regiones]\")\n"
+            "  ce garment-regions --size WxH --mask <persona.pgm> --pose <pose.txt> --out <regiones.pgm>\n"
+            "             [opciones de regions]\n");
     return 2;
 }
 
@@ -382,6 +444,11 @@ static int parse_dims(const char *s, int *w, int *h)
 typedef struct cli_opts {
     ce_palette_opts palette;
     ce_match_opts match;
+    ce_garment_opts garment;
+    const char *regions_path; /* opcional: --regions (garments / batch --garments) */
+    int n_regions;         /* --n-regions (0 = automático) */
+    int do_match;          /* garments: --match */
+    int garments_mode;     /* batch: --garments */
     int top;               /* 1..CE_MATCH_MAX_HITS (match/batch) */
     int json;
     const char *input;     /* imagen (palette/match) o lista (batch) */
@@ -392,13 +459,21 @@ typedef struct cli_opts {
 
 /* Parsea argv[2..]. `with_match` admite además --top/--kL/--kC/--kH/
  * --coverage-lambda/--ambiguous-gap/--exposure-ev-max/--exposure-penalty/
- * --illuminant-search/--illuminant-penalty. Devuelve 0 o -1 (error de uso). */
-static int parse_cli_opts(int argc, char **argv, int with_match, cli_opts *o)
+ * --illuminant-search/--illuminant-penalty. Con `input_optional` la entrada
+ * posicional puede faltar (input queda NULL). Devuelve 0 o -1 (error de uso). */
+#define CLI_WITH_GARMENT 4 /* bit de `with_match`: admite las opciones de prenda */
+#define CLI_WITH_BATCH 8   /* bit de `with_match`: admite --garments */
+
+static int parse_cli_opts_ex(int argc, char **argv, int with_match, int input_optional, cli_opts *o)
 {
     int i;
+    const int with_garment = (with_match & CLI_WITH_GARMENT) != 0;
+    const int with_batch = (with_match & CLI_WITH_BATCH) != 0;
+    with_match &= 1;
     memset(o, 0, sizeof *o);
     ce_palette_opts_default(&o->palette);
     ce_match_opts_default(&o->match);
+    ce_garment_opts_default(&o->garment);
     o->top = 3;
     for (i = 2; i < argc; ++i) {
         const char *a = argv[i];
@@ -436,6 +511,9 @@ static int parse_cli_opts(int argc, char **argv, int with_match, cli_opts *o)
         } else if (strcmp(a, "--skin-rule") == 0 && v) {
             if (!parse_int_opt(v, &o->palette.skin_rule)) return -1;
             ++i;
+        } else if (strcmp(a, "--merge-light-de") == 0 && v) {
+            if (!parse_double(v, &o->palette.merge_light_de)) return -1;
+            ++i;
         } else if (with_match && strcmp(a, "--top") == 0 && v) {
             if (!parse_int_opt(v, &o->top) || o->top < 1 || o->top > CE_MATCH_MAX_HITS) return -1;
             ++i;
@@ -466,6 +544,33 @@ static int parse_cli_opts(int argc, char **argv, int with_match, cli_opts *o)
         } else if (with_match && strcmp(a, "--illuminant-penalty") == 0 && v) {
             if (!parse_double(v, &o->match.illuminant_penalty)) return -1;
             ++i;
+        } else if (with_batch && strcmp(a, "--garments") == 0) {
+            o->garments_mode = 1;
+        } else if (with_garment && strcmp(a, "--match") == 0) {
+            o->do_match = 1;
+        } else if (with_garment && strcmp(a, "--regions") == 0 && v) {
+            o->regions_path = v; ++i;
+        } else if (with_garment && strcmp(a, "--n-regions") == 0 && v) {
+            if (!parse_int_opt(v, &o->n_regions) || o->n_regions < 1 || o->n_regions > CE_GARMENT_MAX_REGIONS) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--shade-kl") == 0 && v) {
+            if (!parse_double(v, &o->garment.shade_kL)) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--shade-merge-de") == 0 && v) {
+            if (!parse_double(v, &o->garment.shade_merge_de)) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--lit-low") == 0 && v) {
+            if (!parse_double(v, &o->garment.lit_low_pct)) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--lit-high") == 0 && v) {
+            if (!parse_double(v, &o->garment.lit_high_pct)) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--secondary-min-share") == 0 && v) {
+            if (!parse_double(v, &o->garment.secondary_min_share)) return -1;
+            ++i;
+        } else if (with_garment && strcmp(a, "--max-colors-per-region") == 0 && v) {
+            if (!parse_int_opt(v, &o->garment.max_colors_per_region)) return -1;
+            ++i;
         } else if (a[0] == '-' && a[1] == '-') {
             return -1;
         } else if (o->input == NULL) {
@@ -474,13 +579,21 @@ static int parse_cli_opts(int argc, char **argv, int with_match, cli_opts *o)
             return -1;
         }
     }
-    return o->input == NULL ? -1 : 0;
+    return (o->input == NULL && !input_optional) ? -1 : 0;
+}
+
+static int parse_cli_opts(int argc, char **argv, int with_match, cli_opts *o)
+{
+    return parse_cli_opts_ex(argc, argv, with_match, 0, o);
 }
 
 /* Imagen cargada: buffers propios (malloc) + ce_image que apunta dentro. */
 typedef struct loaded_image {
     uint8_t *img_buf;
     uint8_t *mask_buf;
+    uint8_t *regions_buf;       /* P5 del mapa de regiones (garments) */
+    const uint8_t *regions;     /* datos del mapa o NULL */
+    int n_regions;              /* 0 sin mapa */
     ce_image img;
 } loaded_image;
 
@@ -488,8 +601,48 @@ static void free_image(loaded_image *li)
 {
     free(li->img_buf);
     free(li->mask_buf);
+    free(li->regions_buf);
     li->img_buf = NULL;
     li->mask_buf = NULL;
+    li->regions_buf = NULL;
+    li->regions = NULL;
+}
+
+/* Carga el mapa de regiones de `path` (P5 de las dimensiones de la imagen ya
+ * cargada) en `li`. n_regions = `forced` (1..CE_GARMENT_MAX_REGIONS) o, con 0,
+ * el máximo valor del mapa (mínimo 1; > CE_GARMENT_MAX_REGIONS es error). 0 ok;
+ * -1 con el motivo en `err` (la imagen sigue cargada). */
+static int load_regions(const char *path, int forced, loaded_image *li, char *err, size_t err_len)
+{
+    size_t len = 0, i, n;
+    ce_pnm_image pnm;
+    char rerr[256];
+    int prc, maxv = 0;
+    if (read_file(path, &li->regions_buf, &len, rerr, sizeof rerr) != 0) {
+        snprintf(err, err_len, "regiones %s: %s", path, rerr);
+        return -1;
+    }
+    prc = ce_pnm_parse(li->regions_buf, len, &pnm);
+    if (prc != CE_PNM_OK) {
+        snprintf(err, err_len, "regiones %s: %s", path, ce_pnm_strerror(prc));
+        return -1;
+    }
+    if (pnm.type != 5 || pnm.width != li->img.width || pnm.height != li->img.height) {
+        snprintf(err, err_len, "regiones %s: debe ser P5 de %dx%d", path, li->img.width, li->img.height);
+        return -1;
+    }
+    n = (size_t)pnm.width * (size_t)pnm.height;
+    for (i = 0; i < n; ++i) {
+        if (pnm.data[i] > maxv) maxv = pnm.data[i];
+    }
+    if (forced == 0 && maxv > CE_GARMENT_MAX_REGIONS) {
+        snprintf(err, err_len, "regiones %s: valor %d fuera de 0..%d (use --n-regions para ignorar los mayores)",
+                 path, maxv, CE_GARMENT_MAX_REGIONS);
+        return -1;
+    }
+    li->regions = pnm.data;
+    li->n_regions = forced > 0 ? forced : (maxv < 1 ? 1 : maxv);
+    return 0;
 }
 
 /* Carga `path` (P6, o crudo con --raw) y la máscara opcional. 0 ok; -1 con el
@@ -605,9 +758,10 @@ static void print_json_string(const char *s)
 static void print_palette_opts_json(const ce_palette_opts *o)
 {
     printf("{\"k_init\": %d, \"max_iters\": %d, \"max_colors\": %d, \"max_side\": %d, "
-           "\"center_sigma\": %.17g, \"merge_de\": %.17g, \"min_weight\": %.17g, \"skin_rule\": %d}",
+           "\"center_sigma\": %.17g, \"merge_de\": %.17g, \"min_weight\": %.17g, \"skin_rule\": %d, "
+           "\"merge_light_de\": %.17g}",
            o->k_init, o->max_iters, o->max_colors, o->max_side,
-           o->center_sigma, o->merge_de, o->min_weight, o->skin_rule ? 1 : 0);
+           o->center_sigma, o->merge_de, o->min_weight, o->skin_rule ? 1 : 0, o->merge_light_de);
 }
 
 static void print_match_opts_json(const ce_match_opts *o, int top)
@@ -641,6 +795,94 @@ static void print_hit_json(const ce_hit *h)
         printf("%s%u", k ? ", " : "", (unsigned)colors[k]);
     }
     printf("]}");
+}
+
+static const char *region_name(int region)
+{
+    switch (region) {
+    case CE_GARMENT_REGION_NONE: return "none";
+    case CE_GARMENT_REGION_UPPER: return "upper";
+    case CE_GARMENT_REGION_LOWER: return "lower";
+    case CE_GARMENT_REGION_WHOLE: return "whole";
+    default: return "unknown";
+    }
+}
+
+static void print_garment_opts_json(FILE *f, const ce_garment_opts *o)
+{
+    fprintf(f, "{\"shade_kL\": %.17g, \"shade_merge_de\": %.17g, \"lit_low_pct\": %.17g, \"lit_high_pct\": %.17g, "
+               "\"secondary_min_share\": %.17g, \"max_colors_per_region\": %d}",
+            o->shade_kL, o->shade_merge_de, o->lit_low_pct, o->lit_high_pct, o->secondary_min_share,
+            o->max_colors_per_region);
+}
+
+static void print_garment_swatch_json(const ce_garment_swatch *g)
+{
+    const ce_swatch *s = &g->swatch;
+    printf("{\"region\": %d, \"region_name\": \"%s\", \"region_share\": %.17g, \"n_merged_clusters\": %d, "
+           "\"rgb\": [%u, %u, %u], \"hex\": \"#%02x%02x%02x\", \"lab\": [%.17g, %.17g, %.17g], \"weight\": %.17g}",
+           g->region, region_name(g->region), g->region_share, g->n_merged_clusters,
+           s->rgb[0], s->rgb[1], s->rgb[2], s->rgb[0], s->rgb[1], s->rgb[2], s->lab.L, s->lab.a, s->lab.b, s->weight);
+}
+
+/* Objeto de `ce garments` (pretty) o de una línea de `ce batch --garments`.
+ * `res` NULL = sin match. */
+static void print_garments_json(const char *file, const char *mask, const char *regions, const loaded_image *li,
+                                const cli_opts *o, const ce_garment_swatch *g, int n, const ce_result *res,
+                                int pretty)
+{
+    const char *sep = pretty ? ",\n  " : ", ";
+    const char *aopen = pretty ? "[\n    " : "[";
+    const char *asep = pretty ? ",\n    " : ", ";
+    const char *aclose = pretty ? "\n  ]" : "]";
+    int rw = 0, rh = 0, i;
+    (void)ce_reduced_dims(li->img.width, li->img.height, o->palette.max_side, &rw, &rh);
+    printf(pretty ? "{\n  " : "{");
+    printf("\"engine\": \"%s\"%s", ce_version(), sep);
+    printf("\"dict_version\": \"%s\"%s", ce_dict_version(), sep);
+    printf("\"file\": ");
+    print_json_string(file);
+    printf("%s\"mask\": ", sep);
+    if (mask != NULL) print_json_string(mask); else printf("null");
+    printf("%s\"regions\": ", sep);
+    if (regions != NULL) print_json_string(regions); else printf("null");
+    printf("%s", sep);
+    printf("\"width\": %d%s\"height\": %d%s", li->img.width, sep, li->img.height, sep);
+    printf("\"reduced_width\": %d%s\"reduced_height\": %d%s", rw, sep, rh, sep);
+    printf("\"n_regions\": %d%s", li->regions != NULL ? li->n_regions : 0, sep);
+    printf("\"opts\": {\"palette\": ");
+    print_palette_opts_json(&o->palette);
+    printf(", \"garment\": ");
+    print_garment_opts_json(stdout, &o->garment);
+    printf(", \"match\": ");
+    if (res != NULL) print_match_opts_json(&o->match, o->top); else printf("null");
+    printf("}%s", sep);
+    printf("\"garments\": %s", aopen);
+    for (i = 0; i < n; ++i) {
+        if (i) printf("%s", asep);
+        print_garment_swatch_json(&g[i]);
+    }
+    printf("%s%s", aclose, sep);
+    printf("\"hash\": \"%016" PRIx64 "\"", ce_garment_hash(g, n));
+    if (res != NULL) {
+        ce_result truncated = *res;
+        const int n_hits = (o->top < res->n_hits) ? o->top : res->n_hits;
+        truncated.n_hits = n_hits;
+        printf("%s\"swatches\": %s", sep, aopen);
+        for (i = 0; i < res->n_swatches; ++i) {
+            if (i) printf("%s", asep);
+            print_swatch_json(&res->swatches[i]);
+        }
+        printf("%s%s\"hits\": %s", aclose, sep, aopen);
+        for (i = 0; i < n_hits; ++i) {
+            if (i) printf("%s", asep);
+            print_hit_json(&res->hits[i]);
+        }
+        printf("%s%s", aclose, sep);
+        printf("\"ambiguous\": %d%s", res->ambiguous ? 1 : 0, sep);
+        printf("\"result_hash\": \"%016" PRIx64 "\"", ce_result_hash(&truncated));
+    }
+    printf(pretty ? "\n}\n" : "}\n");
 }
 
 static void print_palette_json(const ce_image *img, const ce_palette_opts *o,
@@ -908,9 +1150,106 @@ done:
 
 /* Escribe todas las capas de la última extracción de `ctx` en `dir`.
  * `res` NULL = ce palette (sin match). 0 ok; -1 con el motivo en err. */
+/* Color de cada región en regions.ppm (paleta apta para daltonismo, Okabe-Ito). */
+static void region_rgb(uint8_t v, uint8_t rgb[3])
+{
+    rgb[0] = rgb[1] = rgb[2] = 0;
+    if (v == CE_GARMENT_REGION_NONE) {
+        rgb[0] = rgb[1] = rgb[2] = 128;
+    } else if (v == CE_GARMENT_REGION_UPPER) {
+        rgb[0] = 230; rgb[1] = 159; rgb[2] = 0;
+    } else if (v == CE_GARMENT_REGION_LOWER) {
+        rgb[0] = 0; rgb[1] = 114; rgb[2] = 178;
+    } else if (v == CE_GARMENT_REGION_WHOLE) {
+        rgb[0] = 0; rgb[1] = 158; rgb[2] = 115;
+    }
+}
+
+/* Capas y bloque JSON de la paleta por prenda (tras ce_palette_extract_garments
+ * en `ctx`). Escribe garments.pgm/.ppm y regions.pgm/.ppm y deja en `f` las
+ * claves "garments" (swatches con región y píxeles) y "cluster_regions". */
+static int write_garment_layers(const char *dir, FILE *f, const ce_ctx *ctx, const ce_palette_debug *info,
+                                const ce_garment_swatch *gs, int ng, char *err, size_t err_len)
+{
+    const size_t np = (size_t)info->reduced_width * (size_t)info->reduced_height;
+    uint8_t *gmap = (uint8_t *)malloc(np), *rmap = (uint8_t *)malloc(np), *cmap = (uint8_t *)malloc(np);
+    uint8_t *color = (uint8_t *)malloc(np * 3u);
+    long gpx[CE_PALETTE_MAX_COLORS] = {0};
+    long region_px[256] = {0};
+    long cluster_region_px[CE_PALETTE_K_MAX][4] = {{0}};
+    size_t i;
+    int rc = -1, k, c;
+    if (!gmap || !rmap || !cmap || !color) {
+        snprintf(err, err_len, "sin memoria");
+        goto done;
+    }
+    if (ce_debug_garment_map(ctx, gmap, np) < 0 || ce_debug_region_map(ctx, rmap, np) < 0
+        || ce_debug_cluster_map(ctx, cmap, np) < 0) {
+        snprintf(err, err_len, "capas de prenda: error del motor");
+        goto done;
+    }
+    for (i = 0; i < np; ++i) {
+        uint8_t rgb[3] = {0, 0, 0};
+        if (gmap[i] < ng) {
+            ++gpx[gmap[i]];
+            memcpy(rgb, gs[gmap[i]].swatch.rgb, 3);
+        }
+        memcpy(color + i * 3u, rgb, 3);
+        ++region_px[rmap[i]];
+        if (cmap[i] < info->n_clusters && rmap[i] <= 3) {
+            ++cluster_region_px[cmap[i]][rmap[i]];
+        }
+    }
+    if (write_pnm_in(dir, "garments.pgm", 1, info->reduced_width, info->reduced_height, gmap, err, err_len) != 0
+        || write_pnm_in(dir, "garments.ppm", 3, info->reduced_width, info->reduced_height, color, err, err_len) != 0
+        || write_pnm_in(dir, "regions.pgm", 1, info->reduced_width, info->reduced_height, rmap, err, err_len) != 0) {
+        goto done;
+    }
+    for (i = 0; i < np; ++i) {
+        region_rgb(rmap[i], color + i * 3u);
+    }
+    if (write_pnm_in(dir, "regions.ppm", 3, info->reduced_width, info->reduced_height, color, err, err_len) != 0) {
+        goto done;
+    }
+    fprintf(f, "  \"garments\": [");
+    for (k = 0; k < ng; ++k) {
+        const ce_swatch *sw = &gs[k].swatch;
+        fprintf(f, "%s\n    {\"index\": %d, \"region\": %d, \"region_name\": \"%s\", \"region_share\": %.17g, "
+                   "\"n_merged_clusters\": %d, ", k ? "," : "", k, gs[k].region, region_name(gs[k].region),
+                gs[k].region_share, gs[k].n_merged_clusters);
+        fprint_rgb_json(f, sw->rgb);
+        fprintf(f, ", \"lab\": [%.17g, %.17g, %.17g], \"weight\": %.17g, \"pixels\": %ld}", sw->lab.L, sw->lab.a,
+                sw->lab.b, sw->weight, gpx[k]);
+    }
+    fprintf(f, "%s],\n  \"region_pixels\": {\"none\": %ld, \"upper\": %ld, \"lower\": %ld, \"whole\": %ld, \"outside\": %ld},\n",
+            ng ? "\n  " : "", region_px[CE_GARMENT_REGION_NONE], region_px[CE_GARMENT_REGION_UPPER],
+            region_px[CE_GARMENT_REGION_LOWER], region_px[CE_GARMENT_REGION_WHOLE], region_px[CE_LABEL_NONE]);
+    /* Región de cada cluster: la más frecuente entre sus píxeles (null sin píxeles). */
+    fprintf(f, "  \"cluster_regions\": [");
+    for (c = 0; c < info->n_clusters; ++c) {
+        int best = -1, r;
+        long best_px = 0;
+        for (r = 0; r <= 3; ++r) {
+            if (cluster_region_px[c][r] > best_px) {
+                best_px = cluster_region_px[c][r];
+                best = r;
+            }
+        }
+        if (best >= 0) fprintf(f, "%s%d", c ? ", " : "", best); else fprintf(f, "%snull", c ? ", " : "");
+    }
+    fprintf(f, "],\n");
+    rc = 0;
+done:
+    free(gmap);
+    free(rmap);
+    free(cmap);
+    free(color);
+    return rc;
+}
+
 static int write_debug_dir(const char *dir, const char *file, const ce_ctx *ctx, const ce_image *img,
                            const cli_opts *o, const ce_swatch *sw, int n, const ce_result *res,
-                           char *err, size_t err_len)
+                           const ce_garment_swatch *gs, int ng, int n_regions, char *err, size_t err_len)
 {
     ce_palette_debug info;
     uint8_t *reduced = NULL, *weights = NULL, *labels = NULL, *clusters = NULL, *color = NULL, *plane = NULL;
@@ -1002,7 +1341,20 @@ static int write_debug_dir(const char *dir, const char *file, const ce_ctx *ctx,
                "\"labels_color\": \"labels.ppm\", \"clusters\": \"clusters.pgm\", \"clusters_color\": \"clusters.ppm\", "
                "\"swatches\": [");
     for (k = 0; k < n; ++k) fprintf(f, "%s\"swatch_%d.pgm\"", k ? ", " : "", k);
-    fprintf(f, "], \"mask\": %s},\n", img->mask != NULL ? "\"mask.pgm\"" : "null");
+    fprintf(f, "], \"mask\": %s", img->mask != NULL ? "\"mask.pgm\"" : "null");
+    if (gs != NULL) {
+        fprintf(f, ", \"garments\": \"garments.pgm\", \"garments_color\": \"garments.ppm\", \"regions\": \"regions.pgm\", "
+                   "\"regions_color\": \"regions.ppm\"");
+    }
+    fprintf(f, "},\n");
+    if (gs != NULL) {
+        fprintf(f, "  \"regions_file\": ");
+        if (o->regions_path != NULL) fprint_json_string(f, o->regions_path); else fprintf(f, "null");
+        fprintf(f, ",\n  \"n_regions\": %d,\n  \"region_values\": {\"none\": %d, \"upper\": %d, \"lower\": %d, "
+                   "\"whole\": %d, \"outside\": %d},\n", n_regions, CE_GARMENT_REGION_NONE, CE_GARMENT_REGION_UPPER,
+                CE_GARMENT_REGION_LOWER, CE_GARMENT_REGION_WHOLE, CE_LABEL_NONE);
+        if (write_garment_layers(dir, f, ctx, &info, gs, ng, err, err_len) != 0) goto done;
+    }
     fprintf(f, "  \"label_values\": {\"none\": %d, \"discarded\": %d},\n", CE_LABEL_NONE, CE_LABEL_DISCARDED);
     fprintf(f, "  \"palette_debug\": {\"lloyd_iterations\": %d, \"total_weight\": %.17g, \"zero_weight_fraction\": %.17g, "
                "\"center_sigma_px\": %.17g, \"n_swatches\": %d, \"n_clusters\": %d,\n    \"clusters\": [",
@@ -1030,9 +1382,14 @@ static int write_debug_dir(const char *dir, const char *file, const ce_ctx *ctx,
         /* print_palette_opts_json escribe en stdout: se replica en f. */
         const ce_palette_opts *po = &o->palette;
         fprintf(f, "{\"k_init\": %d, \"max_iters\": %d, \"max_colors\": %d, \"max_side\": %d, "
-                   "\"center_sigma\": %.17g, \"merge_de\": %.17g, \"min_weight\": %.17g, \"skin_rule\": %d}",
+                   "\"center_sigma\": %.17g, \"merge_de\": %.17g, \"min_weight\": %.17g, \"skin_rule\": %d, "
+                   "\"merge_light_de\": %.17g}",
                 po->k_init, po->max_iters, po->max_colors, po->max_side, po->center_sigma, po->merge_de,
-                po->min_weight, po->skin_rule ? 1 : 0);
+                po->min_weight, po->skin_rule ? 1 : 0, po->merge_light_de);
+    }
+    if (gs != NULL) {
+        fprintf(f, ", \"garment\": ");
+        print_garment_opts_json(f, &o->garment);
     }
     if (res == NULL) {
         fprintf(f, ", \"match\": null},\n  \"hits\": null,\n  \"ambiguous\": null,\n  \"explain\": null\n}\n");
@@ -1137,7 +1494,7 @@ static int cmd_palette(int argc, char **argv)
         goto done;
     }
     if (o.debug_dir != NULL
-        && write_debug_dir(o.debug_dir, o.input, ctx, &li.img, &o, sw, n, NULL, err, sizeof err) != 0) {
+        && write_debug_dir(o.debug_dir, o.input, ctx, &li.img, &o, sw, n, NULL, NULL, 0, 0, err, sizeof err) != 0) {
         fprintf(stderr, "--debug-dir: %s\n", err);
         rc = 2;
         goto done;
@@ -1188,8 +1545,8 @@ static int cmd_match(int argc, char **argv)
         goto done;
     }
     if (o.debug_dir != NULL
-        && write_debug_dir(o.debug_dir, o.input, ctx, &li.img, &o, res.swatches, res.n_swatches, &res, err,
-                           sizeof err) != 0) {
+        && write_debug_dir(o.debug_dir, o.input, ctx, &li.img, &o, res.swatches, res.n_swatches, &res, NULL, 0, 0,
+                           err, sizeof err) != 0) {
         fprintf(stderr, "--debug-dir: %s\n", err);
         rc = 2;
         goto done;
@@ -1205,6 +1562,330 @@ done:
     free(mem);
     free_image(&li);
     return rc;
+}
+
+/* ------------------------------------------------------------------------
+ * ce garments: paleta por prenda (y match con --match)
+ * ---------------------------------------------------------------------- */
+
+static int cmd_garments(int argc, char **argv)
+{
+    cli_opts o;
+    loaded_image li;
+    char err[512];
+    ce_garment_swatch gs[CE_PALETTE_MAX_COLORS];
+    ce_swatch sw[CE_PALETTE_MAX_COLORS];
+    ce_result res;
+    void *mem = NULL;
+    ce_ctx *ctx;
+    int rc = 2, n, i;
+
+    if (parse_cli_opts(argc, argv, 1 | CLI_WITH_GARMENT, &o) != 0) {
+        return usage();
+    }
+    if (load_image(o.input, o.mask_path, &o, &li, err, sizeof err) != 0) {
+        fprintf(stderr, "%s: %s\n", o.input, err);
+        return 2;
+    }
+    if (o.regions_path != NULL && load_regions(o.regions_path, o.n_regions, &li, err, sizeof err) != 0) {
+        fprintf(stderr, "%s: %s\n", o.input, err);
+        free_image(&li);
+        return 2;
+    }
+    ctx = new_ctx(&mem);
+    if (ctx == NULL) {
+        rc = 1;
+        goto done;
+    }
+    memset(&res, 0, sizeof res);
+    if (o.do_match) {
+        n = ce_analyze_garments(ctx, &li.img, li.regions, li.n_regions, &o.palette, &o.garment, &o.match, &res,
+                                gs, CE_PALETTE_MAX_COLORS);
+        if (n < 0) {
+            fprintf(stderr, "ce_analyze_garments: error %d\n", n);
+            rc = 1;
+            goto done;
+        }
+        n = res.n_swatches;
+    } else {
+        n = ce_palette_extract_garments(ctx, &li.img, li.regions, li.n_regions, &o.palette, &o.garment, gs,
+                                        CE_PALETTE_MAX_COLORS);
+        if (n < 0) {
+            fprintf(stderr, "ce_palette_extract_garments: error %d\n", n);
+            rc = 1;
+            goto done;
+        }
+    }
+    for (i = 0; i < n; ++i) {
+        sw[i] = gs[i].swatch;
+    }
+    if (o.debug_dir != NULL
+        && write_debug_dir(o.debug_dir, o.input, ctx, &li.img, &o, sw, n, o.do_match ? &res : NULL, gs, n,
+                           li.regions != NULL ? li.n_regions : 0, err, sizeof err) != 0) {
+        fprintf(stderr, "--debug-dir: %s\n", err);
+        rc = 2;
+        goto done;
+    }
+    if (o.json) {
+        print_garments_json(o.input, o.mask_path, o.regions_path, &li, &o, gs, n, o.do_match ? &res : NULL, 1);
+    } else {
+        printf("%s\n%dx%d: %d swatches de prenda\n", o.input, li.img.width, li.img.height, n);
+        for (i = 0; i < n; ++i) {
+            printf("#%02x%02x%02x  %-5s  L=%9.4f a=%9.4f b=%9.4f  weight=%.6f  region_share=%.6f  clusters=%d\n",
+                   gs[i].swatch.rgb[0], gs[i].swatch.rgb[1], gs[i].swatch.rgb[2], region_name(gs[i].region),
+                   gs[i].swatch.lab.L, gs[i].swatch.lab.a, gs[i].swatch.lab.b, gs[i].swatch.weight,
+                   gs[i].region_share, gs[i].n_merged_clusters);
+        }
+        if (o.do_match) {
+            const int n_hits = (o.top < res.n_hits) ? o.top : res.n_hits;
+            for (i = 0; i < n_hits; ++i) {
+                printf("#%d id %3u score %9.4f\n", i + 1, (unsigned)res.hits[i].combo_id, res.hits[i].score);
+            }
+            printf("ambiguous: %d\n", res.ambiguous ? 1 : 0);
+        }
+    }
+    rc = 0;
+
+done:
+    free(mem);
+    free_image(&li);
+    return rc;
+}
+
+/* ------------------------------------------------------------------------
+ * match-palette: paletas como texto (sin imagen)
+ * ---------------------------------------------------------------------- */
+
+/* Lee todo stdin a memoria (malloc). 0 ok, -1 sin memoria o error de lectura. */
+static int read_stdin(uint8_t **out, size_t *out_len)
+{
+    size_t cap = 65536, len = 0;
+    uint8_t *buf = (uint8_t *)malloc(cap);
+    if (buf == NULL) {
+        return -1;
+    }
+    for (;;) {
+        size_t got;
+        if (len == cap) {
+            uint8_t *bigger;
+            if (cap > ((size_t)-1) / 2) {
+                free(buf);
+                return -1;
+            }
+            bigger = (uint8_t *)realloc(buf, cap * 2);
+            if (bigger == NULL) {
+                free(buf);
+                return -1;
+            }
+            buf = bigger;
+            cap *= 2;
+        }
+        got = fread(buf + len, 1, cap - len, stdin);
+        len += got;
+        if (got == 0) {
+            break;
+        }
+    }
+    if (ferror(stdin)) {
+        free(buf);
+        return -1;
+    }
+    *out = buf;
+    *out_len = len;
+    return 0;
+}
+
+static int hex_nibble(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+/* Un token "#rrggbb:peso" o "L,a,b:peso" (terminado en NUL) -> swatch con el
+ * peso sin normalizar. 0 ok; -1 con `why`. */
+static int parse_palette_token(char *tok, ce_swatch *sw, const char **why)
+{
+    char *colon = strrchr(tok, ':');
+    if (colon == NULL) {
+        *why = "token sin ':peso'";
+        return -1;
+    }
+    *colon = '\0';
+    if (!parse_double(colon + 1, &sw->weight) || sw->weight < 0.0) {
+        *why = "peso no finito o negativo";
+        return -1;
+    }
+    if (tok[0] == '#') {
+        int k;
+        if (strlen(tok) != 7) {
+            *why = "color hex distinto de #rrggbb";
+            return -1;
+        }
+        for (k = 0; k < 3; ++k) {
+            const int hi = hex_nibble(tok[1 + 2 * k]), lo = hex_nibble(tok[2 + 2 * k]);
+            if (hi < 0 || lo < 0) {
+                *why = "color hex con dígitos no hexadecimales";
+                return -1;
+            }
+            sw->rgb[k] = (uint8_t)(hi * 16 + lo);
+        }
+        sw->lab = ce_srgb8_to_lab(sw->rgb[0], sw->rgb[1], sw->rgb[2]);
+    } else {
+        char *c1 = strchr(tok, ','), *c2;
+        if (c1 == NULL || (c2 = strchr(c1 + 1, ',')) == NULL || strchr(c2 + 1, ',') != NULL) {
+            *why = "Lab distinto de L,a,b";
+            return -1;
+        }
+        *c1 = '\0';
+        *c2 = '\0';
+        if (!parse_double(tok, &sw->lab.L) || !parse_double(c1 + 1, &sw->lab.a) || !parse_double(c2 + 1, &sw->lab.b)) {
+            *why = "Lab no numérico o no finito";
+            return -1;
+        }
+        ce_lab_to_srgb8(sw->lab, &sw->rgb[0], &sw->rgb[1], &sw->rgb[2]);
+    }
+    return 0;
+}
+
+/* Una línea (NUL-terminada, se modifica) -> swatches normalizados. Devuelve
+ * n (1..CE_PALETTE_MAX_COLORS) o -1 con `why`. */
+static int parse_palette_line(char *line, ce_swatch *sw, const char **why)
+{
+    int n = 0, i;
+    double total = 0.0;
+    char *p = line;
+    for (;;) {
+        char *start;
+        while (*p == ' ' || *p == '\t') ++p;
+        if (*p == '\0') break;
+        start = p;
+        while (*p != '\0' && *p != ' ' && *p != '\t') ++p;
+        if (*p != '\0') {
+            *p = '\0';
+            ++p;
+        }
+        if (n == CE_PALETTE_MAX_COLORS) {
+            *why = "más de 8 swatches";
+            return -1;
+        }
+        if (parse_palette_token(start, &sw[n], why) != 0) {
+            return -1;
+        }
+        total += sw[n].weight;
+        ++n;
+    }
+    if (n == 0) {
+        *why = "línea sin swatches";
+        return -1;
+    }
+    if (!(total > 0.0) || !isfinite(total)) {
+        *why = "la suma de pesos debe ser finita y > 0";
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        sw[i].weight /= total;
+    }
+    return n;
+}
+
+static int cmd_match_palette(int argc, char **argv)
+{
+    cli_opts o;
+    char err[512];
+    uint8_t *text = NULL;
+    size_t len = 0, pos = 0;
+    void *mem = NULL;
+    ce_ctx *ctx;
+    long line_no = 0;
+    int failed = 0;
+
+    if (parse_cli_opts_ex(argc, argv, 1, 1, &o) != 0 || o.debug_dir != NULL || o.mask_path != NULL || o.raw_w > 0) {
+        return usage();
+    }
+    if (o.input != NULL && strcmp(o.input, "-") != 0) {
+        if (read_file(o.input, &text, &len, err, sizeof err) != 0) {
+            fprintf(stderr, "%s: %s\n", o.input, err);
+            return 2;
+        }
+    } else if (read_stdin(&text, &len) != 0) {
+        fprintf(stderr, "stdin: error de lectura\n");
+        return 2;
+    }
+    ctx = new_ctx(&mem);
+    if (ctx == NULL) {
+        free(text);
+        return 1;
+    }
+    while (pos < len) {
+        char line[4096];
+        size_t start = pos, end, n;
+        ce_result res;
+        const char *why = NULL;
+        int ns, rc, i;
+        while (pos < len && text[pos] != '\n') ++pos;
+        end = pos;
+        if (pos < len) ++pos;
+        ++line_no;
+        while (start < end && (text[start] == ' ' || text[start] == '\t' || text[start] == '\r')) ++start;
+        while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t' || text[end - 1] == '\r')) --end;
+        n = end - start;
+        if (n == 0 || text[start] == ';') {
+            continue;
+        }
+        memset(&res, 0, sizeof res);
+        if (n >= sizeof line) {
+            why = "línea demasiado larga";
+            ns = -1;
+        } else {
+            memcpy(line, text + start, n);
+            line[n] = '\0';
+            ns = parse_palette_line(line, res.swatches, &why);
+        }
+        rc = (ns < 0) ? 0 : ce_match(ctx, res.swatches, ns, &o.match, res.hits, CE_MATCH_MAX_HITS, &res.ambiguous);
+        if (ns >= 0 && rc < 0) {
+            snprintf(err, sizeof err, "ce_match: error %d", rc);
+            why = err;
+        }
+        if (ns < 0 || rc < 0) {
+            ++failed;
+            if (o.json) {
+                printf("{\"line\": %ld, \"error\": ", line_no);
+                print_json_string(why);
+                printf("}\n");
+            } else {
+                printf("line %ld: error: %s\n", line_no, why);
+            }
+            continue;
+        }
+        res.n_swatches = ns;
+        res.n_hits = (o.top < rc) ? o.top : rc;
+        if (o.json) {
+            printf("{\"line\": %ld, \"swatches\": [", line_no);
+            for (i = 0; i < ns; ++i) {
+                if (i) printf(", ");
+                print_swatch_json(&res.swatches[i]);
+            }
+            printf("], \"opts\": {\"match\": ");
+            print_match_opts_json(&o.match, o.top);
+            printf("}, \"hits\": [");
+            for (i = 0; i < res.n_hits; ++i) {
+                if (i) printf(", ");
+                print_hit_json(&res.hits[i]);
+            }
+            printf("], \"ambiguous\": %d, \"hash\": \"%016" PRIx64 "\"}\n", res.ambiguous ? 1 : 0, ce_result_hash(&res));
+        } else {
+            printf("line %ld:", line_no);
+            for (i = 0; i < res.n_hits; ++i) {
+                printf(" #%d id %u score %.4f", i + 1, (unsigned)res.hits[i].combo_id, res.hits[i].score);
+            }
+            printf(" ambiguous %d\n", res.ambiguous ? 1 : 0);
+        }
+    }
+    free(mem);
+    free(text);
+    return failed ? 1 : 0;
 }
 
 /* Línea de error del batch: {"file": ..., "mask": ..., "error": ...} (o texto). */
@@ -1232,18 +1913,22 @@ static void print_batch_error(const char *file, const char *mask, const char *ms
  * separadas por espacios o tabuladores; una ruta entre comillas dobles puede
  * contener espacios (sin escapes). Devuelve el número de rutas, o -1 con el
  * motivo en `why` (y en `p1` lo que se pudo leer, para el campo "file"). */
-static int split_list_entry(const uint8_t *line, size_t n, char paths[2][CLI_PATH_MAX], const char **why)
+static int split_list_entry(const uint8_t *line, size_t n, char paths[3][CLI_PATH_MAX], int max_paths,
+                            const char **why)
 {
     size_t i = 0;
     int count = 0;
     paths[0][0] = '\0';
     paths[1][0] = '\0';
+    paths[2][0] = '\0';
     while (i < n) {
         size_t start, end, len;
         while (i < n && (line[i] == ' ' || line[i] == '\t')) ++i;
         if (i >= n) break;
-        if (count == 2) {
-            *why = "la entrada tiene mas de dos rutas (imagen [mascara]; use comillas para rutas con espacios)";
+        if (count == max_paths) {
+            *why = max_paths == 2
+                ? "la entrada tiene mas de dos rutas (imagen [mascara]; use comillas para rutas con espacios)"
+                : "la entrada tiene mas de tres rutas (imagen [mascara|-] [regiones]; use comillas para rutas con espacios)";
             return -1;
         }
         if (line[i] == '"') {
@@ -1299,8 +1984,16 @@ static int cmd_batch(int argc, char **argv)
     ce_ctx *ctx;
     int failed = 0, total = 0;
 
-    if (parse_cli_opts(argc, argv, 1, &o) != 0 || o.debug_dir != NULL) {
+    if (parse_cli_opts(argc, argv, 1 | CLI_WITH_GARMENT | CLI_WITH_BATCH, &o) != 0 || o.debug_dir != NULL) {
         return usage();
+    }
+    /* Las opciones de prenda solo valen con --garments. */
+    if (!o.garments_mode) {
+        ce_garment_opts def;
+        ce_garment_opts_default(&def);
+        if (o.do_match || o.regions_path != NULL || o.n_regions != 0 || memcmp(&def, &o.garment, sizeof def) != 0) {
+            return usage();
+        }
     }
     if (read_file(o.input, &list, &list_len, err, sizeof err) != 0) {
         fprintf(stderr, "%s: %s\n", o.input, err);
@@ -1312,12 +2005,13 @@ static int cmd_batch(int argc, char **argv)
         return 1;
     }
     while (pos < list_len) {
-        char paths[2][CLI_PATH_MAX];
+        char paths[3][CLI_PATH_MAX];
         size_t start = pos, end, n;
         loaded_image li;
         ce_result res;
+        ce_garment_swatch gs[CE_PALETTE_MAX_COLORS];
         const char *why = NULL;
-        const char *path, *mask;
+        const char *path, *mask, *regions = NULL;
         int rc, np;
         while (pos < list_len && list[pos] != '\n') {
             ++pos;
@@ -1334,7 +2028,7 @@ static int cmd_batch(int argc, char **argv)
             continue;
         }
         ++total;
-        np = split_list_entry(list + start, n, paths, &why);
+        np = split_list_entry(list + start, n, paths, o.garments_mode ? 3 : 2, &why);
         if (np < 0) {
             char raw[CLI_PATH_MAX];
             const size_t rn = n < sizeof raw - 1 ? n : sizeof raw - 1;
@@ -1345,10 +2039,42 @@ static int cmd_batch(int argc, char **argv)
             continue;
         }
         path = paths[0];
-        mask = (np == 2) ? paths[1] : o.mask_path; /* la máscara de la línea gana */
+        mask = (np >= 2) ? paths[1] : o.mask_path; /* la máscara de la línea gana */
+        if (o.garments_mode) {
+            if (np >= 2 && strcmp(paths[1], "-") == 0) {
+                mask = NULL; /* "-": sin máscara en esta línea */
+            }
+            regions = (np == 3) ? paths[2] : o.regions_path;
+        }
         if (load_image(path, mask, &o, &li, err, sizeof err) != 0) {
             print_batch_error(path, mask, err, o.json);
             ++failed;
+            continue;
+        }
+        if (regions != NULL && load_regions(regions, o.n_regions, &li, err, sizeof err) != 0) {
+            print_batch_error(path, mask, err, o.json);
+            ++failed;
+            free_image(&li);
+            continue;
+        }
+        if (o.garments_mode) {
+            rc = ce_analyze_garments(ctx, &li.img, li.regions, li.n_regions, &o.palette, &o.garment, &o.match, &res,
+                                     gs, CE_PALETTE_MAX_COLORS);
+            if (rc < 0) {
+                snprintf(err, sizeof err, "ce_analyze_garments: error %d", rc);
+                print_batch_error(path, mask, err, o.json);
+                ++failed;
+                free_image(&li);
+                continue;
+            }
+            if (o.json) {
+                print_garments_json(path, mask, regions, &li, &o, gs, res.n_swatches, &res, 0);
+            } else {
+                printf("%s\t%u\t%.17g\t%d\t%d\n", path, (unsigned)res.hits[0].combo_id, res.hits[0].score,
+                       res.ambiguous ? 1 : 0, res.n_swatches);
+            }
+            fflush(stdout);
+            free_image(&li);
             continue;
         }
         rc = ce_analyze(ctx, &li.img, &o.palette, &o.match, &res);
@@ -1377,7 +2103,7 @@ static int cmd_batch(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------------
- * ce regions / skin / cut-head (máscaras)
+ * ce regions / skin / cut-head / split (máscaras)
  * ---------------------------------------------------------------------- */
 
 /* Carga un PGM (P5) completo. 0 ok; -1 con el motivo. `buf` queda a cargo
@@ -1564,6 +2290,96 @@ static int cmd_regions(int argc, char **argv)
     return 0;
 }
 
+static int cmd_garment_regions(int argc, char **argv)
+{
+    const char *mask_path = NULL, *pose_path = NULL, *out_path = NULL;
+    int size_w = 0, size_h = 0, i, w, h, rc, n_in, upper = 0, lower = 0;
+    ce_region_opts ro;
+    ce_pose pose;
+    uint8_t *buf = NULL, *m = NULL;
+    const uint8_t *data;
+    char err[512];
+    size_t k, np;
+
+    ce_region_opts_default(&ro);
+    for (i = 2; i < argc; i += 2) {
+        const char *a = argv[i];
+        const char *v = (i + 1 < argc) ? argv[i + 1] : NULL;
+        if (v == NULL) return usage();
+        if (strcmp(a, "--size") == 0) {
+            if (!parse_dims(v, &size_w, &size_h)) return usage();
+        } else if (strcmp(a, "--mask") == 0) {
+            mask_path = v;
+        } else if (strcmp(a, "--pose") == 0) {
+            pose_path = v;
+        } else if (strcmp(a, "--out") == 0) {
+            out_path = v;
+        } else if (strcmp(a, "--min-confidence") == 0) {
+            if (!parse_double(v, &ro.min_confidence)) return usage();
+        } else if (strcmp(a, "--torso-margin") == 0) {
+            if (!parse_double(v, &ro.torso_margin)) return usage();
+        } else if (strcmp(a, "--limb-width") == 0) {
+            if (!parse_double(v, &ro.limb_width)) return usage();
+        } else if (strcmp(a, "--upper-arms") == 0) {
+            if (!parse_flag01(v, &ro.include_upper_arms)) return usage();
+        } else if (strcmp(a, "--forearms") == 0) {
+            if (!parse_flag01(v, &ro.include_forearms)) return usage();
+        } else if (strcmp(a, "--legs") == 0) {
+            if (!parse_flag01(v, &ro.include_legs)) return usage();
+        } else if (strcmp(a, "--lower-legs") == 0) {
+            if (!parse_flag01(v, &ro.include_lower_legs)) return usage();
+        } else {
+            return usage();
+        }
+    }
+    if (mask_path == NULL || pose_path == NULL || out_path == NULL || size_w < 1) {
+        return usage();
+    }
+    if (load_pgm(mask_path, &buf, &data, &w, &h, err, sizeof err) != 0) {
+        fprintf(stderr, "%s: %s\n", mask_path, err);
+        return 2;
+    }
+    if (w != size_w || h != size_h) {
+        fprintf(stderr, "%s: la mascara es %dx%d y --size dice %dx%d\n", mask_path, w, h, size_w, size_h);
+        free(buf);
+        return 2;
+    }
+    if (load_pose(pose_path, &pose, err, sizeof err) != 0) {
+        fprintf(stderr, "%s: %s\n", pose_path, err);
+        free(buf);
+        return 2;
+    }
+    np = (size_t)w * (size_t)h;
+    m = (uint8_t *)malloc(np);
+    if (m == NULL) {
+        free(buf);
+        return 1;
+    }
+    n_in = count_mask(data, np);
+    rc = ce_mask_garment_regions(&pose, &ro, data, w, h, m);
+    if (rc < 0) {
+        fprintf(stderr, "ce_mask_garment_regions: error %d%s\n", rc,
+                rc == CE_ERR_POSE ? " (CE_ERR_POSE: faltan hombros o caderas o la pose es degenerada)" : "");
+        free(m);
+        free(buf);
+        return 1;
+    }
+    for (k = 0; k < np; ++k) {
+        upper += m[k] == CE_GARMENT_REGION_UPPER;
+        lower += m[k] == CE_GARMENT_REGION_LOWER;
+    }
+    if (write_pnm_file(out_path, 1, w, h, m, err, sizeof err) != 0) {
+        fprintf(stderr, "%s\n", err);
+        free(m);
+        free(buf);
+        return 2;
+    }
+    printf("{\"pixels\": %d, \"upper\": %d, \"lower\": %d, \"mask_pixels\": %d}\n", rc, upper, lower, n_in);
+    free(m);
+    free(buf);
+    return 0;
+}
+
 static int cmd_skin(int argc, char **argv)
 {
     const char *image_path = NULL, *sample_path = NULL, *mask_path = NULL, *out_path = NULL;
@@ -1725,6 +2541,141 @@ static int cmd_cut_head(int argc, char **argv)
     return 0;
 }
 
+/* Lee semillas "x0 y0 x1 y1 half_width" (una por línea; vacías y '#' ignoradas).
+ * Devuelve el número leído (1..CE_SPLIT_MAX_SEEDS) o -1 con el motivo. Los
+ * valores no se validan aquí (NaN, half_width <= 0...): eso lo decide el motor. */
+static int load_seeds(const char *path, ce_person_seed *seeds, char *err, size_t err_len)
+{
+    uint8_t *buf = NULL;
+    size_t len = 0, pos = 0;
+    int count = 0;
+    if (read_file(path, &buf, &len, err, err_len) != 0) {
+        return -1;
+    }
+    while (pos < len) {
+        char line[512];
+        size_t start = pos, n;
+        char *p, *end;
+        double v[5];
+        int k;
+        while (pos < len && buf[pos] != '\n') ++pos;
+        n = pos - start;
+        if (pos < len) ++pos;
+        if (n >= sizeof line) {
+            snprintf(err, err_len, "linea de semilla demasiado larga");
+            free(buf);
+            return -1;
+        }
+        memcpy(line, buf + start, n);
+        line[n] = '\0';
+        p = line;
+        while (*p == ' ' || *p == '\t' || *p == '\r') ++p;
+        if (*p == '\0' || *p == '#') continue;
+        for (k = 0; k < 5; ++k) {
+            errno = 0;
+            v[k] = strtod(p, &end);
+            if (end == p) {
+                snprintf(err, err_len, "semilla %d: se esperaban 5 numeros \"x0 y0 x1 y1 half_width\"", count + 1);
+                free(buf);
+                return -1;
+            }
+            p = end;
+        }
+        while (*p == ' ' || *p == '\t' || *p == '\r') ++p;
+        if (*p != '\0') {
+            snprintf(err, err_len, "semilla %d: sobran caracteres", count + 1);
+            free(buf);
+            return -1;
+        }
+        if (count >= CE_SPLIT_MAX_SEEDS) {
+            snprintf(err, err_len, "mas de %d semillas", CE_SPLIT_MAX_SEEDS);
+            free(buf);
+            return -1;
+        }
+        seeds[count].x0 = v[0];
+        seeds[count].y0 = v[1];
+        seeds[count].x1 = v[2];
+        seeds[count].y1 = v[3];
+        seeds[count].half_width = v[4];
+        ++count;
+    }
+    free(buf);
+    if (count < 1) {
+        snprintf(err, err_len, "sin semillas (una linea \"x0 y0 x1 y1 half_width\" por persona)");
+        return -1;
+    }
+    return count;
+}
+
+static int cmd_split(int argc, char **argv)
+{
+    const char *mask_path = NULL, *seeds_path = NULL, *out_path = NULL;
+    ce_person_seed seeds[CE_SPLIT_MAX_SEEDS];
+    int counts[CE_SPLIT_MAX_SEEDS + 1];
+    uint8_t *buf = NULL, *labels;
+    const uint8_t *data;
+    int i, w, h, rc, n_seeds, mask_pixels = 0;
+    size_t j, n;
+    char err[512];
+    for (i = 2; i < argc; i += 2) {
+        const char *a = argv[i];
+        const char *v = (i + 1 < argc) ? argv[i + 1] : NULL;
+        if (v == NULL) return usage();
+        if (strcmp(a, "--mask") == 0) {
+            mask_path = v;
+        } else if (strcmp(a, "--seeds") == 0) {
+            seeds_path = v;
+        } else if (strcmp(a, "--out") == 0) {
+            out_path = v;
+        } else {
+            return usage();
+        }
+    }
+    if (mask_path == NULL || seeds_path == NULL || out_path == NULL) return usage();
+    n_seeds = load_seeds(seeds_path, seeds, err, sizeof err);
+    if (n_seeds < 0) {
+        fprintf(stderr, "%s: %s\n", seeds_path, err);
+        return 2;
+    }
+    if (load_pgm(mask_path, &buf, &data, &w, &h, err, sizeof err) != 0) {
+        fprintf(stderr, "%s: %s\n", mask_path, err);
+        return 2;
+    }
+    n = (size_t)w * (size_t)h;
+    labels = (uint8_t *)malloc(n);
+    if (labels == NULL) {
+        free(buf);
+        return 1;
+    }
+    rc = ce_mask_split_instance(data, w, h, seeds, n_seeds, labels);
+    if (rc < 0) {
+        fprintf(stderr, "ce_mask_split_instance: error %d%s\n", rc,
+                rc == CE_ERR_ARG ? " (CE_ERR_ARG: semilla no finita, fuera de rango o half_width <= 0)" : "");
+        free(labels);
+        free(buf);
+        return 1;
+    }
+    for (i = 0; i <= CE_SPLIT_MAX_SEEDS; ++i) counts[i] = 0;
+    for (j = 0; j < n; ++j) {
+        mask_pixels += data[j] >= 128;
+        counts[labels[j]]++;
+    }
+    if (write_pnm_file(out_path, 1, w, h, labels, err, sizeof err) != 0) {
+        fprintf(stderr, "%s\n", err);
+        free(labels);
+        free(buf);
+        return 2;
+    }
+    printf("{\"labels\": %d, \"mask_pixels\": %d, \"counts\": [", rc, mask_pixels);
+    for (i = 1; i <= n_seeds; ++i) {
+        printf("%s%d", i > 1 ? ", " : "", counts[i]);
+    }
+    printf("]}\n");
+    free(labels);
+    free(buf);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
@@ -1755,6 +2706,9 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "batch") == 0) {
         return cmd_batch(argc, argv);
     }
+    if (strcmp(argv[1], "match-palette") == 0) {
+        return cmd_match_palette(argc, argv);
+    }
     if (strcmp(argv[1], "regions") == 0) {
         return cmd_regions(argc, argv);
     }
@@ -1763,6 +2717,15 @@ int main(int argc, char **argv)
     }
     if (strcmp(argv[1], "cut-head") == 0) {
         return cmd_cut_head(argc, argv);
+    }
+    if (strcmp(argv[1], "split") == 0) {
+        return cmd_split(argc, argv);
+    }
+    if (strcmp(argv[1], "garments") == 0) {
+        return cmd_garments(argc, argv);
+    }
+    if (strcmp(argv[1], "garment-regions") == 0) {
+        return cmd_garment_regions(argc, argv);
     }
     return usage();
 }

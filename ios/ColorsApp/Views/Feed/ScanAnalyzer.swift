@@ -1,8 +1,15 @@
-// Flujo de una captura (PLAN §7.2 + recorte de sujeto, ADR-010): rasterizar UNA
-// vez (EngineBridge, sRGB ≤ 1024 px), recorte de sujeto con SubjectKit sobre ese
-// mismo buffer RGBA (Vision detecta personas, pose y caras; el motor recorta la
-// ropa y excluye la piel), ce_analyze con la máscara resultante y las capas de
-// depuración del motor, todo en un Task.detached con un ce_ctx por llamada;
+// Flujo de una captura (PLAN §7.2 + recorte de sujeto, ADR-010; paleta por prenda,
+// ADR-011): rasterizar UNA vez (EngineBridge, sRGB ≤ 1024 px), recorte de sujeto con
+// SubjectKit sobre ese mismo buffer RGBA (Vision detecta personas, pose y caras; el
+// motor recorta la ropa, excluye la piel y reparte la máscara en regiones de prenda),
+// y después UNA de estas dos:
+//   - con mapa de regiones (hay pose): `ce_analyze_garments`, que agrupa los tonos de
+//     una misma prenda con distinta luz y devuelve UN color por prenda lisa (CONTEXT §13:
+//     «el pantalón es de un solo color»), con su región (arriba / abajo / prenda entera);
+//   - sin pose (recorte de cabeza, persona completa, foto entera): el camino CLÁSICO
+//     `ce_analyze`, exactamente como antes.
+// En los dos casos con las capas de depuración del motor, todo en un Task.detached con
+// un ce_ctx por llamada;
 // después se guarda el scan (ScanRepository) con los datos del recorte y se
 // registran los tiempos (TimingLog: total, Vision, máscara y motor).
 // Lo usan Extraer (picker/cámara), los atajos de depuración, el Feed (reanálisis) y los tests.
@@ -27,6 +34,17 @@ struct AnalysisTimings: Equatable, Sendable {
     static let zero = AnalysisTimings()
 }
 
+/// Capas de la paleta por prenda (motor): swatch de prenda y región por píxel de la imagen
+/// REDUCIDA, con su tamaño. Solo existen en el camino por prenda.
+struct GarmentLayerMaps: Equatable, Sendable {
+    /// Swatch de prenda por píxel reducido (`paletteLabelNone` fuera).
+    let garmentMap: [UInt8]
+    /// Región por píxel reducido: 1 arriba, 2 abajo, 3 prenda entera, `paletteLabelNone` fuera.
+    let regionMap: [UInt8]
+    let reducedWidth: Int
+    let reducedHeight: Int
+}
+
 /// Resultado completo de una captura: imagen vertical (≤ 1024 px), raster que
 /// vio el motor, recorte de sujeto, análisis con sus capas, scan persistido y tiempos.
 struct ScanOutcome: Identifiable, Hashable, Sendable {
@@ -40,11 +58,18 @@ struct ScanOutcome: Identifiable, Hashable, Sendable {
     let subject: SubjectMaskResult
     /// Capas de depuración del motor del mismo análisis (nil en outcomes construidos a mano).
     let debug: PaletteDebugLayers?
+    /// Colores POR PRENDA en el mismo orden que `result.swatches` (vacío en el camino clásico).
+    let garments: [GarmentSwatch]
+    /// Regiones del mapa que recibió el motor (2 con pose); nil en el camino clásico.
+    let garmentRegionCount: Int?
+    /// Mapas de la capa «Prendas» (nil sin capas del motor o en el camino clásico).
+    let garmentLayers: GarmentLayerMaps?
     let timings: AnalysisTimings
 
     init(image: CGImage, raster: EngineBridge.Raster, result: AnalysisResult, scan: ScanRecord,
          subjectOptions: SubjectOptions = SubjectOptions(mode: .off),
-         subject: SubjectMaskResult? = nil, debug: PaletteDebugLayers? = nil, timings: AnalysisTimings = .zero) {
+         subject: SubjectMaskResult? = nil, debug: PaletteDebugLayers? = nil, timings: AnalysisTimings = .zero,
+         garments: [GarmentSwatch] = [], garmentRegionCount: Int? = nil, garmentLayers: GarmentLayerMaps? = nil) {
         self.image = image
         self.raster = raster
         self.result = result
@@ -52,7 +77,25 @@ struct ScanOutcome: Identifiable, Hashable, Sendable {
         self.subjectOptions = subjectOptions
         self.subject = subject ?? ScanAnalyzer.emptySubject(width: raster.width, height: raster.height, steps: [.none])
         self.debug = debug
+        self.garments = garments
+        self.garmentRegionCount = garmentRegionCount
+        self.garmentLayers = garmentLayers
         self.timings = timings
+    }
+
+    /// Se usó la paleta por prenda (había mapa de regiones de la pose).
+    var usesGarments: Bool { !garments.isEmpty && garmentRegionCount != nil }
+
+    /// Región del color `index` de la paleta (nil en el camino clásico).
+    func garmentRegion(at index: Int) -> GarmentRegion? {
+        guard garments.indices.contains(index) else { return nil }
+        return garments[index].region
+    }
+
+    /// Lo que se guarda en el scan (columna `garments_json`); nil en el camino clásico.
+    var garmentInfo: ScanGarmentInfo? {
+        guard usesGarments else { return nil }
+        return ScanGarmentInfo(garments: garments, regionCount: garmentRegionCount)
     }
 
     var id: String { scan.id }
@@ -78,10 +121,35 @@ enum ScanAnalyzer {
         let subject: SubjectMaskResult
         let result: AnalysisResult
         let debug: PaletteDebugLayers?
+        /// Colores por prenda (vacío en el camino clásico), en el orden de `result.swatches`.
+        let garments: [GarmentSwatch]
+        /// Regiones del mapa entregado al motor; nil en el camino clásico.
+        let garmentRegionCount: Int?
+        let garmentLayers: GarmentLayerMaps?
         let timings: AnalysisTimings
+
+        init(raster: EngineBridge.Raster, options: SubjectOptions, subject: SubjectMaskResult,
+             result: AnalysisResult, debug: PaletteDebugLayers?, timings: AnalysisTimings,
+             garments: [GarmentSwatch] = [], garmentRegionCount: Int? = nil,
+             garmentLayers: GarmentLayerMaps? = nil) {
+            self.raster = raster
+            self.options = options
+            self.subject = subject
+            self.result = result
+            self.debug = debug
+            self.garments = garments
+            self.garmentRegionCount = garmentRegionCount
+            self.garmentLayers = garmentLayers
+            self.timings = timings
+        }
 
         var maskApplied: Bool { subject.mask != nil }
         var elapsedMs: Int { Int(timings.totalMs.rounded()) }
+        var usesGarments: Bool { !garments.isEmpty && garmentRegionCount != nil }
+        var garmentInfo: ScanGarmentInfo? {
+            guard usesGarments else { return nil }
+            return ScanGarmentInfo(garments: garments, regionCount: garmentRegionCount)
+        }
     }
 
     /// Rasteriza, recorta el sujeto y analiza. `people` nil = detectar con Vision
@@ -99,7 +167,8 @@ enum ScanAnalyzer {
         timings.rasterMs = rasterMs
         timings.totalMs = clock.ms
         analysis = Analysis(raster: raster, options: options, subject: analysis.subject, result: analysis.result,
-                            debug: analysis.debug, timings: timings)
+                            debug: analysis.debug, timings: timings, garments: analysis.garments,
+                            garmentRegionCount: analysis.garmentRegionCount, garmentLayers: analysis.garmentLayers)
         return analysis
     }
 
@@ -127,7 +196,31 @@ enum ScanAnalyzer {
         let engineStart = clock.ms
         let result: AnalysisResult
         var debug: PaletteDebugLayers?
-        if layers {
+        var garments: [GarmentSwatch] = []
+        var regionCount: Int?
+        var garmentLayers: GarmentLayerMaps?
+        // Paleta POR PRENDA solo cuando SubjectKit entrega el mapa de regiones de la pose;
+        // si no hay pose (o no hay máscara), el camino clásico, sin cambios.
+        if let regions = subject.garmentRegions, regions.count == raster.width * raster.height {
+            let n = garmentMaxRegions
+            regionCount = n
+            if layers {
+                let g = try EngineBridge.analyzeGarmentsWithLayers(raster: raster, matchOptions: EngineBridge.appMatchOptions,
+                                                                   topK: topK, mask: subject.mask, regions: regions,
+                                                                   regionCount: n)
+                result = g.result.analysis
+                garments = g.result.garments
+                debug = g.layers
+                garmentLayers = GarmentLayerMaps(garmentMap: g.garmentMap, regionMap: g.regionMap,
+                                                 reducedWidth: g.layers.debug.reducedWidth,
+                                                 reducedHeight: g.layers.debug.reducedHeight)
+            } else {
+                let g = try EngineBridge.analyzeGarments(raster: raster, matchOptions: EngineBridge.appMatchOptions,
+                                                         topK: topK, mask: subject.mask, regions: regions, regionCount: n)
+                result = g.analysis
+                garments = g.garments
+            }
+        } else if layers {
             let d = try EngineBridge.analyzeWithLayers(raster: raster, matchOptions: EngineBridge.appMatchOptions, topK: topK, mask: subject.mask)
             result = d.analysis
             debug = d
@@ -137,7 +230,8 @@ enum ScanAnalyzer {
         timings.engineMs = clock.ms - engineStart
         timings.totalMs = clock.ms
         return Analysis(raster: raster, options: options, subject: subject, result: result, debug: debug,
-                        timings: timings)
+                        timings: timings, garments: garments, garmentRegionCount: regionCount,
+                        garmentLayers: garmentLayers)
     }
 
     /// Flujo completo: análisis en segundo plano (userInitiated), scan guardado
@@ -160,7 +254,7 @@ enum ScanAnalyzer {
         }.value
         let info = ScanSubjectInfo(options: options, result: analysis.subject)
         let scan = ScanRecord.make(from: analysis.result, source: source, assetLocalId: assetLocalId, subject: info,
-                                   now: now)
+                                   now: now, garments: analysis.garmentInfo, policyVersion: AnalysisPolicy.current)
         if let photoStore, source != .library {
             // Antes de publicar el scan: el Feed lo muestra en cuanto aparece en la base de datos.
             let scanId = scan.id
@@ -170,7 +264,8 @@ enum ScanAnalyzer {
         record(analysis.timings, label: "analyze.\(source.rawValue)", timing: timing, now: now)
         return ScanOutcome(image: image, raster: analysis.raster, result: analysis.result, scan: scan,
                            subjectOptions: options, subject: analysis.subject, debug: analysis.debug,
-                           timings: analysis.timings)
+                           timings: analysis.timings, garments: analysis.garments,
+                           garmentRegionCount: analysis.garmentRegionCount, garmentLayers: analysis.garmentLayers)
     }
 
     /// `label` total y `label.vision`, `label.mask`, `label.engine` (times.txt del diagnóstico).

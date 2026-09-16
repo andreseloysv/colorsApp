@@ -3,7 +3,7 @@
  "kind": "wasm_parity_fixtures",
  "generator": "harness/wasm/make_fixtures.py",
  "dict_version": "fd95ac692777",
- "wada_gen_hash": "aa604e4ecd99",
+ "wada_gen_hash": "37151dcc01ae",
  "max_side": 128,
  "top_k": 3,
  "tolerance": 1e-09,
@@ -202,7 +202,7 @@
    "variant": "illuminant_A",
    "width": 128,
    "height": 128,
-   "sha256": "b8faf77cf6a607a096291cf4e628481e998d2d8dac0154f67629ca69522861f6"
+   "sha256": "bf715f0fd43ac481c0aeaf1c31a11dbda0225175fece5ac4dddde5125fff6068"
   },
   {
    "file": "p16_wada_c300_v7_jpeg.ppm",

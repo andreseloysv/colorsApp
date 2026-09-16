@@ -225,7 +225,12 @@ final class DatabaseTests: XCTestCase {
         XCTAssertEqual(subject.mode, .largestPerson)
         XCTAssertEqual(subject.region, .clothing)
         XCTAssertTrue(subject.adaptiveSkin)
-        XCTAssertEqual(subject.subjectOptions, SubjectOptions.default)
+        // La app pide siempre el mapa de regiones de prenda (ADR-011); el resto son los defectos.
+        XCTAssertEqual(subject.subjectOptions, SubjectSettings.default.subjectOptions)
+        XCTAssertTrue(subject.subjectOptions.computeGarmentRegions)
+        var expected = SubjectOptions.default
+        expected.computeGarmentRegions = true
+        XCTAssertEqual(subject.subjectOptions, expected)
         let rows = try settingsRows(db)
         XCTAssertEqual(rows["subject_mode"], SettingsRow(value: "allPeople", deleted: true, rev: 2, dirty: 1))
         XCTAssertEqual(rows["region_mode"], SettingsRow(value: "wholePerson", deleted: true, rev: 2, dirty: 1))

@@ -94,11 +94,27 @@ final class ChainTests: XCTestCase {
         XCTAssertTrue(o.adaptiveSkin)
         XCTAssertNil(o.selectedIndex)
         XCTAssertEqual(o.regionOptions, RegionOptions.default)
-        XCTAssertEqual(o.skinOptions, SkinOptions.default)
+        // Preajuste de piel de SubjectKit (ADR-010): Mahalanobis 2,75 en vez del 2,5 del motor.
+        XCTAssertEqual(o.skinOptions, SkinOptions(maxMahalanobis: 2.75, maxExcludedFraction: SkinOptions.default.maxExcludedFraction))
+        XCTAssertEqual(o.skinOptions, SubjectOptions.defaultSkinOptions)
+        XCTAssertEqual(SkinOptions.default.maxMahalanobis, 2.5, "el motor no cambia")
         XCTAssertEqual(o.minCoverage, 0.0005)
         XCTAssertEqual(o.minRegionFraction, 0.15)
         XCTAssertEqual(o.bareArmsSkinFraction, 0.25)
         XCTAssertTrue(o.shareSkinModel)
+        XCTAssertEqual(o.skinLearningIterations, 2)
+        XCTAssertEqual(o.skinLearningMahalanobis, 3.0)
+        XCTAssertEqual(o.skinHaloRadius, 2)
+        XCTAssertEqual(o.skinGrowMahalanobis, 5.0)
+        XCTAssertEqual(o.skinGrowRadius, 12)
+        XCTAssertEqual(o.skinGrowMaxRatio, 0.5)
+        XCTAssertFalse(o.phantomOptions.acceptShapeOnly)
+        XCTAssertTrue(o.phantomOptions.humanRectangles)
+        XCTAssertEqual(o.sleeveMatchFraction, 0.7)
+        XCTAssertEqual(o.sleeveMatchMahalanobis, 2.0)
+        XCTAssertEqual(o.phantomOptions, PhantomOptions.default)
+        XCTAssertTrue(o.phantomOptions.enabled)
+        XCTAssertEqual(o.phantomOptions.minTorsoJoints, 2)
         XCTAssertEqual(SubjectExtractor.headCutFraction, 0.18)
         XCTAssertEqual(SubjectExtractor.estimatedTorsoLength, 1.2)
         XCTAssertEqual(SubjectExtractor.estimatedHipWidth, 0.75)
@@ -301,9 +317,14 @@ final class ChainTests: XCTestCase {
         for y in 40...49 { for x in 18...23 { scene.paint(x: x, y: y, SyntheticScene.skin(x, y)) } }
         let person = PersonInstance(id: 1, mask: p.mask, width: scene.width, height: 100, pose: p.pose,
                                     faceSampleMask: p.face)
-        let r = try run(scene, [person], .default)
+        var noHalo = SubjectOptions.default
+        noHalo.skinHaloRadius = 0
+        let r = try run(scene, [person], noHalo)
         XCTAssertEqual(r.steps, [.poseRegions, .skinExcluded])
         let layer = try XCTUnwrap(r.layers.primary)
+        XCTAssertEqual(layer.skinHaloPixels, 0)
+        XCTAssertEqual(layer.skinExcludedMask, r.mask, "sin halo la máscara final es la de excludeSkin")
+        XCTAssertTrue(layer.learnedSampleMasks.isEmpty, "manga larga y piernas con pantalón: sin aprendizaje")
         let region = try XCTUnwrap(layer.regionMask)
         let removed = try XCTUnwrap(layer.skinRemovedMask)
         var skinInRegion = 0
@@ -346,14 +367,46 @@ final class ChainTests: XCTestCase {
         XCTAssertEqual(r.steps, [.poseRegions])
         XCTAssertEqual(r.layers.primary?.skinNote, "tooFewSkinSamples")
         XCTAssertNil(r.layers.primary?.skinModel)
-        // Se pidió piel y no hay modelo: la región va sin brazos (manga corta = piel).
+        // Se pidió piel y no hay modelo: prueba de mangas. Los brazos son de la camisa azul del
+        // torso (manga larga): se quedan (harness/people/03).
         let d = try XCTUnwrap(r.layers.primary?.regionDecision)
-        XCTAssertTrue(d.upperArmsDropped)
-        XCTAssertEqual(d.regionOptions?.includeUpperArms, false)
+        XCTAssertFalse(d.upperArmsDropped)
+        XCTAssertTrue(d.sleevesKept)
+        XCTAssertEqual(d.regionOptions?.includeUpperArms, true)
         var noArms = RegionOptions.default
         noArms.includeUpperArms = false
-        XCTAssertEqual(r.mask, try clothingRegions(pose: p.pose, options: noArms, mask: p.mask, width: scene.width,
-                                                   height: 100).mask)
+        let withArms = try clothingRegions(pose: p.pose, mask: p.mask, width: scene.width, height: 100)
+        let without = try clothingRegions(pose: p.pose, options: noArms, mask: p.mask, width: scene.width, height: 100)
+        XCTAssertEqual(d.sleevePixels, withArms.pixels - without.pixels)
+        XCTAssertEqual(d.sleeveMatchPixels, d.sleevePixels, "toda la manga es del color del torso")
+        XCTAssertEqual(r.mask, withArms.mask)
+        var torsoOptions = noArms
+        torsoOptions.includeLegs = false
+        torsoOptions.includeLowerLegs = false
+        XCTAssertEqual(r.layers.primary?.sleeveTorsoMask,
+                       try clothingRegions(pose: p.pose, options: torsoOptions, mask: p.mask, width: scene.width, height: 100).mask)
+        // Brazos desnudos (piel) sin modelo: no se parecen al torso -> fuera (con manga corta
+        // serían piel que nadie quita).
+        var bare = scene
+        for (i, v) in MaskOps.removed(before: withArms.mask, after: without.mask).enumerated() where v != 0 {
+            bare.paint(x: i % scene.width, y: i / scene.width, SyntheticScene.skin(i % scene.width, i / scene.width))
+        }
+        let bareRun = try run(bare, [person], .default)
+        let bd = try XCTUnwrap(bareRun.layers.primary?.regionDecision)
+        XCTAssertTrue(bd.upperArmsDropped)
+        XCTAssertFalse(bd.sleevesKept)
+        XCTAssertEqual(bd.sleeveMatchPixels, 0)
+        XCTAssertEqual(bd.regionOptions?.includeUpperArms, false)
+        XCTAssertEqual(bareRun.mask, without.mask)
+        // sleeveMatchFraction = 1 no prueba nada: brazos fuera siempre (comportamiento anterior).
+        var always = SubjectOptions.default
+        always.sleeveMatchFraction = 1
+        let alwaysRun = try run(scene, [person], always)
+        XCTAssertEqual(alwaysRun.layers.primary?.regionDecision?.upperArmsDropped, true)
+        XCTAssertNil(alwaysRun.layers.primary?.regionDecision?.sleeveMatchPixels)
+        XCTAssertEqual(alwaysRun.mask, without.mask)
+        XCTAssertEqual(SubjectExtractor.sleeveThreshold(armPixels: 10, options: .default), 7)
+        XCTAssertEqual(SubjectExtractor.sleeveThreshold(armPixels: 0, options: .default), 1)
         // Sin pedir piel se mantienen los brazos de las opciones de la app.
         let off = try run(scene, [person], SubjectOptions(adaptiveSkin: false))
         XCTAssertEqual(off.layers.primary?.regionDecision?.upperArmsDropped, false)
@@ -376,13 +429,14 @@ final class ChainTests: XCTestCase {
         XCTAssertEqual(layer.faceSampleMask, p0.face)
         XCTAssertEqual(layer.regionDecision?.upperArmsDropped, false)
         XCTAssertGreaterThan(layer.skinExcludedPixels, 40, "antebrazo de piel (60 px pintados) quitado con el modelo compartido")
-        // Sin compartir: sin modelo, sin paso de piel y sin brazos.
+        // Sin compartir: sin modelo ni paso de piel; los brazos son mangas del torso y se quedan.
         var own = SubjectOptions(mode: .selectedPerson, selectedIndex: 1)
         own.shareSkinModel = false
         let alone = try run(scene, people, own)
         XCTAssertEqual(alone.steps, [.poseRegions])
         XCTAssertNil(alone.layers.primary?.skinSampleSource)
-        XCTAssertEqual(alone.layers.primary?.regionDecision?.upperArmsDropped, true)
+        XCTAssertEqual(alone.layers.primary?.regionDecision?.upperArmsDropped, false)
+        XCTAssertEqual(alone.layers.primary?.regionDecision?.sleevesKept, true)
         // La persona 0 usa su propia cara.
         let first = try run(scene, people, .default)
         XCTAssertEqual(first.layers.primary?.skinSampleSource, 0)
@@ -414,11 +468,23 @@ final class ChainTests: XCTestCase {
         let p = scene.addPerson(0)
         let person = PersonInstance(id: 1, mask: p.mask, width: scene.width, height: 100, pose: p.pose,
                                     faceSampleMask: p.face)
-        let r = try run(scene, [person], SubjectOptions(region: .wholePerson))
+        let r = try run(scene, [person], SubjectOptions(region: .wholePerson, skinHaloRadius: 0))
         XCTAssertEqual(r.steps, [.skinExcluded])
         XCTAssertNil(r.layers.primary?.regionMask)
         // La cara (y 5...27, x 22...38) es piel y se quita: 23 · 17 = 391 píxeles.
         XCTAssertEqual(r.layers.primary?.skinExcludedPixels, 391)
+        // Con un halo de 1 px se va además el anillo de camisa alrededor de la cara dentro de la
+        // persona: filas 5...28, columnas 21...39 menos la cara = 24 · 19 − 391 = 65.
+        let halo1 = try run(scene, [person], SubjectOptions(region: .wholePerson, skinHaloRadius: 1))
+        XCTAssertEqual(halo1.layers.primary?.skinHaloPixels, 65)
+        XCTAssertEqual(halo1.layers.primary?.skinExcludedPixels, 391 + 65)
+        // Con el de 2 px (defecto): filas 5...29, columnas 20...40 = 25 · 21 − 391 = 134. La camisa
+        // azul no crece como piel en sombra (fuera de Mahalanobis 5).
+        let halo = try run(scene, [person], SubjectOptions(region: .wholePerson))
+        XCTAssertEqual(halo.layers.primary?.skinHaloPixels, 134)
+        XCTAssertEqual(halo.layers.primary?.skinGrownPixels, 0)
+        XCTAssertEqual(halo.layers.primary?.skinExcludedPixels, 391 + 134)
+        XCTAssertEqual(halo.layers.primary?.skinExcludedMask, r.mask)
     }
 
     func testRegionSufficiencyIsRelativeToSilhouette() throws {

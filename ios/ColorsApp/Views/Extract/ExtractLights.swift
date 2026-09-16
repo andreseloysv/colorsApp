@@ -370,18 +370,22 @@ struct ExtractPillButton: View {
 // MARK: - Tarjeta de prenda
 
 /// E22–E25: `swatch-card p-space-sm rounded-xl` en pocillo neutro (blanco/gris, sin halos ni tintes):
-/// bloque de color de 64 pt, rótulo «01 · 67 %» con «✦»/«✧» a la derecha, nombre de Wada, hex con
-/// icono de copiar y «ΔE». Al pulsar: 0,98 y sombra neutra `0 6px 20px` negra 12 %.
+/// bloque de color de 64 pt, rótulo «01 · 67 %» con «✦»/«✧» a la derecha, la etiqueta de la PRENDA
+/// («Parte de arriba», «Parte de abajo», «Prenda entera»; ADR-011) cuando el análisis usó el mapa
+/// de regiones, nombre de Wada, hex con icono de copiar y «ΔE». Al pulsar: 0,98 y sombra neutra
+/// `0 6px 20px` negra 12 %.
 struct ExtractGarmentCard: View {
     let index: Int
     let color: PaletteColor
+    /// Región de prenda de este color; nil en el camino clásico (sin pose).
+    var region: String? = nil
     var isSelected: Bool = false
     var isCopied: Bool = false
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            ExtractGarmentCardBody(index: index, color: color, isSelected: isSelected, isCopied: isCopied)
+            ExtractGarmentCardBody(index: index, color: color, region: region, isSelected: isSelected, isCopied: isCopied)
         }
         .buttonStyle(PressScaleButtonStyle(scale: MotionSpec.Press.wideScale))
         .accessibilityElement(children: .ignore)
@@ -392,6 +396,7 @@ struct ExtractGarmentCard: View {
 
     private var accessibilityText: String {
         var parts = ["Color \(index)"]
+        if let region { parts.append(region) }
         if let w = color.weight { parts.append("\(Int((w * 100).rounded())) por ciento") }
         if let name = color.name { parts.append(name) }
         parts.append(color.hex)
@@ -403,6 +408,7 @@ struct ExtractGarmentCard: View {
 private struct ExtractGarmentCardBody: View {
     let index: Int
     let color: PaletteColor
+    let region: String?
     let isSelected: Bool
     let isCopied: Bool
 
@@ -430,6 +436,20 @@ private struct ExtractGarmentCardBody: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Theme.wellTextSecondary)
                         .accessibilityHidden(true)
+                }
+                if let region {
+                    Text(region)
+                        .textRole(.labelSM)
+                        .foregroundStyle(Theme.wellText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: Radius.tag, style: .continuous).fill(Theme.wellFillAlt))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
+                            .strokeBorder(Theme.wellEdge, lineWidth: hairline))
+                        .padding(.top, 1)
+                        .accessibilityIdentifier("result.garment.region")
                 }
                 Text(color.name ?? color.hex)
                     .textRole(.headlineSM)

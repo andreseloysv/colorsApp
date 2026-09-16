@@ -128,15 +128,36 @@ final class ResultViewModel: ObservableObject {
         }
     }
 
-    /// «Colores de la ropa» con máscara de sujeto; «Colores de la foto» sin ella.
-    var paletteTitle: String { outcome.maskApplied ? "Colores de la ropa" : "Colores de la foto" }
+    /// Se usó la paleta POR PRENDA (había pose y mapa de regiones): un color por prenda.
+    var usesGarments: Bool { outcome.usesGarments }
 
-    /// «5 colores · 12,3 % de la foto» o «3 colores · foto completa».
+    /// Región de prenda del color `color` («Parte de arriba», «Parte de abajo», «Prenda
+    /// entera»); nil en el camino clásico o si el motor no le puso región.
+    func garmentRegionLabel(for color: PaletteColor) -> String? {
+        guard let region = outcome.garmentRegion(at: color.id), region != .none else { return nil }
+        return GarmentText.regionLabel(region)
+    }
+
+    /// «Colores por prenda» con el mapa de la pose; «Colores de la ropa» con máscara de
+    /// sujeto; «Colores de la foto» sin ella.
+    var paletteTitle: String {
+        if usesGarments { return "Colores por prenda" }
+        return outcome.maskApplied ? "Colores de la ropa" : "Colores de la foto"
+    }
+
+    /// «5 colores · 12,3 % de la foto», «2 colores · 2 prendas · 12,3 % de la foto» (paleta
+    /// por prenda) o «3 colores · foto completa».
     var paletteSummary: String {
         let n = palette.count
         let colors = "\(n) \(n == 1 ? "color" : "colores")"
         guard outcome.maskApplied else { return "\(colors) · foto completa" }
-        return "\(colors) · \(SubjectExplanation.percent(outcome.subject.maskCoverage)) de la foto"
+        var parts = [colors]
+        if usesGarments {
+            let regions = Set(outcome.garments.map(\.region)).count
+            parts.append("\(regions) \(regions == 1 ? "prenda" : "prendas")")
+        }
+        parts.append("\(SubjectExplanation.percent(outcome.subject.maskCoverage)) de la foto")
+        return parts.joined(separator: " · ")
     }
 
     /// Hex de la paleta separados por espacios (lo que copia «Copiar hex»).
@@ -241,12 +262,15 @@ final class ResultViewModel: ObservableObject {
                 try ScanAnalyzer.analyze(raster: current.raster, image: nil, subject: opts, people: current.subject.people)
             }.value
             let info = ScanSubjectInfo(options: opts, result: analysis.subject)
-            let scan = current.scan.updated(with: analysis.result, subject: info)
+            let scan = current.scan.updated(with: analysis.result, subject: info,
+                                            garments: analysis.garmentInfo, policyVersion: AnalysisPolicy.current)
             try await scanRepository.update(scan)
             ScanAnalyzer.record(analysis.timings, label: "reanalyze.person", timing: timing, now: Date())
             outcome = ScanOutcome(image: current.image, raster: current.raster, result: analysis.result, scan: scan,
                                   subjectOptions: opts, subject: analysis.subject, debug: analysis.debug,
-                                  timings: analysis.timings)
+                                  timings: analysis.timings, garments: analysis.garments,
+                                  garmentRegionCount: analysis.garmentRegionCount,
+                                  garmentLayers: analysis.garmentLayers)
             palette = Self.palette(for: outcome, dictionary: dictionary)
             selectedSwatch = nil
             isolatedSwatch = nil

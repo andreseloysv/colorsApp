@@ -1,7 +1,8 @@
 // Resultado de Extraer (docs/design/DESIGN_SYSTEM.md §5.2, «Estado de resultado»; ejemplo
 // «clothing_extractor»): visor con la foto sin recortar y los alfileres de cada color,
 // aviso con los pasos reales del recorte, «Ver máscara», fila de personas y «Ver capas»;
-// «Colores de la ropa» con tarjetas de prenda en pocillos neutros y la cinta de pesos; las 3
+// «Colores por prenda» (o «Colores de la ropa» sin pose) con una tarjeta por color en pocillo
+// neutro —«Parte de arriba» / «Parte de abajo» / «Prenda entera» con su porcentaje— y la cinta de pesos; las 3
 // combinaciones más parecidas con «Sí, es eso» / «No» y «Desbloquear»; «Guardar en el
 // jardín», «Copiar hex», «Ver capas» y «Compartir tarjeta». Todo color de datos va en un
 // pocillo (§1.4); el pergamino y los tintes cálidos quedan en el marco. La usan la pestaña
@@ -111,7 +112,9 @@ struct ExtractResultContent: View {
             }
             LazyVGrid(columns: grid, spacing: Spacing.gutter) {
                 ForEach(model.palette) { color in
-                    ExtractGarmentCard(index: color.id + 1, color: color, isSelected: model.selectedSwatch == color.id,
+                    ExtractGarmentCard(index: color.id + 1, color: color,
+                                       region: model.garmentRegionLabel(for: color),
+                                       isSelected: model.selectedSwatch == color.id,
                                        isCopied: copiedSwatch == color.id) {
                         flash(model.copy(color))
                         copiedSwatch = color.id

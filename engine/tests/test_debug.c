@@ -586,8 +586,10 @@ static void test_match_explain_bit_exact(void)
         TEST_ASSERT_EQUAL_DOUBLE(0.0, e.exposure_ev);
         TEST_ASSERT_EQUAL_DOUBLE(0.0, e.hypothesis_penalty);
     }
-    /* Paletas aleatorias (LCG) con kL 2 y λ 0,5: exposición e iluminante activos. */
+    /* Paletas aleatorias (LCG) con kL 2 y λ 0,5: exposición e iluminante activos
+     * (illuminant_search explícito: desde ADR-009 no es el valor por defecto). */
     ce_match_opts_default(&mo);
+    mo.illuminant_search = 1;
     mo.kL = 2.0;
     mo.coverage_lambda = 0.5;
     for (t = 0; t < 20; ++t) {

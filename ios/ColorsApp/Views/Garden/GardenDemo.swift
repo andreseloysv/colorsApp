@@ -168,7 +168,8 @@ enum GardenDemo {
             }.value
             let date = now.addingTimeInterval(-sample.daysAgo * 86_400)
             let info = ScanSubjectInfo(options: sample.subject, result: analysis.subject)
-            let scan = ScanRecord.make(from: analysis.result, source: sample.source, subject: info, now: date)
+            let scan = ScanRecord.make(from: analysis.result, source: sample.source, subject: info, now: date,
+                                       garments: analysis.garmentInfo, policyVersion: AnalysisPolicy.current)
             try await env.scans.insert(scan)
             photos.pin(GardenPhotos.downscaled(sample.image, maxSide: 1080), scanId: scan.id)
             if let verdict = sample.verdict {

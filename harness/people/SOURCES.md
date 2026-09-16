@@ -84,6 +84,36 @@ las capas**, no verdad de color ni gate de ningún umbral.
   hay libertad de panorama para obras 2D); Commons no las ha marcado. Aceptable como
   fixture interno de prueba; no redistribuir fuera del repo.
 
+## Derivada sintética: `synthetic_tight_selfie.png`
+
+Selfie apretada **derivada de `05_three_friends_closeup.png`** (misma licencia CC0 1.0, mismo
+autor; no es foto del usuario). Reproduce el fallo que vio el usuario con una foto suya:
+`VNGeneratePersonInstanceMaskRequest` junta en una instancia a dos adultos pegados. La mujer de
+la derecha se recorta con su máscara de Vision, se desplaza 70 px a la izquierda por detrás de
+la central y su hueco se rellena con la mediana por fila de la pared; lado mayor 320 px
+(BICUBIC) para que el directorio siga < 8 MB (7,99 MB con ella: lo comprueba
+`build_people.py check`). Se probaron dx 40–130, delante/detrás y 320–1024 px; se eligió una
+variante en la que Vision junta a dos personas (con dx 70 detrás lo hace en todos los tamaños:
+medidos 320, 352, 384 y 448 px, los cuatro dan 2 instancias → 3 personas tras separar).
+Generador: `make_tight_selfie.py` (cabecera: máscaras con `visionmask
+--variants selected0,selected1,selected2 --layers`; opciones `--dx 70 --order behind
+--long-side 320`). 213×320, sha256
+`9ab2c9e30d67bef15ed5287fff7c2c0d665059a1d12950657ffe6e887d3ae918`. Vision (macOS 26,
+2026-09-16): 2 instancias (las dos mujeres de la izquierda en una) → 3 personas tras separar
+con caras y poses. No está en `expected.json` ni en `SOURCES` de `build_people.py`.
+
+## Derivadas sintéticas: `faces/` (caras que no son personas)
+
+`faces/build_faces.py` genera en `harness/out/faces` (no se versiona) ocho PNG derivados de
+`01_single_black_outfit.png` y `05_three_friends_closeup.png` (las dos CC0 1.0): un retrato
+enmarcado y una pantalla encendida con una cara, cada uno solo, pegado a la silueta de la
+persona, detrás de ella y sobre su torso. Sirven para medir las **personas fantasma** que
+crearía una cara que no es una persona al separar instancias (ADR-010). La máscara de Vision de
+la persona de 01 está versionada (`faces/person01_mask.png`, PNG de 1 bit, 2 KB) para que
+`build` y `check` funcionen sin Vision, y `faces/faces.json` guarda el sha256 de los píxeles de
+cada imagen. `make subject-faces` las genera; `make visionmask-faces` mide personas por fixture
+con la regla de evidencia corporal, sin ella y sin separar.
+
 ## Formato
 
 PNG RGB 8 bits, sRGB (perfil "sRGB built-in" embebido), lado mayor 1024 px, sin EXIF.

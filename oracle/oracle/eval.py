@@ -485,7 +485,8 @@ def run_layer3(cli: Path, thresholds: dict[str, Any], out_dir: Path, fast: bool)
         print(f"L3 Match contra el diccionario: not implemented ({reason})")
         return layer
     print(f"L3 match contra el diccionario ({'fast: 35 combinaciones' if fast else '348 combinaciones'} x 10 variantes; "
-          "columnas kL1 (oficial), kL2 y skin1; holdout si hay COLORSAPP_HOLDOUT_SEED; golden-check)")
+          "columnas kL1 (oficial), kL2, skin1, noadapt, illum1 y garments; giro de tono (también por el camino de prendas en harness/people); "
+          "holdout si hay COLORSAPP_HOLDOUT_SEED; golden-check)")
     try:
         checks, _detail, table = l3.run_layer3(cli, thresholds, out_dir, fast, with_golden=True, log=lambda *_: None)
     except Exception as exc:  # noqa: BLE001 - el scorecard debe terminar siempre
@@ -594,7 +595,7 @@ def versions() -> dict[str, str]:
 
 #: Título de la sección de markdown adicional de cada capa en scorecard.md.
 MARKDOWN_TITLES = {
-    "L3": "recall por degradación y columna (kL1 oficial; kL2 y skin1 informativas)",
+    "L3": "recall por degradación y columna (kL1 oficial; kL2, skin1, noadapt e illum1 informativas) y giro de tono de paletas fuera del diccionario",
     "L4": "variantes de recorte (largest-clothing-skin oficial, delta frente a none)",
 }
 

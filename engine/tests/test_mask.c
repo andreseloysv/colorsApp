@@ -27,8 +27,21 @@
  *      las máscaras y modelos igual a una constante (nativo, ASan y WASM).
  *  (7) Tiempos (solo se imprimen, sin cota): regiones en 1024x2048 y piel en
  *      1024x1024 con la máscara llena (MASK_REGIONS_MS, MASK_SKIN_MS).
- * Escribe además fixtures para los tests del CLI (regions, skin, batch con
- * máscaras por línea) en CE_TEST_OUT_DIR.
+ *  (8) ce_mask_split_instance: (a) dos rectángulos que se tocan fusionados con
+ *      semillas verticales de semiancho ∝ ancho: frontera a ±2 px (exacta) de
+ *      la línea de contacto y recuentos exactos; con el mismo semiancho la
+ *      frontera se va al punto medio de los ejes; umbral 127/128. (b) niña
+ *      pequeña delante de un adulto: etiquetas iguales a una referencia
+ *      independiente (vector unitario) y recuentos dorados; mismo buffer de
+ *      entrada y salida; determinismo. (c) espejo horizontal: conservando el
+ *      índice de cada semilla, etiquetas espejadas exactas; intercambiando las
+ *      semillas, espejadas con 1 <-> 2; empate exacto al índice menor. (d)
+ *      CE_ERR_ARG sin escribir (punteros, dims, n_seeds 0/-1/9, coordenadas no
+ *      finitas o > CE_POSE_COORD_MAX, half_width 0/negativo/NaN/inf), bordes
+ *      válidos (8 semillas, ±CE_POSE_COORD_MAX, half_width diminuto, máscara
+ *      vacía, 1x1). (e) SPLIT_HASH igual en nativo, ASan y WASM. MASK_SPLIT_MS.
+ * Escribe además fixtures para los tests del CLI (regions, skin, split, batch
+ * con máscaras por línea) en CE_TEST_OUT_DIR.
  */
 /* clock_gettime/CLOCK_MONOTONIC son POSIX: con -std=c11 estricto hay que pedirlos. */
 #define _POSIX_C_SOURCE 200809L
@@ -1090,6 +1103,428 @@ static void test_timing(void)
     free(sm);
 }
 
+/* Dorados de (b) y hash de paridad de (a)–(d) (primera ejecución nativa). */
+#define CE_SPLIT_GOLDEN_ADULT 28889
+#define CE_SPLIT_GOLDEN_CHILD 10397
+#define CE_SPLIT_PARITY_HASH 0x79a280420498ca5bULL
+
+/* ------------------------------------------------------------------------
+ * (8) Separación de instancias fusionadas (ce_mask_split_instance)
+ * ---------------------------------------------------------------------- */
+
+#define SPW 240
+#define SPH 320
+
+static uint64_t g_split_hash = 0xcbf29ce484222325ULL;
+
+static void split_hash(const uint8_t *labels, size_t n, int count)
+{
+    const int64_t c = count;
+    g_split_hash = fnv_bytes(g_split_hash, labels, n);
+    g_split_hash = fnv_bytes(g_split_hash, &c, sizeof c);
+}
+
+static ce_person_seed seed(double x0, double y0, double x1, double y1, double hw)
+{
+    ce_person_seed s;
+    s.x0 = x0;
+    s.y0 = y0;
+    s.x1 = x1;
+    s.y1 = y1;
+    s.half_width = hw;
+    return s;
+}
+
+static void fill_box(uint8_t *m, int w, int x0, int y0, int x1, int y1, uint8_t v)
+{
+    int x, y;
+    for (y = y0; y < y1; ++y) {
+        for (x = x0; x < x1; ++x) {
+            m[(size_t)y * (size_t)w + (size_t)x] = v;
+        }
+    }
+}
+
+static void fill_disk(uint8_t *m, int w, int h, double cx, double cy, double r, uint8_t v)
+{
+    int x, y;
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) {
+            const double dx = (double)x + 0.5 - cx, dy = (double)y + 0.5 - cy;
+            if (dx * dx + dy * dy <= r * r) {
+                m[(size_t)y * (size_t)w + (size_t)x] = v;
+            }
+        }
+    }
+}
+
+/* Referencia independiente: distancia por vector unitario (ref_seg_dist), argmin
+ * con empate al índice menor. Devuelve además la separación relativa entre los
+ * dos mejores cocientes para distinguir empates numéricos. */
+static uint8_t ref_split_label(double px, double py, const ce_person_seed *s, int n, double *gap)
+{
+    double best = HUGE_VAL, second = HUGE_VAL;
+    int k, arg = 0;
+    rp p;
+    p.x = px;
+    p.y = py;
+    for (k = 0; k < n; ++k) {
+        rp a, b;
+        double q;
+        a.x = s[k].x0;
+        a.y = s[k].y0;
+        b.x = s[k].x1;
+        b.y = s[k].y1;
+        q = ref_seg_dist(p, a, b) / s[k].half_width;
+        if (q < best) {
+            second = best;
+            best = q;
+            arg = k;
+        } else if (q < second) {
+            second = q;
+        }
+    }
+    *gap = (second - best) / (second > 1.0 ? second : 1.0);
+    return (uint8_t)(arg + 1);
+}
+
+/* (a) Dos rectángulos que se tocan en x = 100, fusionados en una máscara, con
+ * semillas verticales de semiancho proporcional a su anchura (0,55·ancho). */
+static void test_split_touching_rects(void)
+{
+    static uint8_t m[SPW * SPH], labels[SPW * SPH];
+    const ce_person_seed seeds[2] = {seed(65.0, 40.0, 65.0, 280.0, 38.5), seed(125.0, 80.0, 125.0, 280.0, 27.5)};
+    int x, y, n, c1 = 0, c2 = 0, c0 = 0, max_dev = 0;
+
+    memset(m, 0, sizeof m);
+    fill_box(m, SPW, 30, 40, 100, 280, 200); /* A: 70 px de ancho, 240 de alto */
+    fill_box(m, SPW, 100, 80, 150, 280, 128); /* B: 50 x 200, justo en el umbral */
+    fill_box(m, SPW, 170, 10, 200, 30, 127);  /* bajo el umbral: fondo */
+    n = ce_mask_split_instance(m, SPW, SPH, seeds, 2, labels);
+    TEST_ASSERT_EQUAL_INT(2, n);
+    for (y = 0; y < SPH; ++y) {
+        int last1 = -1, first2 = -1;
+        for (x = 0; x < SPW; ++x) {
+            const uint8_t l = labels[(size_t)y * SPW + (size_t)x];
+            const int inside = m[(size_t)y * SPW + (size_t)x] >= 128;
+            TEST_ASSERT_EQUAL_INT(inside, l != 0);
+            if (l == 1) {
+                ++c1;
+                last1 = x;
+            } else if (l == 2) {
+                ++c2;
+                if (first2 < 0) first2 = x;
+            } else {
+                ++c0;
+            }
+        }
+        if (y >= 80 && y < 280) {
+            /* Frontera monótona: todo 1 a la izquierda, todo 2 a la derecha. */
+            const int dev = abs(first2 - 100);
+            TEST_ASSERT_TRUE(last1 < first2);
+            TEST_ASSERT_TRUE_MESSAGE(dev <= 2, "frontera a mas de 2 px de la linea de contacto");
+            if (dev > max_dev) max_dev = dev;
+        } else if (y >= 40 && y < 80) {
+            TEST_ASSERT_EQUAL_INT(-1, first2);
+        }
+    }
+    printf("split rectangulos: etiqueta 1 = %d px, etiqueta 2 = %d px, fondo = %d, desviacion maxima de la frontera = %d px\n",
+           c1, c2, c0, max_dev);
+    /* hw ∝ ancho: la frontera normalizada cae exactamente en x = 100. */
+    TEST_ASSERT_EQUAL_INT(70 * 240, c1);
+    TEST_ASSERT_EQUAL_INT(50 * 200, c2);
+    split_hash(labels, sizeof labels, n);
+
+    /* Con el mismo semiancho la frontera se desplaza hacia la persona estrecha
+     * (punto medio de los ejes, x = 95): la normalización es la que la centra. */
+    {
+        ce_person_seed same[2];
+        int first2 = -1;
+        same[0] = seeds[0];
+        same[1] = seeds[1];
+        same[1].half_width = 38.5;
+        TEST_ASSERT_EQUAL_INT(2, ce_mask_split_instance(m, SPW, SPH, same, 2, labels));
+        for (x = 0; x < SPW; ++x) {
+            if (labels[150 * SPW + (size_t)x] == 2) {
+                first2 = x;
+                break;
+            }
+        }
+        printf("split rectangulos con el mismo semiancho: frontera en x = %d\n", first2);
+        TEST_ASSERT_EQUAL_INT(95, first2);
+        split_hash(labels, sizeof labels, 2);
+    }
+}
+
+/* Escena (b): adulto grande y niña pequeña delante, abajo a la izquierda. */
+static void small_front_scene(uint8_t *m)
+{
+    memset(m, 0, (size_t)SPW * SPH);
+    fill_box(m, SPW, 80, 60, 200, 320, 255);
+    fill_disk(m, SPW, SPH, 140.0, 35.0, 25.0, 255);
+    fill_box(m, SPW, 40, 180, 120, 320, 230);
+    fill_disk(m, SPW, SPH, 80.0, 160.0, 18.0, 230);
+}
+
+static const ce_person_seed SMALL_FRONT_SEEDS[2] = {
+    {140.0, 60.0, 140.0, 220.0, 66.0}, /* adulto: cuello -> caderas, 0,55 · 120 */
+    {80.0, 180.0, 80.25, 300.5, 33.0}, /* niña: 0,55 · 60, eje ligeramente inclinado */
+};
+
+/* (b) Persona pequeña delante de una grande: cada píxel a la semilla más
+ * cercana normalizada, igual que la referencia independiente y recuentos dorados. */
+static void test_split_small_in_front(void)
+{
+    static uint8_t m[SPW * SPH], labels[SPW * SPH], inplace[SPW * SPH];
+    int x, y, n, counts[3] = {0, 0, 0}, mismatches = 0, near_ties = 0;
+
+    small_front_scene(m);
+    n = ce_mask_split_instance(m, SPW, SPH, SMALL_FRONT_SEEDS, 2, labels);
+    TEST_ASSERT_EQUAL_INT(2, n);
+    for (y = 0; y < SPH; ++y) {
+        for (x = 0; x < SPW; ++x) {
+            const size_t i = (size_t)y * SPW + (size_t)x;
+            double gap;
+            uint8_t want = 0;
+            if (m[i] >= 128) {
+                want = ref_split_label((double)x + 0.5, (double)y + 0.5, SMALL_FRONT_SEEDS, 2, &gap);
+                if (gap < 1e-12) {
+                    ++near_ties;
+                    if (want != labels[i]) {
+                        continue; /* empate numérico: cualquiera de los dos vale */
+                    }
+                }
+            }
+            if (want != labels[i]) ++mismatches;
+            counts[labels[i]]++;
+        }
+    }
+    printf("split nina delante: adulto = %d px, nina = %d px, fondo = %d, empates numericos = %d, distintos de la referencia = %d\n",
+           counts[1], counts[2], counts[0], near_ties, mismatches);
+    TEST_ASSERT_EQUAL_INT(0, mismatches);
+    /* Puntos que cualquier regla sensata asigna igual. */
+    TEST_ASSERT_EQUAL_UINT8(2, labels[250 * SPW + 60]);  /* cuerpo de la niña */
+    TEST_ASSERT_EQUAL_UINT8(2, labels[160 * SPW + 80]);  /* cara de la niña (encima de su eje) */
+    TEST_ASSERT_EQUAL_UINT8(1, labels[250 * SPW + 180]); /* cuerpo del adulto */
+    TEST_ASSERT_EQUAL_UINT8(1, labels[35 * SPW + 140]);  /* cabeza del adulto */
+    /* Dorados (primera ejecución, nativo; iguales en ASan y WASM vía SPLIT_HASH). */
+    TEST_ASSERT_EQUAL_INT(CE_SPLIT_GOLDEN_ADULT, counts[1]);
+    TEST_ASSERT_EQUAL_INT(CE_SPLIT_GOLDEN_CHILD, counts[2]);
+    split_hash(labels, sizeof labels, n);
+
+    /* Mismo buffer de entrada y salida. */
+    memcpy(inplace, m, sizeof inplace);
+    TEST_ASSERT_EQUAL_INT(2, ce_mask_split_instance(inplace, SPW, SPH, SMALL_FRONT_SEEDS, 2, inplace));
+    TEST_ASSERT_EQUAL_MEMORY(labels, inplace, sizeof labels);
+    /* Determinismo. */
+    memset(inplace, 0x5a, sizeof inplace);
+    TEST_ASSERT_EQUAL_INT(2, ce_mask_split_instance(m, SPW, SPH, SMALL_FRONT_SEEDS, 2, inplace));
+    TEST_ASSERT_EQUAL_MEMORY(labels, inplace, sizeof labels);
+}
+
+/* (c) Espejo horizontal: conservando el índice de cada semilla las etiquetas
+ * salen espejadas exactas; intercambiando las semillas, espejadas y con 1 <-> 2
+ * (la escena no tiene empates exactos, que irían al índice menor). */
+static void test_split_mirror(void)
+{
+    static uint8_t m[SPW * SPH], mm[SPW * SPH], a[SPW * SPH], b[SPW * SPH], c[SPW * SPH];
+    ce_person_seed keep[2], swapped[2];
+    int x, y, k, na, nb, nc;
+
+    small_front_scene(m);
+    for (y = 0; y < SPH; ++y) {
+        for (x = 0; x < SPW; ++x) {
+            mm[(size_t)y * SPW + (size_t)(SPW - 1 - x)] = m[(size_t)y * SPW + (size_t)x];
+        }
+    }
+    for (k = 0; k < 2; ++k) {
+        keep[k] = SMALL_FRONT_SEEDS[k];
+        keep[k].x0 = (double)SPW - SMALL_FRONT_SEEDS[k].x0;
+        keep[k].x1 = (double)SPW - SMALL_FRONT_SEEDS[k].x1;
+        swapped[1 - k] = keep[k];
+    }
+    na = ce_mask_split_instance(m, SPW, SPH, SMALL_FRONT_SEEDS, 2, a);
+    nb = ce_mask_split_instance(mm, SPW, SPH, keep, 2, b);
+    nc = ce_mask_split_instance(mm, SPW, SPH, swapped, 2, c);
+    TEST_ASSERT_EQUAL_INT(2, na);
+    TEST_ASSERT_EQUAL_INT(na, nb);
+    TEST_ASSERT_EQUAL_INT(na, nc);
+    for (y = 0; y < SPH; ++y) {
+        for (x = 0; x < SPW; ++x) {
+            const uint8_t la = a[(size_t)y * SPW + (size_t)x];
+            const uint8_t lb = b[(size_t)y * SPW + (size_t)(SPW - 1 - x)];
+            const uint8_t lc = c[(size_t)y * SPW + (size_t)(SPW - 1 - x)];
+            const uint8_t want_c = la == 0 ? 0 : (uint8_t)(3 - la);
+            if (la != lb || lc != want_c) {
+                char msg[96];
+                snprintf(msg, sizeof msg, "espejo distinto en (%d,%d): %u %u %u", x, y, la, lb, lc);
+                TEST_FAIL_MESSAGE(msg);
+            }
+        }
+    }
+    split_hash(b, sizeof b, nb);
+    split_hash(c, sizeof c, nc);
+
+    /* Empate exacto (W impar, ejes en 60.5 y 180.5, mismo semiancho): la columna
+     * central (x + 0.5 = 120.5) empata y va al índice menor. El espejo que
+     * conserva los índices (semillas cruzadas de posición) sigue siendo exacto
+     * también en los empates; el que intercambia personas solo difiere ahí. */
+    {
+        const int w = SPW + 1;
+        static uint8_t om[(SPW + 1) * SPH], la[(SPW + 1) * SPH], lb[(SPW + 1) * SPH];
+        const ce_person_seed tie[2] = {seed(60.5, 50.0, 60.5, 250.0, 30.0), seed(180.5, 50.0, 180.5, 250.0, 30.0)};
+        const ce_person_seed tie_m[2] = {seed(180.5, 50.0, 180.5, 250.0, 30.0), seed(60.5, 50.0, 60.5, 250.0, 30.0)};
+        int ties = 0;
+        memset(om, 255, sizeof om);
+        TEST_ASSERT_EQUAL_INT(2, ce_mask_split_instance(om, w, SPH, tie, 2, la));
+        TEST_ASSERT_EQUAL_INT(2, ce_mask_split_instance(om, w, SPH, tie_m, 2, lb));
+        for (y = 0; y < SPH; ++y) {
+            const size_t row = (size_t)y * (size_t)w;
+            TEST_ASSERT_EQUAL_UINT8(1, la[row + 119]);
+            TEST_ASSERT_EQUAL_UINT8(1, la[row + 120]); /* empate -> semilla 0 (x = 60.5) */
+            TEST_ASSERT_EQUAL_UINT8(2, la[row + 121]);
+            TEST_ASSERT_EQUAL_UINT8(2, lb[row + 119]);
+            TEST_ASSERT_EQUAL_UINT8(1, lb[row + 120]); /* empate -> semilla 0 (x = 180.5) */
+            TEST_ASSERT_EQUAL_UINT8(1, lb[row + 121]);
+            for (x = 0; x < w; ++x) {
+                TEST_ASSERT_EQUAL_UINT8(la[row + (size_t)x], lb[row + (size_t)(w - 1 - x)]);
+                ties += x == 120;
+            }
+        }
+        printf("split empate exacto: %d pixeles en la columna central, todos a la semilla de indice menor\n", ties);
+        split_hash(la, sizeof la, 2);
+        split_hash(lb, sizeof lb, 2);
+    }
+}
+
+/* (d) Errores sin escribir, n_seeds fuera de rango, bordes del contrato. */
+static void test_split_errors(void)
+{
+    static uint8_t m[SPW * SPH], labels[SPW * SPH], sentinel[SPW * SPH];
+    ce_person_seed seeds[CE_SPLIT_MAX_SEEDS + 1];
+    ce_person_seed bad;
+    int k, rc;
+    const double bad_values[] = {NAN, HUGE_VAL, -HUGE_VAL, CE_POSE_COORD_MAX * 2.0, -CE_POSE_COORD_MAX - 1.0};
+    const double bad_half[] = {0.0, -1.0, -0.0, NAN, HUGE_VAL, CE_POSE_COORD_MAX * 1.5};
+    size_t i;
+
+    small_front_scene(m);
+    for (k = 0; k <= CE_SPLIT_MAX_SEEDS; ++k) {
+        seeds[k] = seed(20.0 + 25.0 * k, 40.0, 20.0 + 25.0 * k, 300.0, 20.0);
+    }
+    memset(sentinel, 0xab, sizeof sentinel);
+#define SPLIT_EXPECT_ARG(call)                                     \
+    do {                                                           \
+        memcpy(labels, sentinel, sizeof labels);                   \
+        rc = (call);                                               \
+        TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, rc);                     \
+        TEST_ASSERT_EQUAL_MEMORY(sentinel, labels, sizeof labels); \
+    } while (0)
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(NULL, SPW, SPH, seeds, 2, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, NULL, 2, labels));
+    TEST_ASSERT_EQUAL_INT(CE_ERR_ARG, ce_mask_split_instance(m, SPW, SPH, seeds, 2, NULL));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, 0, SPH, seeds, 2, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, 0, seeds, 2, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, -SPW, SPH, seeds, 2, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, CE_IMAGE_MAX_SIDE + 1, 1, seeds, 2, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, seeds, 0, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, seeds, -1, labels));
+    SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, seeds, CE_SPLIT_MAX_SEEDS + 1, labels));
+    for (i = 0; i < sizeof bad_values / sizeof bad_values[0]; ++i) {
+        for (k = 0; k < 4; ++k) {
+            ce_person_seed two[2];
+            two[0] = seeds[0];
+            two[1] = seeds[1];
+            bad = two[1];
+            if (k == 0) bad.x0 = bad_values[i];
+            if (k == 1) bad.y0 = bad_values[i];
+            if (k == 2) bad.x1 = bad_values[i];
+            if (k == 3) bad.y1 = bad_values[i];
+            two[1] = bad;
+            SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, two, 2, labels));
+        }
+    }
+    for (i = 0; i < sizeof bad_half / sizeof bad_half[0]; ++i) {
+        ce_person_seed two[2];
+        two[0] = seeds[0];
+        two[1] = seeds[1];
+        two[1].half_width = bad_half[i];
+        SPLIT_EXPECT_ARG(ce_mask_split_instance(m, SPW, SPH, two, 2, labels));
+    }
+#undef SPLIT_EXPECT_ARG
+
+    /* Bordes válidos: 1 y 8 semillas, coordenadas en ±CE_POSE_COORD_MAX,
+     * semiancho diminuto (cociente +inf, sin NaN). */
+    TEST_ASSERT_EQUAL_INT(1, ce_mask_split_instance(m, SPW, SPH, seeds, 1, labels));
+    for (i = 0; i < sizeof m; ++i) {
+        TEST_ASSERT_EQUAL_UINT8(m[i] >= 128 ? 1 : 0, labels[i]);
+    }
+    rc = ce_mask_split_instance(m, SPW, SPH, seeds, CE_SPLIT_MAX_SEEDS, labels);
+    TEST_ASSERT_TRUE(rc >= 2 && rc <= CE_SPLIT_MAX_SEEDS);
+    split_hash(labels, sizeof labels, rc);
+    {
+        ce_person_seed edge[3];
+        edge[0] = seed(CE_POSE_COORD_MAX, -CE_POSE_COORD_MAX, CE_POSE_COORD_MAX, CE_POSE_COORD_MAX, CE_POSE_COORD_MAX);
+        edge[1] = seed(100.0, 100.0, 100.0, 100.0, 1e-300);
+        edge[2] = seed(100.0, 100.0, 100.0, 100.0, 5e-324);
+        rc = ce_mask_split_instance(m, SPW, SPH, edge, 3, labels);
+        TEST_ASSERT_TRUE(rc >= 1 && rc <= 3);
+        for (i = 0; i < sizeof m; ++i) {
+            TEST_ASSERT_TRUE((m[i] >= 128) == (labels[i] != 0) && labels[i] <= 3);
+        }
+        /* Solo el píxel cuyo centro está a distancia 0 del punto (ninguno: los
+         * centros son semienteros) podría ir a las semillas diminutas. */
+        TEST_ASSERT_EQUAL_INT(1, rc);
+        split_hash(labels, sizeof labels, rc);
+    }
+    /* Ocho semillas idénticas: todo empata y va a la primera. */
+    for (k = 0; k < CE_SPLIT_MAX_SEEDS; ++k) seeds[k] = seed(100.0, 50.0, 110.0, 250.0, 40.0);
+    TEST_ASSERT_EQUAL_INT(1, ce_mask_split_instance(m, SPW, SPH, seeds, CE_SPLIT_MAX_SEEDS, labels));
+    /* Máscara vacía: 0 etiquetas y salida a 0 (se sobrescribe el centinela). */
+    memset(m, 127, sizeof m);
+    memcpy(labels, sentinel, sizeof labels);
+    TEST_ASSERT_EQUAL_INT(0, ce_mask_split_instance(m, SPW, SPH, seeds, 2, labels));
+    for (i = 0; i < sizeof labels; ++i) TEST_ASSERT_EQUAL_UINT8(0, labels[i]);
+    /* Imagen de 1x1 y lado máximo en una fila. */
+    {
+        const uint8_t one = 255;
+        uint8_t out = 0;
+        TEST_ASSERT_EQUAL_INT(1, ce_mask_split_instance(&one, 1, 1, seeds, 1, &out));
+        TEST_ASSERT_EQUAL_UINT8(1, out);
+    }
+}
+
+/* (e) Paridad: hash de todas las etiquetas de (a)–(d); constante medida en
+ * nativo (Apple arm64), igual con ASan/UBSan y en WASM (node). */
+static void test_split_parity_hash(void)
+{
+    printf("SPLIT_HASH=%016" PRIx64 "\n", g_split_hash);
+    TEST_ASSERT_EQUAL_HEX64(CE_SPLIT_PARITY_HASH, g_split_hash);
+}
+
+static void test_split_timing(void)
+{
+    const int w = 1024, h = 1024;
+    uint8_t *m = (uint8_t *)malloc((size_t)w * (size_t)h);
+    uint8_t *l = (uint8_t *)malloc((size_t)w * (size_t)h);
+    ce_person_seed seeds[CE_SPLIT_MAX_SEEDS];
+    double t0, ms;
+    int k, n;
+    TEST_ASSERT_NOT_NULL(m);
+    TEST_ASSERT_NOT_NULL(l);
+    memset(m, 255, (size_t)w * (size_t)h);
+    for (k = 0; k < CE_SPLIT_MAX_SEEDS; ++k) {
+        seeds[k] = seed(64.0 + 128.0 * k, 200.0 + 10.0 * k, 70.0 + 128.0 * k, 700.0, 50.0 + 3.0 * k);
+    }
+    t0 = now_ms();
+    n = ce_mask_split_instance(m, w, h, seeds, CE_SPLIT_MAX_SEEDS, l);
+    ms = now_ms() - t0;
+    printf("MASK_SPLIT_MS=%.2f (1024x1024 llena, %d semillas, %d etiquetas)\n", ms, CE_SPLIT_MAX_SEEDS, n);
+    TEST_ASSERT_EQUAL_INT(CE_SPLIT_MAX_SEEDS, n);
+    free(m);
+    free(l);
+}
+
 /* ------------------------------------------------------------------------
  * Fixtures para los tests del CLI
  * ---------------------------------------------------------------------- */
@@ -1201,6 +1636,39 @@ static void test_write_cli_fixtures(void)
     write_file("mask_batch_list.txt", NULL, (const uint8_t *)text, len);
 }
 
+/* Fixtures de `ce split` (escena (b)): máscara, semillas (con comentario y
+ * tabuladores), etiquetas y recuentos esperados de la API, y semillas inválidas. */
+static void test_write_split_fixtures(void)
+{
+    static uint8_t m[SPW * SPH], labels[SPW * SPH];
+    char text[1024], header[64];
+    size_t len = 0;
+    int n, i, counts[3] = {0, 0, 0}, inside = 0;
+
+    small_front_scene(m);
+    n = ce_mask_split_instance(m, SPW, SPH, SMALL_FRONT_SEEDS, 2, labels);
+    TEST_ASSERT_EQUAL_INT(2, n);
+    for (i = 0; i < SPW * SPH; ++i) {
+        counts[labels[i]]++;
+        inside += m[i] >= 128;
+    }
+    snprintf(header, sizeof header, "P5\n%d %d\n255\n", SPW, SPH);
+    write_file("split_mask.pgm", header, m, sizeof m);
+    write_file("split_expected_labels.pgm", header, labels, sizeof labels);
+    len += (size_t)snprintf(text + len, sizeof text - len, "# adulto y nina delante: x0 y0 x1 y1 half_width\n\n");
+    for (i = 0; i < 2; ++i) {
+        const ce_person_seed *s = &SMALL_FRONT_SEEDS[i];
+        len += (size_t)snprintf(text + len, sizeof text - len, "%.17g\t%.17g %.17g %.17g\t%.17g\n", s->x0, s->y0, s->x1,
+                                s->y1, s->half_width);
+    }
+    write_file("split_seeds.txt", NULL, (const uint8_t *)text, len);
+    len = (size_t)snprintf(text, sizeof text, "10 10 10 200 30\n50 10 50 200 0\n");
+    write_file("split_seeds_bad.txt", NULL, (const uint8_t *)text, len);
+    len = (size_t)snprintf(text, sizeof text, "{\"labels\": %d, \"mask_pixels\": %d, \"counts\": [%d, %d]}\n", n, inside,
+                           counts[1], counts[2]);
+    write_file("split_expected.json", NULL, (const uint8_t *)text, len);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -1215,5 +1683,12 @@ int main(void)
     RUN_TEST(test_parity_hash);
     RUN_TEST(test_timing);
     RUN_TEST(test_write_cli_fixtures);
+    RUN_TEST(test_split_touching_rects);
+    RUN_TEST(test_split_small_in_front);
+    RUN_TEST(test_split_mirror);
+    RUN_TEST(test_split_errors);
+    RUN_TEST(test_split_parity_hash);
+    RUN_TEST(test_split_timing);
+    RUN_TEST(test_write_split_fixtures);
     return UNITY_END();
 }

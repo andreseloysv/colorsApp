@@ -1,4 +1,4 @@
-# Motor de color (capas 1, 2 y 3, máscaras de ropa y piel, capas de depuración)
+# Motor de color (capas 1, 2 y 3, paleta por prenda, máscaras de ropa y piel, capas de depuración)
 
 Librería C11 sin I/O, sin `malloc` y sin dependencias (solo `<math.h>`), con
 todo en `double`. La misma fuente compila a nativo (iOS/macOS vía Swift Package
@@ -15,8 +15,13 @@ o CMake) y a WebAssembly (Emscripten). Cubre:
   (`ce_match`) y análisis completo imagen → paleta → match (`ce_analyze`), ver
   más abajo.
 - **Máscaras** (`ce_mask.c`): regiones de ropa a partir de la pose, recorte de
-  cabeza sin pose y exclusión de piel con un modelo adaptativo por persona
-  (ver «Máscaras: regiones de ropa y piel»).
+  cabeza sin pose, exclusión de piel con un modelo adaptativo por persona
+  (ver «Máscaras: regiones de ropa y piel»), regiones de prenda arriba/abajo
+  (`ce_mask_garment_regions`) y separación de instancias que juntan a varias
+  personas con semillas de cara o pose (ver «Separación de instancias»).
+- **Paleta por prenda** (`ce_garment.c`): un color por prenda lisa (tono
+  iluminado), dos si es bicolor, prenda entera si arriba y abajo son la misma
+  (ver «Paleta por prenda»).
 - **Capas de depuración** (`ce_debug.c`): imagen reducida, peso, swatch y
   cluster por píxel, destino de cada cluster y explicación del score (ver
   «Capas de depuración»).
@@ -34,8 +39,12 @@ Wrapper Swift: `Sources/ColorEngine/ColorEngine.swift` (`Lab`, `srgbToLab`,
 `extractPalette` y `analyze` aceptan `mask:` opcional (`UnsafeBufferPointer<UInt8>?`,
 width × height bytes sin stride, 0 anula el píxel; corto => `.maskTooSmall`), que
 va tal cual a `ce_image.mask`; la app la usa para la máscara de persona. Máscaras
-de ropa y piel (`clothingRegions`, `cutHead`, `fitSkinModel`, `excludeSkin`) y
+de ropa y piel (`clothingRegions`, `cutHead`, `fitSkinModel`, `excludeSkin`),
+separación de instancias (`PersonSeed`, `splitInstance`) y
 capas de depuración (`paletteDebugLayers`, `explainMatch`): ver sus secciones.
+Paleta por prenda (`GarmentOptions`, `GarmentSwatch`, `GarmentRegion`,
+`extractGarments`, `analyzeGarments`, `garmentDebugLayers`, `garmentRegions`,
+`garmentHash`): ver «Paleta por prenda».
 
 ## Compilar y probar
 
@@ -49,7 +58,7 @@ Desde la raíz del repo (todas las rutas del `Makefile` son relativas a él):
 | `make golden`      | Regenera `tests/data/golden_*.tsv` con el oráculo Python           |
 | `make diff-oracle` | 100 000 colores sRGB8 por `ce convert` contra el oráculo estricto  |
 | `make swift-test`  | `swift test` del paquete (XCTest)                                  |
-| `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | Fuzz loop propio bajo ASan/UBSan en `build-asan/` (`mk/engine.mk`): paleta + capas, parser PNM, regiones de ropa, piel |
+| `make fuzz [FUZZ_SECONDS=600] [FUZZ_SEED=1]` | Fuzz loop propio bajo ASan/UBSan en `build-asan/` (`mk/engine.mk`): paleta + capas, parser PNM, regiones de ropa, piel, separación de instancias |
 | `make bench-palette` | Imprime `PERF_1024_RGBA_MS` de `test_palette` (nativo -O2); anotar en `BENCHLOG.md` |
 | `make bench-match` | Imprime `MATCH_MS`, `ANALYZE_1024_MS` y el recall exacto de `test_match` (nativo -O2) |
 | `make parity [PARITY_TOP=10]` | Paridad nativo/WASM: `ce match --json` de `build/` y `build-wasm/` sobre las 20 fixtures de `harness/wasm/fixtures/` (`harness/wasm/run_parity.js`) y capas/máscaras byte a byte (`tests/layers_parity.js`); ver «Paridad nativo/WASM» |
@@ -77,6 +86,7 @@ ce match foto.ppm --json --debug-dir capas/   # + capas de depuración en capas/
 ce regions --size 200x400 --mask persona.pgm --pose pose.txt --out ropa.pgm
 ce skin --image foto.ppm --sample cara.pgm --mask ropa.pgm --out sin_piel.pgm
 ce cut-head --mask persona.pgm --fraction 0.2 --out sin_cabeza.pgm
+ce split --mask instancia.pgm --seeds semillas.txt --out etiquetas.pgm
 ```
 
 Opciones CMake: `CE_BUILD_TESTS` (ON), `CE_BUILD_CLI` (ON), `CE_SANITIZE`
@@ -102,7 +112,7 @@ peso). Todo se valida antes de leer; nunca se lee fuera del buffer.
 
 **Algoritmo** (`ce_palette_extract`; `ce_palette_opts_default`: `k_init` 6,
 `max_iters` 20, `max_colors` 5, `max_side` 256, `center_sigma` 0.35,
-`merge_de` 5.0, `min_weight` 0.05, `skin_rule` 0), determinista y sin RNG:
+`merge_de` 5.0, `min_weight` 0.05, `skin_rule` 0, `merge_light_de` 0.0), determinista y sin RNG:
 
 1. Box-downscale entero: factor `f = ceil(max(w,h)/max_side)`, media entera
    redondeada por bloque (bloques parciales del borde promedian lo que hay);
@@ -123,8 +133,11 @@ peso). Todo se valida antes de leer; nunca se lee fuera del buffer.
    menor, bins en orden de índice; media ponderada) ≤ `max_iters` o hasta que
    nada cambie.
 6. Fusión iterativa del par de centros más próximo mientras ΔE00 < `merge_de`
-   (media ponderada); descarte de centros con peso relativo < `min_weight`
-   (el más pesado siempre queda).
+   (media ponderada); **fusión de sombras** opcional (EXPERIMENTO, apagada por
+   defecto): si `merge_light_de` > 0, la misma fusión con ΔE00 de kL =
+   `CE_PALETTE_LIGHT_MERGE_KL` (3) < `merge_light_de`, que junta tonos de una
+   prenda que difieren sobre todo en L* (medida en `BENCHLOG.md`); descarte de
+   centros con peso relativo < `min_weight` (el más pesado siempre queda).
 7. Orden por peso descendente (desempate por L, a, b, índice), recorte a
    `min(max_colors, cap)` y renormalización a Σ weight = 1 (± 1e-12). `rgb` del
    swatch = Lab → sRGB8 con clamp (`ce_lab_to_srgb8`).
@@ -225,7 +238,11 @@ por score ascendente con **desempate por id ascendente** (comparación exacta
 de doubles), y `ambiguous` = 1 si hay ≥ 2 hits y `score[1] − score[0] <
 ambiguous_gap`.
 
-**Hipótesis** (match v1, corrección de F3/F5; ADR-009). ΔE00 no es invariante
+**Hipótesis** (match v1, corrección de F3/F5; ADR-009; **desde 2026-09-15 la de
+iluminante está desactivada por defecto**: las fotos del teléfono ya llegan con
+balance de blancos y, en una foto real con pantalón rosa palo y camiseta negra,
+«compensar» una luz A inexistente dio Nº 067 azul; queda como opción
+`illuminant_search` = 1 y la columna informativa `illum1` de L3). ΔE00 no es invariante
 a un cambio global de exposición ni a un iluminante sin balance de blancos,
 las dos degradaciones de L3 que el match v0 fallaba (exposure @1 22 %,
 illuminant @3 68 %) y que ningún ajuste de kL/kC/λ/σ arreglaba (barrido en
@@ -235,8 +252,8 @@ la **identidad** (siempre, y evaluada la primera: gana los empates);
 **exposición** g = 2^EV en XYZ lineal con EV = k · 0,5 y |EV| ≤
 `exposure_ev_max` (1,0 ⇒ −1, −0,5, +0,5, +1 EV); **iluminante** «la foto se
 tomó bajo A, D50, D75 o F2 sin balance de blancos», es decir, Bradford X → D65
-(`illuminant_search` = 1); y sus combinaciones (5 × 5 = 25 hipótesis por
-defecto). Cada hipótesis suma una penalización lineal (2,0 ΔE por EV, 2,0 ΔE
+(`illuminant_search` = 1); y sus combinaciones (5 × 5 = 25 hipótesis con
+iluminante; 5 por defecto, solo exposición). Cada hipótesis suma una penalización lineal (2,0 ΔE por EV, 2,0 ΔE
 por iluminante ≠ D65) para que una foto limpia siga ganando con la identidad.
 Con `exposure_ev_max` = 0 e `illuminant_search` = 0 el score es **bit a bit**
 el de la fase 3 (match v0), que el scorecard conserva como columna informativa
@@ -249,7 +266,7 @@ exactos del generador.
 
 **Opciones** (`ce_match_opts_default`: kL 1, kC 1, kH 1, `coverage_lambda`
 1.0, `ambiguous_gap` 1.0, `exposure_ev_max` 1.0, `exposure_penalty` 2.0,
-`illuminant_search` 1, `illuminant_penalty` 2.0). Las opciones reales deben
+`illuminant_search` 0, `illuminant_penalty` 2.0). Las opciones reales deben
 ser finitas (NaN o ±inf ⇒ `CE_ERR_OPTS`); λ < 0, `exposure_ev_max` fuera de
 [0, `CE_MATCH_EV_MAX_LIMIT` = 4], penalización < 0 o `illuminant_search` ∉
 {0, 1} ⇒ `CE_ERR_OPTS`; kL/kC/kH ≤ 0 se tratan como 1.0 (como
@@ -287,7 +304,17 @@ ce match <imagen.ppm> [opciones de palette: --mask, --raw, --center-sigma, --max
          [--illuminant-penalty F] [--json]
 ce analyze ...            alias exacto (misma salida byte a byte)
 ce batch <lista.txt> [mismas opciones] [--json]
+ce match-palette [lista.txt] [--top K] [opciones de match] [--json]
 ```
+
+`ce match-palette` puntúa paletas dadas como texto, sin imagen (regresión del
+caso real rosa palo + negro y métrica de giro de tono de L3, `oracle.hue_shift`):
+una paleta por línea (stdin si no hay fichero; vacías y `;` ignoradas) con 1..8
+tokens `#rrggbb:peso` o `L,a,b:peso`; los pesos (finitos, ≥ 0, suma > 0) se
+normalizan a 1. Con `--json`, una línea por paleta `{"line","swatches","opts":
+{"match"},"hits","ambiguous","hash"}` o `{"line","error"}` (exit 1 si alguna
+falla). `--merge-light-de F` añade la fusión de sombras a `palette`/`match`/
+`batch` y aparece en `opts.palette.merge_light_de`.
 
 `--json` escribe `{"engine","dict_version","file","width","height",
 "reduced_width","reduced_height","opts":{"palette":{…},"match":{kL, kC, kH,
@@ -325,7 +352,8 @@ diccionario sin lógica (`dictionaryVersion`, `dictionaryComboCount`,
 1b. Hipótesis de adaptación (`test_adaptation_hypotheses`): las 348 paletas
    exactas degradadas como en L3 (−1 EV, +1 EV, iluminante A, F2, D75 y
    A − 0,5 EV, con `ce_bradford_matrix` D65 → X y ganancia en XYZ) → con las
-   hipótesis por defecto recall@1 **348/348 en los seis casos**; con la
+   hipótesis de exposición e iluminante (`illuminant_search` = 1 explícito)
+   recall@1 **348/348 en los seis casos**; con la
    búsqueda apagada (match v0) 102, 150, 27, 234, 348 y 26; el mejor score
    con hipótesis nunca es mayor que sin ellas (mínimo sobre un
    superconjunto). `test_adaptation_opts_validation`: NaN, negativos,
@@ -481,6 +509,268 @@ node: CLI == API byte a byte).
 `excludeSkin(rgba:width:height:stride:model:options:mask:)` y las constantes
 `ColorEngineError.poseMissing` / `.tooFewSkinSamples` (no son casos nuevos del
 enum: los `switch` exhaustivos de la app siguen compilando).
+
+## Separación de instancias (`ce_mask_split_instance`)
+
+Fallo reportado por el usuario con una foto real: en una selfie de tres personas
+`VNGeneratePersonInstanceMaskRequest` juntó en una instancia a los dos adultos,
+pegados hombro con hombro (también junta a tres mujeres en
+`harness/people/07`). Las caras y las poses de Vision sí salen por persona:
+SubjectKit construye una **semilla** por persona y el motor decide qué píxel es
+de quién, para que la web use la misma geometría.
+
+```c
+typedef struct { double x0, y0, x1, y1; double half_width; } ce_person_seed;
+int ce_mask_split_instance(const uint8_t *mask, int width, int height,
+                           const ce_person_seed *seeds, int n_seeds, uint8_t *labels_out);
+```
+
+- Semilla: eje del cuerpo en píxeles de la máscara, de arriba (cuello o base de
+  la cara) a abajo (caderas o extrapolado), y semiancho `half_width` > 0.
+- Cada píxel con `mask >= 128` recibe `1 + argmin_k d_k / half_width_k`, con
+  `d_k` la distancia euclídea del centro del píxel `(x + 0.5, y + 0.5)` al
+  segmento k (proyección acotada relativa a `(x0, y0)`, las mismas operaciones
+  que las cápsulas de las regiones, `sqrt` y una división); empate al índice
+  menor; el resto, 0. `labels_out` puede ser el mismo buffer que `mask`.
+- Devuelve las etiquetas con al menos un píxel (0 con la máscara vacía) o
+  `CE_ERR_ARG` sin escribir: punteros nulos, dimensiones fuera de
+  `[1, CE_IMAGE_MAX_SIDE]`, `n_seeds` fuera de `[1, CE_SPLIT_MAX_SEEDS]` (8),
+  coordenadas no finitas o con `|v| > CE_POSE_COORD_MAX`, `half_width` no
+  finito, `<= 0` o `> CE_POSE_COORD_MAX`. Un `half_width` diminuto da cocientes
+  `+inf`, nunca NaN.
+- Sin `malloc`, sin estáticos, orden de índice: exactamente equivariante a espejo
+  (conservando el índice de cada semilla) y traslación con coordenadas exactas.
+  1024×1024 lleno con 8 semillas: `MASK_SPLIT_MS` 15,1 ms (M4 Pro, -O2).
+
+La regla de semillas (poses y caras de Vision, 0,55 · anchura de hombros,
+1,1 · ancho de cara, fusión cara-pose a < 0,8 · ancho de cara, segmento de
+cabeza, cobertura mínima 0,5 %, evidencia corporal de las semillas de cara) vive en
+`apple/SubjectKit/Sources/SubjectKit/PersonSplit.swift` (ADR-010).
+
+**CLI**: `ce split --mask in.pgm --seeds seeds.txt --out labels.pgm`; `seeds.txt`
+con una línea `x0 y0 x1 y1 half_width` por semilla (1..8; vacías y `#`
+ignoradas). `labels.pgm`: 0 fondo, k = semilla k. Imprime
+`{"labels", "mask_pixels", "counts"}`; `CE_ERR_ARG` → exit 1 sin escribir; semillas
+mal formadas o más de 8 → exit 2. `visionmask --layers` escribe por instancia
+separada `<foto>.split<id>.mask.pgm|seeds.txt|labels.pgm` y un
+`<foto>.split_repro.sh` que las recalcula con `ce split` (`make visionmask-people`).
+
+**Tests** (`tests/test_mask.c`, nativo, ASan/UBSan y WASM): (a) dos rectángulos
+que se tocan en x = 100 con semillas verticales de semiancho ∝ ancho: frontera
+exacta en la línea de contacto (±2 px exigido, 0 medido), 16 800 / 10 000 px; con
+el mismo semiancho la frontera se va al punto medio de los ejes (x = 95); umbral
+127/128. (b) niña pequeña delante de un adulto: igual a una referencia
+independiente (vector unitario) en todos los píxeles, dorados 28 889 / 10 397,
+mismo buffer de entrada y salida. (c) espejo conservando índices y espejo con
+semillas intercambiadas (1 ↔ 2) exactos; empate exacto al índice menor. (d)
+errores sin escribir y bordes válidos. (e) `SPLIT_HASH` = `79a280420498ca5b` igual
+en nativo, ASan y WASM (independiente de `MASK_HASH`). Fuzz: entrada 6 (dims
+0..512, n_seeds −2..10, NaN/±inf/fuera de rango, semiancho 0/diminuto/enorme,
+semillas idénticas; comprueba etiqueta 0 ⇔ mask < 128, recuento, argmin en
+píxeles al azar, in situ == fuera de sitio). CLI: `cli_split` (salida == API
+byte a byte) y `cli_mask_contract`; `make parity`: `ce split` con semillas no
+diádicas idéntico en nativo y WASM. Swift: `PersonSeed`, `splitMaxSeeds`,
+`splitInstance(mask:width:height:seeds:) throws -> (labels: [UInt8], count: Int)`
+(`SplitInstanceTests`: dorados de (b) y errores).
+
+## Paleta por prenda (`ce_garment.c`, `ce garments`)
+
+Requisito del usuario (CONTEXT §13, foto real del tranvía): «el pantalón es de un solo color;
+solo debería mostrar un color por ese pantalón». La paleta clásica daba #222524 39 % (camiseta)
+y cuatro tonos del mismo pantalón (#b49aa2, #917a7e, #d5b8c0, #6b5a57: luz, sombra y pliegues);
+el usuario lo percibe como #2b2c2c + #ddc0c8. Decisión en `docs/DECISIONS.md` (ADR-011).
+
+**Regiones** (`ce_mask_garment_regions(pose, opts, person_mask, w, h, regions_out)`): la misma
+geometría que `ce_mask_clothing_regions` (sus píxeles > 0 son exactamente los que conserva la
+región de ropa) con dos etiquetas: **2 abajo** si el píxel está en una cápsula de pierna y no en
+el torso ni en un brazo, o en el torso o en una pierna y más allá de la recta perpendicular al
+eje hombros → caderas por el punto medio de las caderas; **1 arriba** en otro caso (torso,
+brazos superiores, antebrazos si se incluyen). Un muslo en horizontal (persona sentada) es
+"abajo". Solo +, −, ×, ÷, sqrt: mismos bits en nativo y WASM; `regions_out` puede ser
+`person_mask`. Errores: `CE_ERR_ARG`, `CE_ERR_POSE` (sin escribir).
+
+**Algoritmo** (`ce_palette_extract_garments(ctx, img, region_map, n_regions, po, go, out, cap)`,
+contrato completo en `ce.h`):
+
+1. Box-downscale como `ce_palette_extract` con la máscara efectiva em(p) = máscara (255 sin
+   máscara) si p está en una región (1..`n_regions`, `n_regions` ≤ `CE_GARMENT_MAX_REGIONS` = 2)
+   y 0 si no; cada bloque toma la región con mayor Σ em. `region_map` NULL = una región con toda
+   la máscara (región 0 en la salida). Gaussiana y regla de piel de `po`.
+2. Por región: histograma, MMCQ y Lloyd con solo sus píxeles (k = min(k_init, 64 / n_regions)).
+3. **Tonos de mezcla**: un cluster que está (en XYZ lineal, a ΔE00 < `CE_GARMENT_MIXTURE_DE` = 3)
+   sobre el segmento entre otros dos, es el borde entre dos colores de un estampado desenfocado:
+   no entra en ningún grupo y su peso pasa a los extremos. Los dos extremos tienen que ser colores
+   DISTINTOS —ni el mismo material bajo los dos modelos de sombra del paso 4, ni un par dentro del
+   límite de luminancia con croma y tono a ΔE00(kL = 1000) < `shade_merge_de`—, no ser sombras del
+   propio cluster (s·A con s dentro del límite de luminancia: una mezcla con el negro es
+   indistinguible de una sombra y cuenta como sombra) y **pesar ≥ `min_weight` de la región**.
+   Lo primero es literal y fue el fallo mayor de la tercera vuelta: una oclusión PARCIAL de la luz
+   es una combinación lineal de los dos iluminantes, así que los tonos de la PENUMBRA de una sombra
+   cromática caen sobre el segmento luz-sombra; se tomaban por mezcla y su marca vetaba el único
+   camino por el que el modelo de cielo puede agrupar (el pantalón liso al sol y a la sombra azul
+   salía SIEMPRE con dos colores, 32 escenas de 32 del generador del verificador). Lo último evita
+   que un cluster de ruido de 47 px haga de extremo y convierta una sombra de 794 px en «mezcla».
+4. **Agrupación de tonos**: enlace simple por distancia ascendente (ΔE00 kL = `shade_kL`) sobre
+   los pares "compatibles". Dos centros son compatibles si son **agrupables** — ΔE00(kL =
+   `shade_kL`) < `shade_merge_de`, o ΔE00 < `merge_de`, o la fusión de sombras de
+   `merge_light_de`, **y** la luminancia menor del par (Y + 0,01) es ≥ `CE_GARMENT_SHADE_MIN_RATIO`
+   (0,2) veces la mayor (ninguna sombra oscurece 5 veces la luz lineal) — o si son **el mismo
+   material con distinta luz** (abajo), y en ese caso no hay límite de luminancia pero sí el veto
+   de mezcla. La cadena se controla con **uno de dos** criterios, y ninguno encadena por
+   transitividad: **ENLACE COMPLETO** (dos grupos se unen solo si TODOS sus pares cruzados son
+   compatibles: cada grupo es una camarilla) o **ESTRELLA DE SOMBRA** (todos los miembros de la
+   unión son el mismo material que el MÁS LUMINOSO de la unión; empate por índice menor). Con
+   enlace simple bastaba una cadena de vecinos y los tonos intermedios del vestido azul marino con
+   estampado blanco de `harness/people/02` encadenaban los dos colores (medido: el estampado, el
+   38 % de la región, DESAPARECÍA y el vestido se partía en dos regiones con el mismo marino); con
+   el enlace completo el par extremo marino/blanco tiene que ser compatible él mismo y con la
+   estrella el marino tendría que ser una sombra del blanco (s = 0,012 < 0,04). La estrella hace
+   falta porque el modelo cromático se define **desde la luz**: dos penumbras intermedias de la
+   misma rampa no siempre se ajustan entre ELLAS (la cota del azuleo supone que la referencia es el
+   tono al sol; medido, un par penumbra-sombra daba w = 0,679 con wmax 0,621) aunque las dos se
+   ajusten perfectamente al tono al sol.
+   **Mismo material con distinta luz** (`ce_garment_same_material`), dos modelos con la misma
+   tolerancia `CE_GARMENT_SHADE_LIT_DE` (3) y el mismo límite de profundidad
+   `CE_GARMENT_SHADE_S_MIN` (0,04 ≈ 4,6 pasos):
+   - **sombra neutra**: uno es el otro escalado en XYZ lineal, `c ≈ s·a` con s de mínimos
+     cuadrados. Es la misma reflectancia con menos fotones del mismo iluminante.
+   - **sombra cromática de exterior** (dos iluminantes): al sol la prenda recibe sol + cielo y en
+     la sombra solo el cielo, que es mucho más azul, así que la sombra **no es una escala de la
+     luz: se azulea**. `c ≈ s·(a + w·S·a)` con `S` la matriz del cambio de iluminante (cielo CIE D
+     12000 K sobre escena 5500 K, en conos de Bradford) y (s, w·s) de mínimos cuadrados: dos
+     incógnitas y tres ecuaciones, el residuo sigue discriminando. La intensidad `w` la estima del
+     par (w = 0 es sombra neutra, w = 1 sombra abierta completa) y está acotada por la física:
+     0 ≤ w ≤ min(`CE_GARMENT_SKY_W_MAX` 1,15, `CE_GARMENT_SKY_W_SLOPE` 0,54·(1−s)/s). Sin esto el
+     vaquero liso al sol y a la sombra de `harness/people/06` salía con dos colores (necesitaba
+     tolerancia 5,75 con el modelo neutro).
+   - **veto de mezcla**: dos colores unidos por un tono de mezcla del paso 3 (hay píxeles que son
+     la combinación de los dos: borde de estampado o de rayas) nunca son el mismo material, por
+     bien que ajusten. La penumbra de una sombra no llega a contar como mezcla, porque un par que
+     es el mismo material no puede ser extremo de una mezcla (paso 3): el veto solo protege a los
+     pares que los dos modelos consideran colores distintos.
+   **Límites conocidos y medidos** (ADR-011): el modelo neutro une cualquier par que comparta
+   cromaticidad, no solo dos neutros (blanco + gris medio, beige + marrón, rosa palo + malva,
+   crema + tierra: una prenda bicolor TONAL sale con un solo color, familia `bicolor_tonal` del
+   bloque), y el cromático añade los pares «neutro claro + neutro oscuro azulado» que cumplen el
+   azuleo acotado (un gris #c6c6c6 y su versión bajo cielo abierto es exactamente #414652, residuo
+   0,41). La familia informativa `bicolor_tonal` mide los dos modelos (mitad y mitad): conserva
+   **1 de 10**; las familias de gate (`rayas`, `estampado_sombra`) rechazan a propósito los pares
+   con `same_material_residual` < 5 para medir lo que dicen medir y no este límite conocido.
+   Cabeza = índice menor. Grupos con cuota < `min_weight` en la
+   región se descartan (el más pesado queda).
+5. **Tono iluminado** de un grupo: sobre su NÚCLEO, que son los clusters que pasan dos filtros en
+   este orden — **peso** ≥ `CE_GARMENT_LIT_CORE_FRACTION` (0,35) veces el más pesado (fuera
+   especulares y restos de mezcla) y, de esos, **nivel de luz**: a menos de un paso de luz del más
+   luminoso (Y con suelo ≥ `CE_GARMENT_LIT_Y_RATIO` 0,5 veces la mayor) —, histograma de L* (bins
+   de 0,1) de sus bins de color, percentiles `lit_low_pct`..`lit_high_pct` (0,75-0,95) y media
+   ponderada en Lab de los bins dentro: el tono con luz, sin sombras, especulares ni restos de
+   mezcla (el pantalón sintético de `test_garment` sale #dbbec6, a ΔE00 0,41 de #ddc0c8; con los
+   percentiles 0-1, la media de todos sus píxeles, #cdb3ba, a ΔE00 3,7). Un grupo puede contener
+   varios NIVELES de luz (la prenda al sol y la misma prenda en sombra) y el tono iluminado es el
+   del nivel de arriba: sin el segundo filtro los percentiles del grupo entero caían dentro de la
+   sombra y el tono se oscurecía ~1 ΔE00 por paso de sombra (con 3 pasos, ΔE00 5,2-6,3 del color
+   real). **Límite medido**: el filtro de peso va primero, así que cuando la sombra cubre más del
+   ~70 % de la prenda el color devuelto es el **tono EN SOMBRA** (sigue siendo UN color; lo fija el
+   test `SKY_SHADOW_80`).
+6. **Selección**: el grupo más pesado es el color; un grupo siguiente cuyo tono iluminado es
+   agrupable con uno elegido (y cuya unión respeta el límite de luminancia) **o es ese color con
+   otra cantidad de luz** (los mismos dos modelos y el mismo veto del paso 4) se le suma. La
+   comprobación es contra el tono ACTUAL del color y contra su **ancla** (el tono del primer grupo,
+   que no se mueve): los grupos absorbidos forman una estrella alrededor del ancla y el tono no
+   puede ir derivando de uno en uno hasta el otro extremo de un estampado. Si no se suma, es un
+   segundo color solo con hueco (`max_colors_per_region` = 2) y cuota ≥ `secondary_min_share`
+   (0,25), **o ≥ `CE_GARMENT_GRADIENT_MIN_SHARE` (0,10) si es el extremo de un DEGRADADO de color**:
+   algún cluster suyo y alguno del color elegido son los dos extremos de un tono de mezcla
+   (variación de tono continua), los tonos de mezcla pesan ≥ `CE_GARMENT_GRADIENT_MIX_FRACTION`
+   (0,25) del grupo candidato y los dos tonos iluminados se separan en croma y tono (ΔE00 solo de
+   croma y tono ≥ `CE_GARMENT_GRADIENT_HUE_DE` 12, que ninguna sombra cumple). Es lo que impide que
+   un tie-dye colapse a un solo color (medido: tie-dye 0,41-0,48 de mezcla y 36-46 de ΔE00 de tono;
+   el borde de la persona de al lado en `harness/people/03`, 0,16 y 8,7). Cuotas renormalizadas
+   dentro de la región.
+7. **Prenda entera**: con 2 regiones, si cada color de una es **fusionable** con alguno de la
+   otra, se recalcula 2-6 con la unión y los colores salen con región 3. Fusionable compara
+   tonos iluminados, que ya no tienen sombras, **sin** tolerancia a L*: ΔE00 (kL = 1) <
+   `shade_merge_de` (o < `merge_de`). Con la tolerancia de la agrupación (kL = `shade_kL`) una
+   camiseta azul marino y un vaquero (ΔE00 16,8) se fusionaban: 24 de 25 pares de tono cercano
+   fusionados con kL 4 / 7 frente a 0 con la regla estricta (barrido en `BENCHLOG.md`).
+   **La promesa es sobre tonos iluminados ESTIMADOS, no sobre el color verdadero**: un par de
+   prendas cuyo ΔE00 REAL esté a menos de ~1 de `shade_merge_de` puede caer a cualquiera de los dos
+   lados según la luz y la textura. Medido con la familia `banda_fusion` del bloque (un par por
+   ΔE00 real): fusionan 4,8 · 5,2 · 5,8 · 6,2 · 6,3 y no fusionan 6,6 · 7,0 · 7,2 · 7,9 · 8,0.
+8. Peso final = `region_share` × cuota del color en la región, con `region_share` = cuota de la
+   región sobre el área que cubre el MAPA (las cuotas suman 1; coincide con su cuota en la máscara
+   solo si el mapa la cubre entera, como hace SubjectKit); orden por peso, recorte a
+   `min(po->max_colors, cap)` y suma 1. Región sin peso: sin swatch; ninguna con peso: 1 swatch de
+   reserva en la región 0 = color medio de los píxeles de la **máscara** (y, sin máscara, de la
+   imagen reducida): con un mapa desalineado el color de reserva es el de la persona, no el del
+   fondo.
+
+`ce_analyze_garments` = lo anterior + `ce_match` sobre los swatches de prenda (el match no
+cambia). `ce_garment_hash`: FNV-1a de (L, a, b, weight, region_share, region,
+n_merged_clusters). **Valores por defecto** (`ce_garment_opts_default`): `shade_kL` 3,
+`shade_merge_de` 6,5, percentiles 0,75-0,95, `secondary_min_share` 0,25,
+`max_colors_per_region` 2, calibrados con `make garments-sweep` (tabla en `BENCHLOG.md`).
+Sin pose (región NULL) la app debería seguir con el camino clásico: los sintéticos de Wada
+de 3-4 colores pierden recall con 2 colores por región (columna informativa `garments` de L3).
+
+**Capas**: tras una extracción por prendas, `ce_palette_debug_info` lista los clusters de todas
+las pasadas con su grupo (`group_head`), destino (conservado = cabeza del color, fusionado = tono
+agrupado en él, descartado, recortado) y `final_index` = swatch de prenda;
+`ce_debug_garment_map` (swatch de prenda por píxel reducido o `CE_LABEL_NONE`),
+`ce_debug_region_map` (1, 2, 3, 0 sin mapa o `CE_LABEL_NONE` fuera), `ce_debug_label_map` (igual
+que el mapa de prendas con `CE_LABEL_DISCARDED` en tonos descartados) y `ce_debug_cluster_map`.
+`ce_debug_garment_map`/`region_map` dan `CE_ERR_CTX` tras una extracción clásica.
+
+**Memoria**: el centro de Lloyd de cada bin pasa a un array `int8_t` aparte (el bin baja de 40 a
+32 bytes; mismas operaciones de coma flotante: todos los hashes y goldens iguales) y el contexto
+gana la región y el cluster por píxel reducido, el histograma de L* y la matriz de distancias entre
+clusters: `ce_ctx_size()` 2 047 936 → 1 994 576 B (≤ 2 MiB).
+
+**CLI**:
+
+```
+ce garments foto.ppm --mask ropa.pgm --regions regiones.pgm --match --top 3 --json --debug-dir capas/
+ce garment-regions --size 1024x682 --mask persona.pgm --pose pose.txt --out regiones.pgm
+ce batch lista.txt --garments --json     # líneas "imagen [mascara|-] [regiones]"
+```
+
+Opciones de prenda: `--shade-kl`, `--shade-merge-de`, `--lit-low`, `--lit-high`,
+`--secondary-min-share`, `--max-colors-per-region`, `--n-regions` (sin ella, el máximo valor
+del mapa; > 2 es error de uso). JSON: `{engine, dict_version, file, mask, regions, width,
+height, reduced_*, n_regions, opts: {palette, garment, match|null}, garments: [{region,
+region_name, region_share, n_merged_clusters, rgb, hex, lab, weight}], hash}` y, con `--match`,
+`swatches`, `hits`, `ambiguous`, `result_hash`. `--debug-dir` añade `garments.pgm/.ppm`,
+`regions.pgm/.ppm` y en `debug.json` `garments`, `region_pixels`, `cluster_regions`,
+`regions_file`, `n_regions` y `opts.garment`.
+
+**Swift**: `GarmentOptions` (`.default`), `GarmentSwatch` (`swatch`, `region: GarmentRegion`,
+`regionShare`, `mergedClusterCount`), `extractGarments(rgba:width:height:stride:paletteOptions:
+garmentOptions:mask:regions:regionCount:)`, `analyzeGarments(...topK:mask:regions:regionCount:)
+-> GarmentAnalysisResult`, `garmentDebugLayers(...) -> GarmentDebugLayers` (capas de
+`PaletteDebugLayers` + `garmentMap` + `regionMap`), `garmentRegions(pose:options:personMask:width:
+height:)` y `garmentHash(_:)`. Mapa de regiones corto → `.maskTooSmall` (sin casos nuevos del
+enum de errores).
+
+**Tests** (`tests/test_garment.c`, nativo, ASan y WASM): (a) pantalón rosa 200×400 (lambertiano
+0,45-1,0, 6 pliegues del 55 %, 3 % de especulares) + torso negro: 2 swatches, abajo #dbbec6 a
+ΔE00 0,41 de #ddc0c8 (6 clusters agrupados), arriba #2a2b2b a 0,27 de #2b2c2c; la paleta clásica
+da 5 swatches, **4 tonos del rosa** (#d8bbc3 48 %, #c3a9b0, #ac959b, #9b868b) + negro; con un
+cinturón negro del 6,7 % de la pierna sigue saliendo un rosa; (a2) **sombra proyectada contigua**
+sobre media pierna de esa misma imagen (1, 2, 3 y 4 pasos de luz lineal, borde recto sin penumbra,
+peso = área): sigue saliendo **1 solo color** abajo a ΔE00 0,81 de #ddc0c8 (sin la regla de sombra
+pura salían 2 desde los 2 pasos), y la camisa de rayas bajo la misma sombra sigue dando 2 colores
+arriba; (b) rayas azul marino/blanco de
+11 px + caqui: 2 + 1; (c) vestido: 1 swatch en la región 3, y vestido azul marino con estampado
+blanco desenfocado: región 3 con azul marino (ΔE00 1,27) y blanco (0,97); (d) pierna con máscara 0:
+sin swatch abajo; mapa todo 0: reserva; con máscara válida y mapa vacío la reserva es la media de
+la MÁSCARA (ΔE00 0,000), no la de la imagen entera; etiquetas > n_regions fuera; (e) determinismo y
+`GARMENT_HASH` = `c9168139c0efbc51` igual en nativo, ASan y WASM; geometría de
+`ce_mask_garment_regions` (soporte == regiones de ropa, espejo exacto, sentado, alias, errores);
+errores sin escribir; capas coherentes; `ce_analyze_garments` == `ce_match`; mapa NULL == mapa de
+unos bit a bit; paleta real del tranvía en bandas → 1 color abajo; `GARMENTS_1024_MS`.
+`tests/cli_garment_check.js` (contrato del CLI contra los hashes de la API) y
+`tests/layers_parity.js` (garments con y sin regiones, garment-regions y batch --garments byte a
+byte nativo vs WASM). El fuzz (`make fuzz`) incluye mapas de regiones y opciones absurdas.
 
 ## Capas de depuración (`ce_debug.c`, `--debug-dir`)
 
@@ -719,7 +1009,8 @@ engine/
   Sources/CColorEngine/ce_image.c     capa 2: validación, box-downscale, pesos
   Sources/CColorEngine/ce_palette.c   capa 2: histograma, MMCQ, Lloyd, fusión
   Sources/CColorEngine/ce_match.c     capa 3: score, top-k con desempate por id, ce_analyze
-  Sources/CColorEngine/ce_mask.c      máscaras: regiones de ropa por pose, recorte de cabeza, piel adaptativa
+  Sources/CColorEngine/ce_mask.c      máscaras: regiones de ropa y de prenda por pose, recorte de cabeza, piel adaptativa
+  Sources/CColorEngine/ce_garment.c   paleta por prenda: regiones, agrupación de tonos, tono iluminado, ce_analyze_garments
   Sources/CColorEngine/ce_debug.c     capas de depuración y ce_match_explain_combo
   Sources/CColorEngine/ce_internal.h  layout del contexto (no es API pública)
   Sources/CColorEngine/include/ce/ce.h  API pública
@@ -732,6 +1023,8 @@ engine/
   tests/test_match.c                  tests Unity (match: recall 348/348, empates, errores, hash, rendimiento)
   tests/test_mask.c                   tests Unity (regiones, simetría, invariancias, piel, hash de paridad)
   tests/test_debug.c                  tests Unity (label/weight map, fusión/descarte, explicación bit a bit)
+  tests/test_garment.c                tests Unity (pantalón rosa, rayas, vestido, regiones de prenda, hash de paridad)
+  tests/cli_garment_check.js          validador de garments, batch --garments, garment-regions y sus capas (node)
   tests/cli_match_check.js            validador del contrato JSON de match/analyze/batch (node)
   tests/cli_mask_check.js             validador de batch con máscaras, regions, skin, cut-head, --debug-dir (node)
   tests/layers_parity.js              paridad nativo/WASM de capas y máscaras (make parity)

@@ -1,11 +1,11 @@
 {
  "schema": 1,
  "kind": "matches",
- "generated_at": "2026-09-15T06:45:00+02:00",
- "reason": "Corrección F3/F5: match v1 (ce_match.c con hipótesis de exposición ±1 EV e iluminante A/D50/D75/F2, penalizaciones 2,0/2,0, por defecto) y libm portable ce_libm.c (bits idénticos nativo/WASM): cambian scores, top-3 y hash de los goldens; ce 0.1.0, dict fd95ac692777",
+ "generated_at": "2026-09-15T18:57:14+02:00",
+ "reason": "illuminant_search=0 por defecto: caso real rosa+negro -> Nº 067 (CONTEXT §11)",
  "ce_version": "0.1.0",
  "dict_version": "fd95ac692777",
- "generator_hash": "aa604e4ecd99",
+ "generator_hash": "37151dcc01ae",
  "fixture_size": 128,
  "fixture_seed": 20260915,
  "tolerance": 1e-09,
@@ -27,7 +27,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -37,7 +38,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -119,7 +120,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -129,7 +131,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -175,28 +177,28 @@
      ]
     },
     {
-     "id": 132,
-     "score": 24.503076958445135,
-     "size": 3,
+     "id": 327,
+     "score": 25.49896401206745,
+     "size": 4,
      "colors": [
-      38,
-      47,
-      71
+      8,
+      13,
+      53,
+      134
      ]
     },
     {
-     "id": 129,
-     "score": 25.473325080342402,
-     "size": 3,
+     "id": 81,
+     "score": 26.196688967019206,
+     "size": 2,
      "colors": [
-      56,
-      69,
-      113
+      47,
+      156
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "affa6b84276a8e5c"
+   "hash": "9dc5c02c4cd1096e"
   },
   {
    "file": "f03_c012_v02.ppm",
@@ -213,7 +215,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -223,7 +226,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -307,7 +310,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -317,7 +321,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -401,7 +405,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -411,7 +416,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -457,34 +462,36 @@
      ]
     },
     {
-     "id": 56,
-     "score": 15.958906298977645,
-     "size": 2,
-     "colors": [
-      134,
-      149
-     ]
-    },
-    {
      "id": 238,
-     "score": 17.289516918964747,
+     "score": 19.272770570384544,
      "size": 3,
      "colors": [
       49,
       151,
       156
      ]
+    },
+    {
+     "id": 329,
+     "score": 20.55929987089678,
+     "size": 4,
+     "colors": [
+      46,
+      134,
+      151,
+      157
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "591773438915841f"
+   "hash": "2670b49d7e94106f"
   },
   {
    "file": "f06_c022_v06.ppm",
    "combo_id": 22,
    "v": 6,
    "variant": "illuminant_D75",
-   "sha256": "2f6da297926bb087a90389e27068b5002c6678dccbc9634b3d5ac68f34276c26",
+   "sha256": "b82c93d5aeed7e32d970e0afcf9b55ec662d28c247874f35a7c8f6b8f1f6f943",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -494,7 +501,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -504,7 +512,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -512,37 +520,37 @@
    "swatches": [
     {
      "lab": [
-      93.51882751979782,
-      -18.373320109268953,
-      88.37018347748193
+      93.63132192537961,
+      -16.056833223935474,
+      90.88646740934628
      ],
      "weight": 0.6246898782299269,
      "rgb": [
-      248,
-      243,
-      31
+      253,
+      242,
+      13
      ],
-     "hex": "#f8f31f"
+     "hex": "#fdf20d"
     },
     {
      "lab": [
-      29.43390833598241,
-      15.13005480279972,
-      -46.331354627080714
+      29.1416463239228,
+      13.171602006848387,
+      -43.09413456542374
      ],
      "weight": 0.3753101217700731,
      "rgb": [
-      21,
+      26,
       66,
-      142
+      136
      ],
-     "hex": "#15428e"
+     "hex": "#1a4288"
     }
    ],
    "hits": [
     {
      "id": 22,
-     "score": 2.0932962181152024,
+     "score": 0.843860280629871,
      "size": 2,
      "colors": [
       54,
@@ -551,7 +559,7 @@
     },
     {
      "id": 289,
-     "score": 16.404315691363948,
+     "score": 16.227140035058852,
      "size": 4,
      "colors": [
       55,
@@ -562,7 +570,7 @@
     },
     {
      "id": 168,
-     "score": 19.459713425449888,
+     "score": 19.570608968357803,
      "size": 3,
      "colors": [
       55,
@@ -572,14 +580,14 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "5b44696f7da596ed"
+   "hash": "8e32132540eceea6"
   },
   {
    "file": "f07_c032_v05.ppm",
    "combo_id": 32,
    "v": 5,
    "variant": "illuminant_F2",
-   "sha256": "d5bf2eb7a7cbf5c4150ab7c1660011c2a6f4672078b26db3ee4940f3d4f248ae",
+   "sha256": "3b9c9c44da60a1636965c5f21f6e14ad31c9e9087b50cb25a7b4ed49794508d5",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -589,7 +597,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -599,7 +608,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -607,37 +616,37 @@
    "swatches": [
     {
      "lab": [
-      71.67810012218338,
-      22.870794658134464,
-      47.40696021060265
+      71.28922426560611,
+      16.70937040393583,
+      33.12148472759271
      ],
      "weight": 0.594004289578628,
      "rgb": [
-      237,
-      158,
-      89
+      222,
+      162,
+      115
      ],
-     "hex": "#ed9e59"
+     "hex": "#dea273"
     },
     {
      "lab": [
-      73.46518349894532,
-      -28.097765509967562,
-      70.68462544906954
+      73.3529758849705,
+      -37.381618009949435,
+      60.89281766107746
      ],
      "weight": 0.40599571042137195,
      "rgb": [
-      166,
-      192,
-      25
+      144,
+      196,
+      57
      ],
-     "hex": "#a6c019"
+     "hex": "#90c439"
     }
    ],
    "hits": [
     {
      "id": 32,
-     "score": 2.321315317512709,
+     "score": 4.055312187738406,
      "size": 2,
      "colors": [
       49,
@@ -645,18 +654,18 @@
      ]
     },
     {
-     "id": 132,
-     "score": 18.46533045983965,
+     "id": 158,
+     "score": 19.829887256663213,
      "size": 3,
      "colors": [
-      38,
-      47,
-      71
+      55,
+      66,
+      92
      ]
     },
     {
      "id": 305,
-     "score": 19.981054673177486,
+     "score": 21.89098661949157,
      "size": 4,
      "colors": [
       44,
@@ -667,7 +676,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "4c30e09ab457ed36"
+   "hash": "05d8ca93241fb755"
   },
   {
    "file": "f08_c047_v02.ppm",
@@ -684,7 +693,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -694,7 +704,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -741,7 +751,7 @@
     },
     {
      "id": 35,
-     "score": 13.603728797453297,
+     "score": 13.967227601110796,
      "size": 2,
      "colors": [
       4,
@@ -759,14 +769,14 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "38278cb5df8c41e1"
+   "hash": "07b77ce0b82d4172"
   },
   {
    "file": "f09_c051_v06.ppm",
    "combo_id": 51,
    "v": 6,
    "variant": "illuminant_D75",
-   "sha256": "62be18eefd6f1a3cbd1fa6ddbad6f03828c1d7eeb857a20dc20ec8afe1a34002",
+   "sha256": "11c992723e2b8360e3ed829373cd2ca4ac1d1b2fa406ab606d17e35ba57991a4",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -776,7 +786,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -786,7 +797,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -794,37 +805,37 @@
    "swatches": [
     {
      "lab": [
-      45.75869782234094,
-      6.529440260130414,
-      -51.55540921688249
+      45.3339147590493,
+      3.725393578832281,
+      -48.1903698891496
      ],
      "weight": 0.5524671830103581,
      "rgb": [
       0,
       110,
-      195
+      188
      ],
-     "hex": "#006ec3"
+     "hex": "#006ebc"
     },
     {
      "lab": [
-      38.01571289366302,
-      49.23761780802718,
-      19.994171920593608
+      38.016784904645974,
+      49.741312920386,
+      21.91757096886985
      ],
      "weight": 0.44753281698964176,
      "rgb": [
-      164,
-      45,
-      60
+      165,
+      44,
+      57
      ],
-     "hex": "#a42d3c"
+     "hex": "#a52c39"
     }
    ],
    "hits": [
     {
      "id": 51,
-     "score": 3.1792741160072993,
+     "score": 1.3950409703389082,
      "size": 2,
      "colors": [
       28,
@@ -833,7 +844,7 @@
     },
     {
      "id": 39,
-     "score": 16.56771424103888,
+     "score": 15.46068308613482,
      "size": 2,
      "colors": [
       22,
@@ -842,7 +853,7 @@
     },
     {
      "id": 48,
-     "score": 21.323923923474077,
+     "score": 21.03722239996167,
      "size": 2,
      "colors": [
       24,
@@ -851,7 +862,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "a6401b05444521f8"
+   "hash": "1c87de39c12ccf36"
   },
   {
    "file": "f10_c057_v01.ppm",
@@ -868,7 +879,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -878,7 +890,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -924,16 +936,6 @@
      ]
     },
     {
-     "id": 187,
-     "score": 18.416469534192746,
-     "size": 3,
-     "colors": [
-      123,
-      134,
-      139
-     ]
-    },
-    {
      "id": 183,
      "score": 20.042051765818357,
      "size": 3,
@@ -942,17 +944,27 @@
       145,
       150
      ]
+    },
+    {
+     "id": 225,
+     "score": 20.95992423732046,
+     "size": 3,
+     "colors": [
+      22,
+      125,
+      146
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "5f25cccc44a6051f"
+   "hash": "73226d30cde34fe7"
   },
   {
    "file": "f11_c059_v04.ppm",
    "combo_id": 59,
    "v": 4,
    "variant": "illuminant_A",
-   "sha256": "b42e418e96aa624e818172a9153b4350e69d8cca9331047d847be2489bfd320e",
+   "sha256": "a1171157f5dfe76354189683a11df1017d6fd5d4c06c0429252815dc6eb10bfd",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -962,7 +974,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -972,7 +985,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -980,37 +993,37 @@
    "swatches": [
     {
      "lab": [
-      66.24124219156853,
-      21.464047127349396,
-      71.39091684045937
+      65.59004120693109,
+      2.6457347658801478,
+      61.117138009330525
      ],
      "weight": 0.5315221185779028,
      "rgb": [
-      223,
-      144,
-      0
+      192,
+      155,
+      39
      ],
-     "hex": "#df9000"
+     "hex": "#c09b27"
     },
     {
      "lab": [
-      64.23142588577076,
-      52.51622709937448,
-      48.654433474076576
+      67.12211170106494,
+      51.25042569460542,
+      20.089484274552618
      ],
      "weight": 0.4684778814220971,
      "rgb": [
       255,
-      111,
-      71
+      122,
+      130
      ],
-     "hex": "#ff6f47"
+     "hex": "#ff7a82"
     }
    ],
    "hits": [
     {
      "id": 59,
-     "score": 11.798246493218446,
+     "score": 11.514762848173923,
      "size": 2,
      "colors": [
       8,
@@ -1019,7 +1032,7 @@
     },
     {
      "id": 153,
-     "score": 19.040577875067967,
+     "score": 19.481917021956797,
      "size": 3,
      "colors": [
       8,
@@ -1028,17 +1041,19 @@
      ]
     },
     {
-     "id": 87,
-     "score": 20.844022352650633,
-     "size": 2,
+     "id": 252,
+     "score": 24.011525199148707,
+     "size": 4,
      "colors": [
-      1,
-      70
+      12,
+      13,
+      68,
+      119
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "b23f805a69e50e88"
+   "hash": "4e18b303acd01b28"
   },
   {
    "file": "f12_c061_v07.ppm",
@@ -1055,7 +1070,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1065,7 +1081,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1149,7 +1165,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1159,7 +1176,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1256,7 +1273,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1266,7 +1284,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1350,7 +1368,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1360,7 +1379,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1459,7 +1478,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1469,7 +1489,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1551,7 +1571,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1561,7 +1582,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1644,7 +1665,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1654,7 +1676,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1751,7 +1773,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1761,7 +1784,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1858,7 +1881,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1868,7 +1892,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -1967,7 +1991,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -1977,7 +2002,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2076,7 +2101,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2086,7 +2112,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2186,7 +2212,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2196,7 +2223,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2295,7 +2322,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2305,7 +2333,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2392,7 +2420,7 @@
     },
     {
      "id": 124,
-     "score": 18.632143173766373,
+     "score": 19.603496044638142,
      "size": 3,
      "colors": [
       35,
@@ -2402,7 +2430,7 @@
     }
    ],
    "ambiguous": 1,
-   "hash": "88bd56ae7e76dfdb"
+   "hash": "8ff498911656fa06"
   },
   {
    "file": "f25_c159_v00.ppm",
@@ -2419,7 +2447,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2429,7 +2458,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2526,7 +2555,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2536,7 +2566,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2636,7 +2666,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2646,7 +2677,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2721,26 +2752,28 @@
      ]
     },
     {
-     "id": 67,
-     "score": 18.902791351527533,
+     "id": 119,
+     "score": 20.958507327920795,
      "size": 2,
      "colors": [
-      120,
+      112,
       129
      ]
     },
     {
-     "id": 49,
-     "score": 20.623303402543588,
-     "size": 2,
+     "id": 302,
+     "score": 22.11529677196225,
+     "size": 4,
      "colors": [
-      111,
-      121
+      46,
+      53,
+      110,
+      122
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "c9e37c6a9792ff24"
+   "hash": "3c64452275332c80"
   },
   {
    "file": "f28_c179_v09.ppm",
@@ -2757,7 +2790,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2767,7 +2801,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2870,7 +2904,7 @@
    "combo_id": 188,
    "v": 5,
    "variant": "illuminant_F2",
-   "sha256": "c1b46abedd97aafe741fc64c2697201e37d4e50c651e171eef53334c22868e2e",
+   "sha256": "db7a4c3935a93c710bece36d3992f46789172fa06067868a6899a4ad11746dc2",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -2880,7 +2914,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2890,7 +2925,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -2898,51 +2933,51 @@
    "swatches": [
     {
      "lab": [
-      63.76122291515175,
-      -6.515300022304659,
-      39.24153555185892
+      63.59024074531391,
+      -12.261051909006227,
+      27.1630112288231
      ],
      "weight": 0.46847788142209434,
      "rgb": [
-      166,
-      156,
-      83
+      150,
+      159,
+      105
      ],
-     "hex": "#a69c53"
+     "hex": "#969f69"
     },
     {
      "lab": [
-      78.94773375443742,
-      -19.321257664340006,
-      35.06302215044514
+      78.87109069788075,
+      -24.29612097576611,
+      19.061690533500265
      ],
      "weight": 0.38053502578585907,
      "rgb": [
-      183,
-      204,
-      129
+      161,
+      207,
+      159
      ],
-     "hex": "#b7cc81"
+     "hex": "#a1cf9f"
     },
     {
      "lab": [
-      69.2931769758391,
-      1.1310682400373917,
-      7.353735847183306
+      69.63300065153088,
+      -0.3269190608717887,
+      -10.00281156939009
      ],
      "weight": 0.1509870927920466,
      "rgb": [
-      177,
-      168,
-      156
+      160,
+      171,
+      188
      ],
-     "hex": "#b1a89c"
+     "hex": "#a0abbc"
     }
    ],
    "hits": [
     {
      "id": 188,
-     "score": 2.3880887451681643,
+     "score": 7.336005777693613,
      "size": 3,
      "colors": [
       96,
@@ -2952,7 +2987,7 @@
     },
     {
      "id": 29,
-     "score": 17.884061303285502,
+     "score": 14.909673419656341,
      "size": 2,
      "colors": [
       75,
@@ -2960,17 +2995,19 @@
      ]
     },
     {
-     "id": 44,
-     "score": 19.18482700741195,
-     "size": 2,
+     "id": 330,
+     "score": 24.167787799815173,
+     "size": 4,
      "colors": [
-      101,
-      120
+      52,
+      110,
+      113,
+      119
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "260b2c7bb0dae4c8"
+   "hash": "e1acd909acdb0558"
   },
   {
    "file": "f30_c196_v01.ppm",
@@ -2987,7 +3024,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -2997,7 +3035,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3058,16 +3096,6 @@
      ]
     },
     {
-     "id": 156,
-     "score": 22.47171147790516,
-     "size": 3,
-     "colors": [
-      58,
-      114,
-      149
-     ]
-    },
-    {
      "id": 93,
      "score": 23.66313534122527,
      "size": 2,
@@ -3075,17 +3103,27 @@
       71,
       112
      ]
+    },
+    {
+     "id": 175,
+     "score": 24.15753779437837,
+     "size": 3,
+     "colors": [
+      44,
+      52,
+      142
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "262735aae2745ab3"
+   "hash": "812d8f44c805cdeb"
   },
   {
    "file": "f31_c199_v05.ppm",
    "combo_id": 199,
    "v": 5,
    "variant": "illuminant_F2",
-   "sha256": "ba1a3a18e55187c00d70012d76810148ff9e100c3fa45b36bd92872f04afa6da",
+   "sha256": "c5117e579f6f85c43b04b8e8ca2a6c40085edc5c9139790a7bebcbd13bf2b4fa",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -3095,7 +3133,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3105,7 +3144,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3113,51 +3152,51 @@
    "swatches": [
     {
      "lab": [
-      27.97859707551044,
-      6.267575319342633,
-      -26.034892817661216
+      28.844272213836504,
+      10.55730437165589,
+      -37.33142892636796
      ],
      "weight": 0.5629032483724462,
      "rgb": [
-      48,
-      65,
-      106
+      36,
+      66,
+      126
      ],
-     "hex": "#30416a"
+     "hex": "#24427e"
     },
     {
      "lab": [
-      47.081890983311645,
-      40.06272003554612,
-      34.82185831073018
+      46.65373204173109,
+      36.5141631086699,
+      24.79266167891218
      ],
      "weight": 0.29351702003935615,
      "rgb": [
-      183,
-      80,
-      55
+      175,
+      83,
+      71
      ],
-     "hex": "#b75037"
+     "hex": "#af5347"
     },
     {
      "lab": [
-      47.76822610708777,
-      8.102088281228104,
-      35.27574872420093
+      47.43539323502566,
+      3.881884859242346,
+      25.844842609475116
      ],
      "weight": 0.14357973158819773,
      "rgb": [
-      143,
-      107,
-      53
+      133,
+      109,
+      69
      ],
-     "hex": "#8f6b35"
+     "hex": "#856d45"
     }
    ],
    "hits": [
     {
      "id": 199,
-     "score": 2.3141256774782244,
+     "score": 3.7936659590394064,
      "size": 3,
      "colors": [
       20,
@@ -3166,17 +3205,18 @@
      ]
     },
     {
-     "id": 28,
-     "score": 16.767445644777254,
-     "size": 2,
+     "id": 236,
+     "score": 17.237611176608077,
+     "size": 3,
      "colors": [
-      84,
-      131
+      69,
+      126,
+      143
      ]
     },
     {
      "id": 233,
-     "score": 17.1149449969232,
+     "score": 18.337666271641993,
      "size": 3,
      "colors": [
       28,
@@ -3186,7 +3226,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "b02b77c5799fb5a9"
+   "hash": "36001da707da1082"
   },
   {
    "file": "f32_c207_v08.ppm",
@@ -3203,7 +3243,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3213,7 +3254,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3311,7 +3352,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3321,7 +3363,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3393,25 +3435,26 @@
      ]
     },
     {
-     "id": 155,
-     "score": 14.712711218337628,
-     "size": 3,
+     "id": 340,
+     "score": 14.987557207381382,
+     "size": 4,
      "colors": [
-      15,
-      100,
-      131
+      64,
+      99,
+      154,
+      158
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "0aad1f61cf7f252b"
+   "hash": "76970d601464607d"
   },
   {
    "file": "f34_c224_v05.ppm",
    "combo_id": 224,
    "v": 5,
    "variant": "illuminant_F2",
-   "sha256": "9f4b5f4b6be28d32a57b88620381c6b01a50fa9222cd3169acb7eb6f0e1c79ab",
+   "sha256": "17525981ff8281a357f9ef5f0f859c1efc41765563b52a6efc468e1fc4c8d2c9",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -3421,7 +3464,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3431,7 +3475,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3439,51 +3483,51 @@
    "swatches": [
     {
      "lab": [
-      36.11579931621051,
-      28.678934980081838,
-      13.329375538126499
+      36.041401414867806,
+      26.927162907398994,
+      3.5985711787220653
      ],
      "weight": 0.47180944839093986,
      "rgb": [
-      132,
-      65,
-      65
+      126,
+      67,
+      80
      ],
-     "hex": "#844141"
+     "hex": "#7e4350"
     },
     {
      "lab": [
-      64.42430621947611,
-      55.681508279126824,
-      27.743482451949596
+      64.40070410041484,
+      54.03022731622381,
+      13.329324868863711
      ],
      "weight": 0.40599571042137295,
      "rgb": [
-      255,
-      109,
-      110
+      248,
+      112,
+      135
      ],
-     "hex": "#ff6d6e"
+     "hex": "#f87087"
     },
     {
      "lab": [
-      45.04810712321752,
-      -5.853054457822138,
-      9.295184810875112
+      45.246348899794356,
+      -7.619848505724391,
+      -1.9168528724938128
      ],
      "weight": 0.12219484118768731,
      "rgb": [
-      103,
-      109,
-      91
+      91,
+      111,
+      110
      ],
-     "hex": "#676d5b"
+     "hex": "#5b6f6e"
     }
    ],
    "hits": [
     {
      "id": 224,
-     "score": 2.8518961892764563,
+     "score": 6.22122998580115,
      "size": 3,
      "colors": [
       9,
@@ -3493,7 +3537,7 @@
     },
     {
      "id": 165,
-     "score": 17.412423222039948,
+     "score": 15.83628313199797,
      "size": 3,
      "colors": [
       2,
@@ -3503,7 +3547,7 @@
     },
     {
      "id": 280,
-     "score": 17.548312769020477,
+     "score": 18.083529651737713,
      "size": 4,
      "colors": [
       12,
@@ -3514,7 +3558,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "165ab918e1639249"
+   "hash": "974dca5eeb3f41cc"
   },
   {
    "file": "f35_c242_v01.ppm",
@@ -3531,7 +3575,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3541,7 +3586,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3646,7 +3691,7 @@
    "combo_id": 246,
    "v": 6,
    "variant": "illuminant_D75",
-   "sha256": "82e7162575b0a3b49ca8807d1d9575ce298ba64f2fbf1af08219e79cbc507c29",
+   "sha256": "8d719439f93b70c548b12fa43479b660a608541e9a7c4601452e6e2a46d50213",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -3656,7 +3701,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3666,7 +3712,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3674,65 +3720,65 @@
    "swatches": [
     {
      "lab": [
-      80.1798502732183,
-      23.875335813635267,
-      0.9153715346588376
+      80.12666581921148,
+      24.52022989066238,
+      5.7502012455658225
      ],
      "weight": 0.3651965514157611,
      "rgb": [
-      243,
-      183,
-      198
+      247,
+      182,
+      189
      ],
-     "hex": "#f3b7c6"
+     "hex": "#f7b6bd"
     },
     {
      "lab": [
-      41.64062162105288,
-      39.206543419318116,
-      36.810821512261036
+      41.586562422147075,
+      39.90868626099231,
+      38.92536905697245
      ],
      "weight": 0.299537728127635,
      "rgb": [
-      166,
-      67,
-      39
+      167,
+      66,
+      35
      ],
-     "hex": "#a64327"
+     "hex": "#a74223"
     },
     {
      "lab": [
-      82.88233638991626,
-      9.721069883827038,
-      37.61938484212255
+      83.02752301322303,
+      11.567509571505097,
+      41.47251129769825
      ],
      "weight": 0.2060829836096271,
      "rgb": [
-      247,
-      198,
-      136
+      252,
+      197,
+      129
      ],
-     "hex": "#f7c688"
+     "hex": "#fcc581"
     },
     {
      "lab": [
-      93.12409217924743,
-      -4.648545964460404,
-      14.679014488683407
+      93.0482478023171,
+      -3.858865155547786,
+      19.79434844398751
      ],
      "weight": 0.12918273684697687,
      "rgb": [
-      238,
-      237,
-      207
+      243,
+      236,
+      197
      ],
-     "hex": "#eeedcf"
+     "hex": "#f3ecc5"
     }
    ],
    "hits": [
     {
      "id": 246,
-     "score": 2.227246211983899,
+     "score": 1.5170693311869807,
      "size": 4,
      "colors": [
       1,
@@ -3743,7 +3789,7 @@
     },
     {
      "id": 97,
-     "score": 19.416433133490642,
+     "score": 18.24944896353617,
      "size": 2,
      "colors": [
       1,
@@ -3752,7 +3798,7 @@
     },
     {
      "id": 206,
-     "score": 20.936324726206543,
+     "score": 19.835118333770858,
      "size": 3,
      "colors": [
       1,
@@ -3762,7 +3808,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "1f814795772aff5b"
+   "hash": "d30dea697c4e7812"
   },
   {
    "file": "f37_c253_v09.ppm",
@@ -3779,7 +3825,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3789,7 +3836,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -3915,7 +3962,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -3925,7 +3973,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4001,16 +4049,6 @@
      ]
     },
     {
-     "id": 148,
-     "score": 19.24156982919477,
-     "size": 3,
-     "colors": [
-      58,
-      60,
-      117
-     ]
-    },
-    {
      "id": 312,
      "score": 19.714741105780035,
      "size": 4,
@@ -4020,10 +4058,20 @@
       94,
       123
      ]
+    },
+    {
+     "id": 148,
+     "score": 20.624134626285077,
+     "size": 3,
+     "colors": [
+      58,
+      60,
+      117
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "a9b6d4c898f3ca9a"
+   "hash": "f454e6b9cd92cca7"
   },
   {
    "file": "f39_c276_v08.ppm",
@@ -4040,7 +4088,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4050,7 +4099,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4138,7 +4187,7 @@
     },
     {
      "id": 323,
-     "score": 24.798928625072506,
+     "score": 24.823816853608534,
      "size": 4,
      "colors": [
       45,
@@ -4149,7 +4198,7 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "87f514e87a3dae38"
+   "hash": "b8ee8c0e999bc392"
   },
   {
    "file": "f40_c284_v07.ppm",
@@ -4166,7 +4215,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4176,7 +4226,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4278,7 +4328,7 @@
    "combo_id": 287,
    "v": 5,
    "variant": "illuminant_F2",
-   "sha256": "1f207b6555c23784b640983845b0d435d9bae19a265a4ef45a731abe3317c947",
+   "sha256": "bce70f1973efad9865047d1157104a1e61d9c9b3c833f68a5e16578b30a31084",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -4288,7 +4338,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4298,7 +4349,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4306,65 +4357,65 @@
    "swatches": [
     {
      "lab": [
-      76.85276324576414,
-      -20.99009938628282,
-      14.63074891239311
+      77.3052327283244,
+      -24.29637855471928,
+      -3.7284317290252162
      ],
      "weight": 0.5012719914255501,
      "rgb": [
-      159,
-      200,
-      162
+      131,
+      204,
+      197
      ],
-     "hex": "#9fc8a2"
+     "hex": "#83ccc5"
     },
     {
      "lab": [
-      73.89346078509415,
-      7.4365250394228255,
-      65.10795996934175
+      73.42611438161666,
+      -0.6017002912787617,
+      53.346153575962106
      ],
      "weight": 0.23980003024562388,
      "rgb": [
-      225,
-      174,
-      53
+      208,
+      178,
+      79
      ],
-     "hex": "#e1ae35"
+     "hex": "#d0b24f"
     },
     {
      "lab": [
-      81.9779463254218,
-      -7.095124530197506,
-      13.733863754604661
+      82.28592724435113,
+      -10.24439660485088,
+      -6.811573760861567
      ],
      "weight": 0.14357973158819828,
      "rgb": [
-      201,
-      207,
-      178
+      176,
+      211,
+      217
      ],
-     "hex": "#c9cfb2"
+     "hex": "#b0d3d9"
     },
     {
      "lab": [
-      66.7880717909705,
-      49.782662272848114,
-      29.715506432001206
+      67.10744823512937,
+      47.82604813538549,
+      14.28015034038117
      ],
      "weight": 0.11534824674062756,
      "rgb": [
-      255,
-      122,
-      112
+      248,
+      126,
+      140
      ],
-     "hex": "#ff7a70"
+     "hex": "#f87e8c"
     }
    ],
    "hits": [
     {
      "id": 287,
-     "score": 2.6619405083892125,
+     "score": 6.578891400157673,
      "size": 4,
      "colors": [
       8,
@@ -4375,7 +4426,7 @@
     },
     {
      "id": 65,
-     "score": 13.726616477790103,
+     "score": 14.526392510570796,
      "size": 2,
      "colors": [
       68,
@@ -4383,18 +4434,19 @@
      ]
     },
     {
-     "id": 230,
-     "score": 16.97656254781106,
-     "size": 3,
+     "id": 300,
+     "score": 16.489483533513912,
+     "size": 4,
      "colors": [
       7,
+      46,
       87,
-      114
+      115
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "74ebc69d03b7fd20"
+   "hash": "9b6e7970eac9e472"
   },
   {
    "file": "f42_c289_v01.ppm",
@@ -4411,7 +4463,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4421,7 +4474,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4523,7 +4576,7 @@
    "combo_id": 291,
    "v": 4,
    "variant": "illuminant_A",
-   "sha256": "1c49fde3f0bfa93ca421525bb8f4cb4a30e291e943943e792124b52784e573b3",
+   "sha256": "7166be50423b57314b3eeb1a6c7766ba0a39a6242a1f4f756011efdc3d1a798f",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -4533,7 +4586,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4543,7 +4597,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4551,65 +4605,65 @@
    "swatches": [
     {
      "lab": [
-      78.61583932936063,
-      -2.3821731023151993,
-      58.50823859928735
+      78.91925333623878,
+      -18.581366575413426,
+      25.10284597635073
      ],
      "weight": 0.3352657204566032,
      "rgb": [
-      222,
-      193,
-      81
+      178,
+      204,
+      148
      ],
-     "hex": "#dec151"
+     "hex": "#b2cc94"
     },
     {
      "lab": [
-      76.21179727685065,
-      -7.63294486342786,
-      41.500871865911584
+      76.98018974903366,
+      -18.923057863803272,
+      3.480512768978561
      ],
      "weight": 0.3076797129808156,
      "rgb": [
+      153,
       200,
-      190,
-      110
+      183
      ],
-     "hex": "#c8be6e"
+     "hex": "#99c8b7"
     },
     {
      "lab": [
-      81.02917532407918,
-      10.378694618978724,
-      83.03405754289334
+      81.05391847405724,
+      -8.62565234198598,
+      69.3016869135435
      ],
      "weight": 0.248411128810061,
      "rgb": [
-      255,
-      191,
-      0
+      222,
+      203,
+      60
      ],
-     "hex": "#ffbf00"
+     "hex": "#decb3c"
     },
     {
      "lab": [
-      64.50069610569105,
-      -25.152849262397858,
-      42.057312576046954
+      65.38303982397241,
+      -37.966908348753435,
+      12.0423931252583
      ],
      "weight": 0.1086434377525203,
      "rgb": [
-      136,
-      167,
-      78
+      80,
+      176,
+      136
      ],
-     "hex": "#88a74e"
+     "hex": "#50b088"
     }
    ],
    "hits": [
     {
      "id": 291,
-     "score": 4.597385076277551,
+     "score": 15.423443806843869,
      "size": 4,
      "colors": [
       91,
@@ -4619,26 +4673,28 @@
      ]
     },
     {
-     "id": 111,
-     "score": 17.033832542699454,
+     "id": 36,
+     "score": 20.060014840826888,
      "size": 2,
      "colors": [
-      39,
-      90
+      68,
+      87
      ]
     },
     {
-     "id": 96,
-     "score": 17.592776242975916,
-     "size": 2,
+     "id": 305,
+     "score": 20.389862372944393,
+     "size": 4,
      "colors": [
-      59,
-      76
+      44,
+      56,
+      70,
+      87
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "c5e734c4405f351d"
+   "hash": "e44e90c8b8129643"
   },
   {
    "file": "f44_c292_v08.ppm",
@@ -4655,7 +4711,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4665,7 +4722,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4731,22 +4788,11 @@
    "hits": [
     {
      "id": 111,
-     "score": 15.895226661078741,
+     "score": 16.860738145396365,
      "size": 2,
      "colors": [
       39,
       90
-     ]
-    },
-    {
-     "id": 292,
-     "score": 16.729943561355658,
-     "size": 4,
-     "colors": [
-      39,
-      44,
-      50,
-      53
      ]
     },
     {
@@ -4757,10 +4803,19 @@
       41,
       155
      ]
+    },
+    {
+     "id": 72,
+     "score": 17.087819460239732,
+     "size": 2,
+     "colors": [
+      38,
+      111
+     ]
     }
    ],
    "ambiguous": 1,
-   "hash": "0675684ffbcf084c"
+   "hash": "4c57b6069ed9c53b"
   },
   {
    "file": "f45_c305_v08.ppm",
@@ -4777,7 +4832,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4787,7 +4843,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -4857,17 +4913,19 @@
      ]
     },
     {
-     "id": 45,
-     "score": 21.387379596064967,
-     "size": 2,
+     "id": 305,
+     "score": 21.728461047437992,
+     "size": 4,
      "colors": [
-      42,
-      55
+      44,
+      56,
+      70,
+      87
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "ed204f76fc926987"
+   "hash": "46b4cbb1d03cee06"
   },
   {
    "file": "f46_c319_v02.ppm",
@@ -4884,7 +4942,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -4894,7 +4953,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -5007,7 +5066,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -5017,7 +5077,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -5131,7 +5191,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -5141,7 +5202,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -5227,7 +5288,7 @@
     },
     {
      "id": 115,
-     "score": 14.882896433135976,
+     "score": 16.421845191776434,
      "size": 2,
      "colors": [
       40,
@@ -5236,14 +5297,14 @@
     }
    ],
    "ambiguous": 0,
-   "hash": "cf087dc51e080203"
+   "hash": "83c26207aecf3385"
   },
   {
    "file": "f49_c346_v04.ppm",
    "combo_id": 346,
    "v": 4,
    "variant": "illuminant_A",
-   "sha256": "65bb8124c8c11ba4902c982bdfaa71b7d7fb434559094976cbd34f97fcf7d296",
+   "sha256": "3031facb3ce10517feb2465f856f3c3eadebf4faed0169b54570b015bab70085",
    "opts": {
     "palette": {
      "k_init": 6,
@@ -5253,7 +5314,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -5263,7 +5325,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -5271,65 +5333,65 @@
    "swatches": [
     {
      "lab": [
-      47.35360693765646,
-      61.516352825922105,
-      34.6471956737615
+      46.055009663131834,
+      55.423224140705216,
+      4.388620828343215
      ],
      "weight": 0.4594786143899733,
      "rgb": [
-      210,
-      50,
-      58
+      191,
+      60,
+      104
      ],
-     "hex": "#d2323a"
+     "hex": "#bf3c68"
     },
     {
      "lab": [
-      84.85062713973089,
-      6.156718323816978,
-      56.37823221082976
+      85.00844645385627,
+      -9.982353636033281,
+      15.404099527432159
      ],
      "weight": 0.2233594836314729,
      "rgb": [
-      254,
       205,
-      103
+      217,
+      183
      ],
-     "hex": "#fecd67"
+     "hex": "#cdd9b7"
     },
     {
      "lab": [
-      81.02917532407896,
-      10.378694618978223,
-      83.03405754289311
+      81.07427426393507,
+      -10.266003755632358,
+      68.16368430234247
      ],
      "weight": 0.21508115332701797,
      "rgb": [
-      255,
-      191,
-      0
+      219,
+      204,
+      63
      ],
-     "hex": "#ffbf00"
+     "hex": "#dbcc3f"
     },
     {
      "lab": [
-      51.1244770630487,
-      6.9273952058572785,
-      36.771421009249536
+      51.1721495980465,
+      -3.1905195416537246,
+      9.315010869002238
      ],
      "weight": 0.10208074865153594,
      "rgb": [
-      151,
-      116,
-      58
+      123,
+      123,
+      106
      ],
-     "hex": "#97743a"
+     "hex": "#7b7b6a"
     }
    ],
    "hits": [
     {
      "id": 346,
-     "score": 4.520826824028521,
+     "score": 13.505560171107135,
      "size": 4,
      "colors": [
       24,
@@ -5339,27 +5401,29 @@
      ]
     },
     {
-     "id": 124,
-     "score": 19.271411507304336,
-     "size": 3,
+     "id": 311,
+     "score": 20.441580312673356,
+     "size": 4,
      "colors": [
-      35,
-      59,
-      93
+      29,
+      46,
+      89,
+      91
      ]
     },
     {
-     "id": 71,
-     "score": 20.342200197579498,
-     "size": 2,
+     "id": 200,
+     "score": 22.952045182291897,
+     "size": 3,
      "colors": [
-      29,
-      49
+      28,
+      52,
+      97
      ]
     }
    ],
    "ambiguous": 0,
-   "hash": "cb512581f75a9b56"
+   "hash": "ef9c84d271373d06"
   },
   {
    "file": "f50_c348_v02.ppm",
@@ -5376,7 +5440,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -5386,7 +5451,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -5462,16 +5527,6 @@
      ]
     },
     {
-     "id": 202,
-     "score": 23.59767613045323,
-     "size": 3,
-     "colors": [
-      87,
-      114,
-      157
-     ]
-    },
-    {
      "id": 61,
      "score": 26.64187906238493,
      "size": 2,
@@ -5479,10 +5534,21 @@
       91,
       151
      ]
+    },
+    {
+     "id": 290,
+     "score": 27.34517250271527,
+     "size": 4,
+     "colors": [
+      37,
+      39,
+      107,
+      114
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "fd7063904d1e7056"
+   "hash": "7aa0adac10c9d5de"
   }
  ]
 }

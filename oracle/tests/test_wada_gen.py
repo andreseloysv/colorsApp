@@ -4,7 +4,8 @@
 * Variante limpia: solo colores de la combinación, cada área entre 15 y 60 %.
 * Distractor: 40 % del lienzo con un color a ΔE00 > 15 de la combinación; el resto intacto.
 * Iluminantes: la matriz de Bradford usada reproduce ``engine/tests/data/golden_bradford.tsv``
-  a 1e-9 y desplaza un gris hacia cálido (A) o frío (D75).
+  a 1e-9 y desplaza un gris hacia cálido (A) o frío (D75); las variantes 4-6 aplican el tinte
+  residual tras el balance de blancos (25-35 % de la adaptación, ADR-009), no el completo.
 * JPEG registra q en {10, 30}; textura y sombreado alteran L* dentro de una franja.
 * ``generate_set``: mismos bytes en dos ejecuciones, manifest con ``generator_hash``,
   ``set_is_current``; el holdout exige semilla y nunca la escribe.
@@ -144,6 +145,58 @@ def test_illuminant_shift_direction():
     for v, name in ((4, "A"), (5, "F2"), (6, "D75")):
         _img, meta = wg.variant(12, v)
         assert meta["params"]["illuminant"]["illuminant"] == name and meta["degradation"] == "illuminant"
+
+
+def test_residual_illuminant_is_partial_adaptation():
+    lo, hi = wg.ILLUMINANT_RESIDUAL_RANGE
+    assert (lo, hi) == (0.25, 0.35)
+    for name in wg.ILLUMINANTS:
+        full = ref.bradford_matrix("D65", name)
+        assert np.allclose(wg.residual_illuminant_matrix(name, 1.0), full, atol=0, rtol=0)
+        assert np.array_equal(wg.residual_illuminant_matrix(name, 0.0), np.eye(3))
+        half = wg.residual_illuminant_matrix(name, 0.3)
+        assert np.allclose(half, 0.7 * np.eye(3) + 0.3 * full, atol=1e-15)
+    with pytest.raises(ValueError):
+        wg.residual_illuminant_matrix("A", 1.2)
+    # Un gris medio: el tinte residual de A es cálido pero mucho más débil que el completo.
+    gray = np.full((4, 4, 3), 128, dtype=np.uint8)
+    full_img, full_p = wg.apply_illuminant(gray, "A")
+    res_img, res_p = wg.apply_illuminant(gray, "A", 0.3)
+    assert full_p == {"illuminant": "A"}
+    assert res_p == {"illuminant": "A", "strength": 0.3, "model": "residual_after_awb"}
+    gray_lab = ref.srgb8_to_lab_strict(gray[0, 0])
+    de_full = float(ref.de2000(gray_lab, ref.srgb8_to_lab_strict(full_img[0, 0])))
+    de_res = float(ref.de2000(gray_lab, ref.srgb8_to_lab_strict(res_img[0, 0])))
+    assert int(res_img[0, 0, 0]) > int(res_img[0, 0, 2])
+    assert 0.1 * de_full < de_res < 0.5 * de_full, (de_res, de_full)
+    # Variantes 4-6: intensidad sorteada por imagen dentro del intervalo y registrada.
+    strengths = set()
+    for combo_id in range(1, 31):
+        for v, name in ((4, "A"), (5, "F2"), (6, "D75")):
+            _img, meta = wg.variant(combo_id, v)
+            p = meta["params"]["illuminant"]
+            assert p["illuminant"] == name and p["model"] == "residual_after_awb"
+            assert lo <= p["strength"] <= hi
+            strengths.add(p["strength"])
+    assert len(strengths) > 80
+
+
+def test_golden_fixtures_without_illuminant_keep_their_bytes():
+    # La intensidad del tinte se sortea después de la geometría y solo en las variantes 4-6: el
+    # resto de fixtures de harness/golden (128 px) conserva exactamente sus bytes (sha256).
+    golden = json.loads((REPO_ROOT / "harness" / "golden" / "match_50.json").read_text(encoding="utf-8"))
+    import hashlib
+
+    checked = 0
+    for e in golden["entries"]:
+        if int(e["v"]) in (4, 5, 6):
+            continue
+        img, _meta = wg.variant(int(e["combo_id"]), int(e["v"]), size=128)
+        h, w, _ = img.shape
+        ppm = f"P6\n{w} {h}\n255\n".encode("ascii") + img.tobytes()
+        assert hashlib.sha256(ppm).hexdigest() == e["sha256"], e["file"]
+        checked += 1
+    assert checked >= 30
 
 
 def test_jpeg_exposure_texture_shading_params():

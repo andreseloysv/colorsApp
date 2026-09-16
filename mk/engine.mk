@@ -7,8 +7,11 @@
 #       compila engine/tests/fuzz_palette.c con CE_SANITIZE=ON en build-asan/ y
 #       lo ejecuta FUZZ_SECONDS segundos (entradas: ce_palette_extract con las
 #       capas de depuración, el parser P6/P5 de tools/ce_pnm.c,
-#       ce_mask_clothing_regions/ce_mask_cut_head y ce_skin_model_fit/
-#       ce_mask_exclude_skin con modelos degenerados). Exit != 0 si ASan/UBSan
+#       ce_mask_clothing_regions/ce_mask_cut_head, ce_skin_model_fit/
+#       ce_mask_exclude_skin con modelos degenerados y la paleta por prenda:
+#       ce_palette_extract_garments/ce_analyze_garments con mapas de regiones y
+#       opciones absurdas, capas de prenda y ce_mask_garment_regions frente a
+#       ce_mask_clothing_regions). Exit != 0 si ASan/UBSan
 #       detecta algo o falla una invariante (semilla y caso para reproducir).
 #   make bench-palette
 #       ejecuta test_palette en nativo -O2 y muestra PERF_1024_RGBA_MS (la cota
@@ -25,8 +28,10 @@
 #       harness/out/parity.json. Después, engine/tests/layers_parity.js exige
 #       las capas de depuración (`ce match --debug-dir`: reduced, weights,
 #       labels, clusters, swatch_<k>, debug.json con la explicación del top-K)
-#       y las máscaras (`ce regions`, `ce skin`, `ce cut-head`, match --mask)
-#       byte a byte idénticas en nativo y WASM (salidas en build/parity-layers).
+#       y las máscaras (`ce regions`, `ce skin`, `ce cut-head`, match --mask) y la
+#       paleta por prenda (`ce garments --debug-dir` con y sin regiones,
+#       `ce garment-regions`, `ce batch --garments`) byte a byte idénticas en
+#       nativo y WASM (salidas en build/parity-layers).
 #       Exit != 0 si algo difiere.
 #   make parity-fixtures
 #       regenera harness/wasm/fixtures/ (20 PPM <= 128 px + manifest.json con sha256)

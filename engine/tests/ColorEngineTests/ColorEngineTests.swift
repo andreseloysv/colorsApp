@@ -92,6 +92,13 @@ final class PaletteTests: XCTestCase {
         XCTAssertEqual(o.mergeDeltaE, 5.0)
         XCTAssertEqual(o.minWeight, 0.05)
         XCTAssertFalse(o.skinRule)
+        XCTAssertEqual(o.mergeLightDeltaE, 0.0) // experimento de fusión de sombras: apagado
+        // Ida y vuelta por el struct C con el campo nuevo.
+        var shades = o
+        shades.mergeLightDeltaE = 6.0
+        XCTAssertEqual(PaletteOptions(shades.cValue), shades)
+        XCTAssertEqual(PaletteOptions(kInit: 6, maxIters: 20, maxColors: 5, maxSide: 256, centerSigma: 0.35,
+                                      mergeDeltaE: 5.0, minWeight: 0.05, skinRule: false), o)
     }
 
     func testThreeBlocksUniform() throws {
@@ -187,14 +194,36 @@ final class MatchTests: XCTestCase {
         XCTAssertEqual(m.ambiguousGap, 1.0)
         XCTAssertEqual(m.exposureEVMax, 1.0)
         XCTAssertEqual(m.exposurePenalty, 2.0)
-        XCTAssertTrue(m.illuminantSearch)
+        // ADR-009 (2026-09-15): hipótesis de iluminante desactivada por defecto (también en el init).
+        XCTAssertFalse(m.illuminantSearch)
         XCTAssertEqual(m.illuminantPenalty, 2.0)
+        XCTAssertEqual(MatchOptions(kL: 1, kC: 1, kH: 1, coverageLambda: 1, ambiguousGap: 1), m)
         // Ida y vuelta por el struct C.
         var v0 = m
         v0.exposureEVMax = 0
         v0.illuminantSearch = false
         XCTAssertEqual(MatchOptions(v0.cValue), v0)
         XCTAssertEqual(colorEngineMaxHits, 10)
+    }
+
+    /// Caso real rosa palo + negro (CONTEXT §11), solo hex y pesos: con las opciones por
+    /// defecto Nº 337 puntúa mejor que Nº 067 (azul); con la hipótesis de iluminante, al revés.
+    func testPinkAndBlackPaletteDefaultsAvoidBlue() throws {
+        let hexes: [(UInt8, UInt8, UInt8, Double)] = [
+            (0x22, 0x25, 0x24, 0.394), (0xb4, 0x9a, 0xa2, 0.227), (0x91, 0x7a, 0x7e, 0.162),
+            (0xd5, 0xb8, 0xc0, 0.134), (0x6b, 0x5a, 0x57, 0.083),
+        ]
+        let swatches = hexes.map { Swatch(lab: srgbToLab(r: $0.0, g: $0.1, b: $0.2), r: $0.0, g: $0.1, b: $0.2, weight: $0.3) }
+        let pink337 = try explainMatch(swatches: swatches, comboId: 337)
+        let blue067 = try explainMatch(swatches: swatches, comboId: 67)
+        XCTAssertLessThan(pink337.score, blue067.score)
+        XCTAssertEqual(blue067.illuminant, -1)
+        var illum = MatchOptions.default
+        illum.illuminantSearch = true
+        let blueIllum = try explainMatch(swatches: swatches, options: illum, comboId: 67)
+        let pinkIllum = try explainMatch(swatches: swatches, options: illum, comboId: 337)
+        XCTAssertLessThan(blueIllum.score, pinkIllum.score)
+        XCTAssertEqual(blueIllum.illuminant, 0) // CE_ILL_A: "compensa" una luz de tungsteno inexistente
     }
 
     func testDictionaryAccessors() {
@@ -426,6 +455,166 @@ final class MaskTests: XCTestCase {
                 }
                 XCTAssertThrowsError(try analyze(rgba: buf, width: width, height: height, stride: stride, mask: m)) { error in
                     XCTAssertEqual(error as? ColorEngineError, .maskTooSmall(required: 64, actual: 63))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Paleta por prenda
+
+final class GarmentTests: XCTestCase {
+    /// Camiseta negra en dos tonos arriba y pantalón rosa en tres tonos (luz 50 %, media
+    /// sombra 30 %, sombra 20 %: los de la foto real del tranvía) abajo, en bandas verticales.
+    private func pantsImage(width: Int, height: Int) -> (px: [UInt8], regions: [UInt8]) {
+        var px = [UInt8](repeating: 255, count: width * 4 * height)
+        var regions = [UInt8](repeating: 0, count: width * height)
+        let top: [(UInt8, UInt8, UInt8)] = [(0x2b, 0x2c, 0x2c), (0x20, 0x21, 0x21)]
+        let bottom: [(UInt8, UInt8, UInt8)] = [(0xd5, 0xb8, 0xc0), (0xb4, 0x9a, 0xa2), (0x91, 0x7a, 0x7e)]
+        for y in 0..<height {
+            let upper = y < height * 2 / 5
+            for x in 0..<width {
+                let c = upper ? top[x < width * 3 / 5 ? 0 : 1]
+                              : bottom[x < width / 2 ? 0 : (x < width * 4 / 5 ? 1 : 2)]
+                let o = (y * width + x) * 4
+                px[o] = c.0
+                px[o + 1] = c.1
+                px[o + 2] = c.2
+                regions[y * width + x] = upper ? 1 : 2
+            }
+        }
+        return (px, regions)
+    }
+
+    private func frontPose() -> Pose {
+        var pose = Pose()
+        let pts: [(Double, Double, Double)] = [
+            (100, 50, 0.9), (100, 90, 0.9), (140, 90, 0.9), (60, 90, 0.9), (152.25, 150.5, 0.8), (47.75, 150.5, 0.8),
+            (158.5, 205.25, 0.7), (41.5, 205.25, 0.7), (124, 210, 0.9), (76, 210, 0.9), (126.25, 290.75, 0.8),
+            (73.75, 290.75, 0.8), (128.5, 370.5, 0.8), (71.5, 370.5, 0.8), (100, 210, 0.9),
+        ]
+        for (i, p) in pts.enumerated() {
+            pose.joints[i] = Keypoint(x: p.0, y: p.1, confidence: p.2)
+        }
+        return pose
+    }
+
+    func testDefaultGarmentOptions() {
+        let o = GarmentOptions.default
+        XCTAssertEqual(o.shadeKL, 3.0)
+        XCTAssertEqual(o.shadeMergeDeltaE, 6.5)
+        XCTAssertEqual(o.litLowPercentile, 0.75)
+        XCTAssertEqual(o.litHighPercentile, 0.95)
+        XCTAssertEqual(o.secondaryMinShare, 0.25)
+        XCTAssertEqual(o.maxColorsPerRegion, 2)
+        XCTAssertEqual(garmentMaxRegions, 2)
+    }
+
+    func testPinkPantsOneColorPerGarment() throws {
+        let width = 100, height = 200
+        let (px, regions) = pantsImage(width: width, height: height)
+        let garments = try px.withUnsafeBufferPointer { buf in
+            try regions.withUnsafeBufferPointer { r in
+                try extractGarments(rgba: buf, width: width, height: height, stride: width * 4, regions: r)
+            }
+        }
+        XCTAssertEqual(garments.count, 2, "\(garments)")
+        XCTAssertEqual(Set(garments.map(\.region)), [.upper, .lower])
+        let lower = try XCTUnwrap(garments.first { $0.region == .lower })
+        let upper = try XCTUnwrap(garments.first { $0.region == .upper })
+        XCTAssertLessThan(deltaE2000(lower.swatch.lab, srgbToLab(r: 0xdd, g: 0xc0, b: 0xc8)), 4.0)
+        XCTAssertLessThan(deltaE2000(upper.swatch.lab, srgbToLab(r: 0x2b, g: 0x2c, b: 0x2c)), 6.0)
+        XCTAssertGreaterThanOrEqual(lower.mergedClusterCount, 2)
+        XCTAssertEqual(garments.reduce(0) { $0 + $1.swatch.weight }, 1.0, accuracy: 1e-12)
+        // La paleta clásica reparte el pantalón en varios tonos.
+        let classic = try px.withUnsafeBufferPointer { buf in
+            try extractPalette(rgba: buf, width: width, height: height, stride: width * 4)
+        }
+        XCTAssertGreaterThanOrEqual(classic.count, 3)
+        // Sin mapa: una región (.none).
+        let single = try px.withUnsafeBufferPointer { buf in
+            try extractGarments(rgba: buf, width: width, height: height, stride: width * 4)
+        }
+        XCTAssertTrue(single.allSatisfy { $0.region == .none })
+        XCTAssertEqual(garmentHash(garments), garmentHash(garments))
+        XCTAssertNotEqual(garmentHash(garments), garmentHash(single))
+    }
+
+    func testAnalyzeGarmentsAndDebugLayers() throws {
+        let width = 100, height = 200
+        let (px, regions) = pantsImage(width: width, height: height)
+        let (result, layers, extracted) = try px.withUnsafeBufferPointer { buf in
+            try regions.withUnsafeBufferPointer { r in
+                (try analyzeGarments(rgba: buf, width: width, height: height, stride: width * 4, topK: 5, regions: r),
+                 try garmentDebugLayers(rgba: buf, width: width, height: height, stride: width * 4, topK: 5, regions: r),
+                 try extractGarments(rgba: buf, width: width, height: height, stride: width * 4, regions: r))
+            }
+        }
+        XCTAssertEqual(result.garments, extracted)
+        XCTAssertEqual(result.analysis.swatches, extracted.map(\.swatch))
+        XCTAssertEqual(result.analysis.hits.count, 5)
+        XCTAssertEqual(layers.result, result)
+        XCTAssertEqual(layers.layers.analysis, result.analysis)
+        XCTAssertEqual(layers.layers.explanations.count, 5)
+        let n = layers.layers.debug.reducedWidth * layers.layers.debug.reducedHeight
+        XCTAssertEqual(layers.garmentMap.count, n)
+        XCTAssertEqual(layers.regionMap.count, n)
+        for i in 0..<n where layers.garmentMap[i] != paletteLabelNone {
+            let g = Int(layers.garmentMap[i])
+            XCTAssertLessThan(g, extracted.count)
+            XCTAssertEqual(Int(layers.regionMap[i]), extracted[g].region.rawValue)
+        }
+        // El mismo match que analyze con los swatches de prenda.
+        XCTAssertEqual(layers.layers.explanations.map(\.comboId), result.analysis.hits.map(\.comboId))
+    }
+
+    func testGarmentRegionsMatchClothingSupport() throws {
+        let width = 200, height = 400
+        let person = [UInt8](repeating: 255, count: width * height)
+        let pose = frontPose()
+        let (regions, pixels) = try garmentRegions(pose: pose, personMask: person, width: width, height: height)
+        let (cloth, clothPixels) = try clothingRegions(pose: pose, mask: person, width: width, height: height)
+        XCTAssertEqual(pixels, clothPixels)
+        XCTAssertEqual(regions.map { $0 != 0 }, cloth.map { $0 != 0 })
+        XCTAssertEqual(regions[150 * width + 100], 1)
+        XCTAssertEqual(regions[250 * width + 125], 2)
+        XCTAssertEqual(regions[60 * width + 100], 0)
+        var noHips = pose
+        noHips[.leftHip] = .missing
+        noHips[.rightHip] = .missing
+        XCTAssertThrowsError(try garmentRegions(pose: noHips, personMask: person, width: width, height: height)) { error in
+            XCTAssertEqual(error as? ColorEngineError, .poseMissing)
+        }
+        XCTAssertThrowsError(try garmentRegions(pose: pose, personMask: [1, 2, 3], width: width, height: height)) { error in
+            XCTAssertEqual(error as? ColorEngineError, .maskTooSmall(required: width * height, actual: 3))
+        }
+    }
+
+    func testGarmentErrors() throws {
+        let width = 16, height = 16
+        let (px, regions) = pantsImage(width: width, height: height)
+        try px.withUnsafeBufferPointer { buf in
+            try regions.withUnsafeBufferPointer { r in
+                XCTAssertThrowsError(try extractGarments(rgba: buf, width: width, height: height, stride: width * 4,
+                                                         regions: r, regionCount: 3)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .engine(code: -1))
+                }
+                var bad = GarmentOptions.default
+                bad.litLowPercentile = 0.99 // > litHighPercentile por defecto (0,95)
+                XCTAssertThrowsError(try extractGarments(rgba: buf, width: width, height: height, stride: width * 4,
+                                                         garmentOptions: bad, regions: r)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .engine(code: -6))
+                }
+                XCTAssertThrowsError(try analyzeGarments(rgba: buf, width: width, height: height, stride: width * 4,
+                                                         topK: 0, regions: r)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .engine(code: -1))
+                }
+            }
+            let short = [UInt8](repeating: 1, count: width * height - 1)
+            try short.withUnsafeBufferPointer { r in
+                XCTAssertThrowsError(try extractGarments(rgba: buf, width: width, height: height, stride: width * 4,
+                                                         regions: r)) { error in
+                    XCTAssertEqual(error as? ColorEngineError, .maskTooSmall(required: width * height, actual: width * height - 1))
                 }
             }
         }

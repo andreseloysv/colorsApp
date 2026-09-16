@@ -21,6 +21,13 @@
 #   make golden-update GOLDEN_REASON="..."  regenera fixtures y goldens (ruta protegida) y
 #                    anota el motivo en harness/CHANGELOG.md; exige GOLDEN_REASON
 #   make l4          runner mínimo de la capa 4 sobre $COLORSAPP_GOLDEN_DIR (skipped sin ella)
+#   make garments-block  solo el bloque «prendas» de L2 (oracle.garments: 170 composiciones sombreadas con
+#                    mapa de regiones, incluidas las familias de sombra abierta de exterior que azulea,
+#                    estampado con sombra, degradado de color y las informativas bicolor tonal y banda de
+#                    fusión; harness/out/garments_detail.json)
+#   make garments-sweep  barrido de calibración de la paleta por prenda (shade_kL x shade_merge_de y
+#                    percentiles del tono iluminado) sobre las composiciones sombreadas, las de L2, las
+#                    imágenes de test_garment y harness/people; harness/out/garments_sweep.{json,md}
 #   make names-todo  cuántas combinaciones siguen sin nombre (pending) y sus ids
 #   make names-html  genera harness/label/names.html (curación por lotes de 20,
 #                    HTML autocontenido; exporta names.es.json)
@@ -70,7 +77,7 @@ FEEDBACK_EXTRACT ?=
 # no se toca build/.
 LABEL_CE ?= $(BUILD)/tools/ce
 
-.PHONY: eval eval-fast l2 l2-fast l3 l3-fast golden-check golden-update l4 names-todo names-html \
+.PHONY: eval eval-fast l2 l2-fast l3 l3-fast golden-check golden-update l4 names-todo names-html garments-block garments-sweep \
         feedback-report label-html labels-merge
 
 # Códigos de salida: oracle.eval sale con 1 si falta una capa o falla un umbral;
@@ -109,6 +116,12 @@ golden-update: build
 
 l4: build
 	$(UV) python -m l4.run --cli $(BUILD)/tools/ce --out $(HARNESS_OUT)
+
+garments-block: build
+	$(UV) python -m oracle.garments block --cli $(BUILD)/tools/ce --out $(HARNESS_OUT)
+
+garments-sweep: build
+	$(UV) python -m oracle.garments sweep --cli $(BUILD)/tools/ce --out $(HARNESS_OUT)
 
 names-todo:
 	$(UV) python -m oracle.names todo

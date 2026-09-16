@@ -312,6 +312,49 @@ enum LayerBitmaps {
         return rgbaImage(width: width, height: height, premultiplied: px)
     }
 
+    /// Colores de las regiones de prenda de la capa «Prendas» (ADR-011): 1 arriba (azul),
+    /// 2 abajo (rosa), 3 prenda entera (violeta). Son colores de DIAGRAMA, elegidos para no
+    /// parecerse a los de la ropa (que sí salen tal cual en las demás capas): así se ve que lo
+    /// pintado es el mapa de regiones y no la foto. El 0 y `paletteLabelNone` (fuera del mapa)
+    /// quedan oscurecidos, como en las demás capas del motor.
+    static let garmentRegionColors: [Int: RGB] = [
+        1: RGB(r: 0, g: 140, b: 255),
+        2: RGB(r: 255, g: 64, b: 160),
+        3: RGB(r: 168, g: 90, b: 230),
+    ]
+
+    /// Mapa de regiones de prenda del motor (`ce_debug_region_map`, imagen REDUCIDA) pintado
+    /// por región; fuera del mapa queda una veladura oscura para que se vea qué píxeles no
+    /// entran en ninguna prenda.
+    static func garmentRegions(_ regions: [UInt8], width: Int, height: Int, alpha: UInt8 = 200) -> CGImage? {
+        guard regions.count == width * height else { return nil }
+        var table = [UInt8](repeating: 0, count: 256 * 4)
+        for v in 0..<256 {
+            let o = v * 4
+            if let c = garmentRegionColors[v] {
+                let a = Double(alpha) / 255
+                // Alpha premultiplicada.
+                (table[o], table[o + 1], table[o + 2], table[o + 3]) =
+                    (UInt8(Double(c.r) * a), UInt8(Double(c.g) * a), UInt8(Double(c.b) * a), alpha)
+            } else {
+                table[o + 3] = 150
+            }
+        }
+        var px = [UInt8](repeating: 0, count: width * height * 4)
+        px.withUnsafeMutableBufferPointer { p in
+            regions.withUnsafeBufferPointer { r in
+                table.withUnsafeBufferPointer { tb in
+                    for i in 0..<(width * height) {
+                        let o = i * 4
+                        let k = Int(r[i]) * 4
+                        (p[o], p[o + 1], p[o + 2], p[o + 3]) = (tb[k], tb[k + 1], tb[k + 2], tb[k + 3])
+                    }
+                }
+            }
+        }
+        return rgbaImage(width: width, height: height, premultiplied: px)
+    }
+
     /// Label map a color sin transparencia (diagnóstico `<base>.labels.png`):
     /// como `ce ... --debug-dir` labels.ppm (NONE negro, DISCARDED gris 128).
     static func labelsOpaque(_ labels: [UInt8], width: Int, height: Int, swatches: [Swatch]) -> CGImage? {

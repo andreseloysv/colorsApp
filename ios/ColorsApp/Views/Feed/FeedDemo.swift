@@ -3,7 +3,9 @@
 // directorio temporal y un Jardín en memoria, y siembra tres análisis reales del motor:
 // la foto de grupo embebida en Debug (harness/people/06_group_courier_street.png, CC0)
 // sin recorte y las escenas sintéticas de una y dos personas (SyntheticPersonScene, con
-// la cadena real de máscaras del motor). Todas se marcan «Ejemplo» en la cabecera.
+// la cadena real de máscaras del motor y la PALETA POR PRENDA, ADR-011). Todas se marcan
+// «Ejemplo» en la cabecera. La de dos personas se deja además con la versión de política
+// vieja para ver la marca «Análisis antiguo» y el re-análisis al abrirla en Extraer.
 // `-uiScreen feed-empty` usa la misma base en memoria sin sembrar (estado vacío).
 #if DEBUG
 import SwiftUI
@@ -75,15 +77,23 @@ struct FeedDemo {
             garden.save(scanId: group.scan.id)
             if let top = group.scan.top1 { _ = try? await env.unlocks.unlock(comboId: top, source: .picker, scanId: group.scan.id) }
         }
-        // 2) Escena sintética de una persona: solo ropa con pose y piel adaptativa, sin votar.
+        // 2) Escena sintética de una persona: solo ropa con pose, piel adaptativa y un color
+        //    por prenda (arriba / abajo), sin votar.
         let single = SyntheticPersonScene.make()
-        _ = await add(single.image, source: .camera, subject: .default, people: [single.person], hoursAgo: 26)
-        // 3) Dos personas, todas: votada «No».
+        _ = await add(single.image, source: .camera, subject: SubjectSettings.default.subjectOptions,
+                      people: [single.person], hoursAgo: 26)
+        // 3) Dos personas, todas: votada «No» y guardada con una POLÍTICA VIEJA (como los scans
+        //    que ya están en el iPhone): la publicación sale marcada «Análisis antiguo» y al
+        //    abrirla en Extraer se re-analiza y avisa «Actualizado con el motor nuevo».
         let two = SyntheticPersonScene.makeTwo()
-        var all = SubjectOptions.default
+        var all = SubjectSettings.default.subjectOptions
         all.mode = .allPeople
         if let pair = await add(two.image, source: .library, subject: all, people: two.people, hoursAgo: 75) {
             _ = try? await env.feedback.record(scanId: pair.scan.id, verdict: .no)
+            var old = pair.scan
+            old.enginePolicyVersion = nil
+            old.engineVersion = "0.0.1"
+            try? await env.scans.update(old)
         }
         // Algunas combinaciones en la rejilla (incluida la del día) para el estado «En tu rejilla».
         _ = try? await env.unlocks.unlock(comboIds: [DayPick.comboId(for: now), 12, 67], source: .manual)

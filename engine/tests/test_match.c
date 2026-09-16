@@ -13,6 +13,10 @@
  *    top_k/n fuera de rango, NaN/inf en opciones, swatches inválidos, contexto
  *    sin inicializar; nada escribe en las salidas; semántica de ambiguous_gap;
  *    errores de ce_analyze.
+ * 1c. Regresión de "falsa adaptación" (caso real del usuario, 2026-09-15):
+ *    la paleta de una foto con camiseta negra y pantalón rosa palo (solo
+ *    valores hex y pesos, nunca la foto) no puede dar una combinación azul
+ *    con las opciones por defecto; con illuminant_search = 1 sale Nº 067.
  * 4. ce_result_hash: dos análisis idénticos (mismo y distinto contexto) ->
  *    mismo hash; imagen distinta -> hash distinto.
  * 5. Rendimiento: MATCH_MS (5 swatches, 348 combinaciones, mejor de 200) y
@@ -270,6 +274,7 @@ static void test_adaptation_hypotheses(void)
     int ok_on[6] = {0, 0, 0, 0, 0, 0}, ok_off[6] = {0, 0, 0, 0, 0, 0}, not_worse = 0, total = 0;
 
     ce_match_opts_default(&on);
+    on.illuminant_search = 1; /* desde ADR-009 (2026-09-15) no es el valor por defecto */
     ce_match_opts_default(&off);
     off.exposure_ev_max = 0.0;
     off.illuminant_search = 0;
@@ -300,6 +305,103 @@ static void test_adaptation_hypotheses(void)
     }
     /* Combinación A y -0.5 EV (dentro de la rejilla, con una pequeña penalización). */
     TEST_ASSERT_TRUE_MESSAGE(ok_on[5] >= ncombos - 8, "recall@1 con A y -0.5 EV debe ser >= 340/348");
+    free(mem);
+}
+
+/* Tono hab (grados, [0, 360)) y croma C*ab de un Lab. */
+static double lab_hue_deg(ce_lab lab)
+{
+    double h = atan2(lab.b, lab.a) * 180.0 / 3.14159265358979323846;
+    return h < 0.0 ? h + 360.0 : h;
+}
+
+static double lab_chroma(ce_lab lab)
+{
+    return sqrt(lab.a * lab.a + lab.b * lab.b);
+}
+
+static double hue_diff_deg(double h1, double h2)
+{
+    double d = fabs(h1 - h2);
+    return d > 180.0 ? 360.0 - d : d;
+}
+
+/* Diferencia de tono entre el swatch `s` y el color de la combinación `id`
+ * más cercano a él por ΔE00 (sin adaptación: lo que ve el usuario). */
+static double nearest_combo_color_hue_diff(int id, ce_lab s, ce_lab *nearest)
+{
+    uint8_t size = 0, colors[CE_DICT_COMBO_MAX];
+    double best = HUGE_VAL;
+    int j;
+    TEST_ASSERT_EQUAL_INT(0, ce_dict_combo(id, &size, colors));
+    for (j = 0; j < (int)size; ++j) {
+        const ce_lab c = ce_dict_color_lab(colors[j]);
+        const double d = ce_de2000(s, c);
+        if (d < best) {
+            best = d;
+            *nearest = c;
+        }
+    }
+    return hue_diff_deg(lab_hue_deg(s), lab_hue_deg(*nearest));
+}
+
+static void test_false_adaptation_pink_black(void)
+{
+    /* Paleta extraída por la app (CONTEXT §11): #222524 39,4 %, #b49aa2 22,7 %,
+     * #917a7e 16,2 %, #d5b8c0 13,4 %, #6b5a57 8,3 %. */
+    static const uint8_t rgb[5][3] = {{0x22, 0x25, 0x24}, {0xb4, 0x9a, 0xa2}, {0x91, 0x7a, 0x7e},
+                                      {0xd5, 0xb8, 0xc0}, {0x6b, 0x5a, 0x57}};
+    static const double weight[5] = {0.394, 0.227, 0.162, 0.134, 0.083};
+    void *mem;
+    ce_ctx *ctx = ctx_new(&mem);
+    ce_swatch sw[5];
+    ce_hit hits[CE_MATCH_MAX_HITS], hits_ill[CE_MATCH_MAX_HITS];
+    ce_match_opts mo;
+    ce_lab nearest;
+    int i, amb, dominant = -1;
+    double dh, dh_ill;
+
+    for (i = 0; i < 5; ++i) {
+        sw[i].lab = ce_srgb8_to_lab(rgb[i][0], rgb[i][1], rgb[i][2]);
+        sw[i].rgb[0] = rgb[i][0]; sw[i].rgb[1] = rgb[i][1]; sw[i].rgb[2] = rgb[i][2];
+        sw[i].weight = weight[i];
+        /* Swatch cromático dominante: el más pesado con C*ab >= 8 (el mauve #b49aa2). */
+        if (dominant < 0 && lab_chroma(sw[i].lab) >= 8.0) dominant = i;
+    }
+    TEST_ASSERT_EQUAL_INT(1, dominant);
+
+    /* Opciones por defecto (las de la app): rosa + negro, nunca la pareja azul. */
+    ce_match_opts_default(&mo);
+    TEST_ASSERT_EQUAL_INT(0, mo.illuminant_search);
+    TEST_ASSERT_EQUAL_INT(CE_MATCH_MAX_HITS, ce_match(ctx, sw, 5, &mo, hits, CE_MATCH_MAX_HITS, &amb));
+    dh = nearest_combo_color_hue_diff(hits[0].combo_id, sw[dominant].lab, &nearest);
+    printf("FALSE_ADAPT default: top-3 %u (%.4f) %u (%.4f) %u (%.4f); color de la top-1 más cercano al mauve "
+           "L %.1f C %.1f h %.1f (Δh %.1f)\n", (unsigned)hits[0].combo_id, hits[0].score,
+           (unsigned)hits[1].combo_id, hits[1].score, (unsigned)hits[2].combo_id, hits[2].score,
+           nearest.L, lab_chroma(nearest), lab_hue_deg(nearest), dh);
+    TEST_ASSERT_TRUE_MESSAGE(hits[0].combo_id == 337 || hits[0].combo_id == 27, "top-1 por defecto debe ser 337 o 27");
+    for (i = 0; i < 3; ++i) {
+        TEST_ASSERT_TRUE_MESSAGE(hits[i].combo_id != 67, "Nº 067 (azul) no puede estar en el top-3 por defecto");
+    }
+    /* "No azul": el color de la top-1 más cercano a cada swatch rosa conserva el
+     * tono (Δhab <= 60°) y ninguno es azul (hab en 200..300 con C*ab >= 8). */
+    for (i = 1; i < 5; ++i) {
+        const double d = nearest_combo_color_hue_diff(hits[0].combo_id, sw[i].lab, &nearest);
+        const double h = lab_hue_deg(nearest);
+        TEST_ASSERT_FALSE_MESSAGE(lab_chroma(nearest) >= 8.0 && h >= 200.0 && h <= 300.0,
+                                  "un rosa quedó emparejado con un color azul");
+        if (i == dominant) TEST_ASSERT_TRUE(d <= 60.0);
+    }
+
+    /* La hipótesis sigue disponible como opción y reproduce el fallo: Nº 067
+     * gana compensando una luz A inexistente (el giro de tono que mide L3). */
+    mo.illuminant_search = 1;
+    TEST_ASSERT_EQUAL_INT(CE_MATCH_MAX_HITS, ce_match(ctx, sw, 5, &mo, hits_ill, CE_MATCH_MAX_HITS, &amb));
+    dh_ill = nearest_combo_color_hue_diff(hits_ill[0].combo_id, sw[dominant].lab, &nearest);
+    printf("FALSE_ADAPT illuminant_search=1: top-1 %u (%.4f); color más cercano al mauve h %.1f (Δh %.1f)\n",
+           (unsigned)hits_ill[0].combo_id, hits_ill[0].score, lab_hue_deg(nearest), dh_ill);
+    TEST_ASSERT_EQUAL_INT(67, hits_ill[0].combo_id);
+    TEST_ASSERT_TRUE(dh_ill > 60.0);
     free(mem);
 }
 
@@ -909,6 +1011,7 @@ int main(void)
     RUN_TEST(test_recall_exact_block_images);
     RUN_TEST(test_adaptation_hypotheses);
     RUN_TEST(test_adaptation_opts_validation);
+    RUN_TEST(test_false_adaptation_pink_black);
     RUN_TEST(test_exact_palettes_score_zero);
     RUN_TEST(test_tie_break_by_id);
     RUN_TEST(test_score_properties);

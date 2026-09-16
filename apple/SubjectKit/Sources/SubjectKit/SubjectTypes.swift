@@ -57,8 +57,10 @@ public struct SubjectOptions: Equatable, Sendable {
     public var selectedIndex: Int? = nil
     /// Opciones de `clothingRegions` (defecto del motor: ce_region_opts_default).
     public var regionOptions: RegionOptions = .default
-    /// Opciones de `excludeSkin` (defecto del motor: ce_skin_opts_default).
-    public var skinOptions: SkinOptions = .default
+    /// Opciones de `excludeSkin`. Preajuste de SubjectKit `SubjectOptions.defaultSkinOptions`
+    /// (Mahalanobis 2,75, salvaguarda 35 %), no el del motor (2,5): con 2,5 la piel en
+    /// sombra de manos y brazos quedaba en la paleta (harness/people 05; ADR-010).
+    public var skinOptions: SkinOptions = SubjectOptions.defaultSkinOptions
     /// Suelo ABSOLUTO (fracción del raster, 0...1) que debe cubrir la silueta de
     /// la pose, una región candidata y la máscara final de cada persona. Por
     /// defecto 0,0005 (≈ 350 px en un raster de 1024 x 683, ≈ 20 píxeles de la
@@ -79,11 +81,84 @@ public struct SubjectOptions: Equatable, Sendable {
     /// región (manga corta o sin mangas: la piel en sombra que el modelo no
     /// alcanza también se va). 1 = nunca.
     public var bareArmsSkinFraction = 0.25
+    /// Piel del cuerpo aprendida (con modelo de piel, región de ropa y pose): si los brazos
+    /// o las piernas de la región son desnudos (>= `bareArmsSkinFraction` de sus píxeles es
+    /// piel con el modelo de la cara), la muestra se amplía hasta este número de veces con
+    /// los píxeles de la región con brazos que el modelo vigente marca como piel a
+    /// Mahalanobis <= `skinLearningMahalanobis`, y el modelo se reajusta (el motor:
+    /// `fitSkinModel`). Así la piel del cuerpo con la luz del cuerpo (hombros al sol,
+    /// escote y piernas en sombra: harness/people 07 y 02) entra en el modelo aunque la
+    /// cara esté iluminada de otra forma. Se detiene si una pasada no añade nada, si marcaría
+    /// más de `skinOptions.maxExcludedFraction` de la zona (prenda color piel) o si el modelo
+    /// ampliado dispararía la salvaguarda en la región (esa pasada no se acepta). 0 = nunca.
+    public var skinLearningIterations = 2
+    /// Umbral de Mahalanobis de los píxeles que amplían la muestra (ver `skinLearningIterations`).
+    public var skinLearningMahalanobis = 3.0
+    /// Tras excluir piel (y crecerla), se quitan además los píxeles de la máscara a distancia de
+    /// Chebyshev <= este radio de un píxel de piel quitado: los bordes piel/prenda mezclan
+    /// los dos colores (desenfoque, JPEG, reescalado) y arrastran un swatch hacia la piel; el
+    /// motor además promedia bloques de 4 x 4 px del raster de 1024 (ce_image_reduce) con los
+    /// píxeles fuera de la máscara incluidos. 0 = sin halo. No se aplica con la salvaguarda.
+    /// Defecto 2 (antes 1): con 1 px la piel de los bordes seguía formando un swatch en
+    /// harness/people 05 y 07 (ADR-010).
+    public var skinHaloRadius = 2
+    /// (Nuevo) Crecimiento de la piel en sombra: tras `excludeSkin`, los píxeles que quedan en la
+    /// máscara a Mahalanobis <= este umbral del mismo modelo y CONECTADOS (vecindad de 8, a lo
+    /// sumo `skinGrowRadius` pasos) con la piel quitada también se quitan (histéresis: el
+    /// umbral estricto siembra, este deja crecer). La piel en sombra del cuello, la axila, el
+    /// canto de la mano o los dedos queda fuera del elipsoide estrecho de las mejillas pero
+    /// pegada a la piel iluminada; una prenda de color piel lejos de la piel no se toca. Si
+    /// piel + crecimiento superan `skinOptions.maxExcludedFraction` de la máscara o el crecimiento supera
+    /// `skinGrowMaxRatio` de la piel quitada, no se crece.
+    /// Umbral <= `skinOptions.maxMahalanobis` o radio 0 = sin crecimiento.
+    public var skinGrowMahalanobis = 5.0
+    /// (Nuevo) Pasos máximos (Chebyshev, px del raster) del crecimiento desde la piel quitada.
+    public var skinGrowRadius = 12
+    /// (Nuevo) El crecimiento no se aplica si añade más de esta fracción de los píxeles que quitó
+    /// `excludeSkin` (0...1). La sombra de la piel es un borde de la piel iluminada (harness/people:
+    /// 0,19 en 02, 0,34 en 05, 0,25 en 07); una prenda de color piel con unos pocos píxeles dentro del
+    /// umbral estricto crecería mucho más que su semilla (simulación de riesgo, ADR-010).
+    public var skinGrowMaxRatio = 0.5
+    /// Sin modelo de piel (se pidió piel y no hay cara utilizable): los brazos se quitan
+    /// salvo que sean mangas de la prenda del torso: si al menos `sleeveMatchFraction` de
+    /// los píxeles de los brazos está a Mahalanobis <= `sleeveMatchMahalanobis` del modelo
+    /// gaussiano del torso (`fitSkinModel` con el torso como muestra), se quedan
+    /// (harness/people 03: camisa de rayas de espaldas). 1 = quitarlos siempre.
+    public var sleeveMatchFraction = 0.7
+    /// Umbral de Mahalanobis de la prueba de mangas (ver `sleeveMatchFraction`).
+    public var sleeveMatchMahalanobis = 2.0
+    /// Evidencia corporal para aceptar una instancia de Vision como persona (`compute`).
+    public var phantomOptions: PhantomOptions = .default
+    /// (Nuevo, aditivo) Calcular el mapa de regiones de prenda (`SubjectMaskResult.garmentRegions`,
+    /// `PersonLayers.garmentRegions`) para la paleta por prenda del motor (`analyzeGarments`,
+    /// ADR-011): con `region == .clothing` y una persona cuya región sale de la pose
+    /// (`RegionDecision.source` `.poseRegions` o `.poseSilhouette`), `ce_mask_garment_regions` con
+    /// la pose del motor, las opciones de la silueta (`garmentRegionOptions`) y la máscara que
+    /// recibe el motor para esa persona; añade el paso `.garmentRegions`. Sin pose (recorte de
+    /// cabeza), con `wholePerson`, sin máscara o con CE_ERR_POSE, el mapa es nil y la app sigue con
+    /// el camino clásico (`analyze`). Por defecto false: los pasos, la máscara y lo que guarda la
+    /// app no cambian hasta que la app lo active al integrar la paleta por prenda.
+    public var computeGarmentRegions = false
+    /// (Nuevo, aditivo) Separación de instancias que Vision fusiona (`PersonSplitter`,
+    /// `ce_mask_split_instance`): personas nuevas con `splitFrom` y paso `.splitByPose` /
+    /// `.splitByFace`. `SplitOptions.enabled = false` devuelve el comportamiento anterior
+    /// (una persona por instancia de Vision).
+    public var splitOptions: SplitOptions = .default
+
+    /// Preajuste de piel de SubjectKit: Mahalanobis 2,75 y salvaguarda 0,35.
+    public static var defaultSkinOptions: SkinOptions {
+        SkinOptions(maxMahalanobis: 2.75, maxExcludedFraction: SkinOptions.default.maxExcludedFraction)
+    }
 
     public init(mode: SubjectMode = .largestPerson, region: RegionMode = .clothing, adaptiveSkin: Bool = true,
                 selectedIndex: Int? = nil, regionOptions: RegionOptions = .default,
-                skinOptions: SkinOptions = .default, minCoverage: Double = 0.0005, minRegionFraction: Double = 0.15,
-                shareSkinModel: Bool = true, bareArmsSkinFraction: Double = 0.25) {
+                skinOptions: SkinOptions = SubjectOptions.defaultSkinOptions, minCoverage: Double = 0.0005,
+                minRegionFraction: Double = 0.15, shareSkinModel: Bool = true, bareArmsSkinFraction: Double = 0.25,
+                skinLearningIterations: Int = 2, skinLearningMahalanobis: Double = 3.0, skinHaloRadius: Int = 2,
+                sleeveMatchFraction: Double = 0.7, sleeveMatchMahalanobis: Double = 2.0,
+                phantomOptions: PhantomOptions = .default, skinGrowMahalanobis: Double = 5.0, skinGrowRadius: Int = 12,
+                skinGrowMaxRatio: Double = 0.5, computeGarmentRegions: Bool = false,
+                splitOptions: SplitOptions = .default) {
         self.mode = mode
         self.region = region
         self.adaptiveSkin = adaptiveSkin
@@ -94,17 +169,34 @@ public struct SubjectOptions: Equatable, Sendable {
         self.minCoverage = minCoverage
         self.minRegionFraction = minRegionFraction
         self.bareArmsSkinFraction = bareArmsSkinFraction
+        self.skinLearningIterations = skinLearningIterations
+        self.skinLearningMahalanobis = skinLearningMahalanobis
+        self.skinHaloRadius = skinHaloRadius
+        self.sleeveMatchFraction = sleeveMatchFraction
+        self.sleeveMatchMahalanobis = sleeveMatchMahalanobis
+        self.phantomOptions = phantomOptions
+        self.skinGrowMahalanobis = skinGrowMahalanobis
+        self.skinGrowRadius = skinGrowRadius
+        self.skinGrowMaxRatio = skinGrowMaxRatio
+        self.computeGarmentRegions = computeGarmentRegions
+        self.splitOptions = splitOptions
     }
 
     /// Persona más grande, solo ropa, piel adaptativa (compartida si la persona no
-    /// tiene cara utilizable), regiones >= 15 % de la silueta de la pose, brazos
-    /// fuera si >= 25 % es piel, suelo absoluto 0,05 % del raster.
+    /// tiene cara utilizable; Mahalanobis 2,75, piel del cuerpo aprendida con brazos o
+    /// piernas desnudos, piel en sombra conectada hasta Mahalanobis 5, 12 px y 0,5 de la piel quitada,
+    /// halo de 2 px),
+    /// regiones >= 15 % de la silueta de la pose, brazos
+    /// fuera si >= 25 % es piel (sin modelo: si no son mangas del torso), suelo absoluto
+    /// 0,05 % del raster, personas fantasma descartadas, instancias fusionadas separadas.
     public static var `default`: SubjectOptions { SubjectOptions() }
 }
 
 /// Una persona detectada (o construida a mano en los tests).
 public struct PersonInstance: Equatable, Sendable, Identifiable {
-    /// Índice de instancia de Vision (1...n; 0 es el fondo en la máscara de instancias).
+    /// Índice de instancia de Vision (1...n; 0 es el fondo en la máscara de
+    /// instancias) o, en una persona separada de una instancia que juntaba a
+    /// varias (`splitFrom` != nil), un id nuevo mayor que todos los de Vision.
     public let id: Int
     /// Máscara de la persona reescalada al raster tal como la da Vision
     /// (width * height bytes, 0...255, blanda). La cadena usa su versión binaria
@@ -125,9 +217,13 @@ public struct PersonInstance: Equatable, Sendable, Identifiable {
     /// Rectángulo de la cara asociada (píxeles del raster), nil sin cara. Sin pose
     /// utilizable fija la altura del recorte de cabeza (`SubjectExtractor.cutHeadFraction(bodyBox:faceBox:)`).
     public let faceBox: CGRect?
+    /// (Nuevo, aditivo) Id de la instancia de Vision de la que se separó esta
+    /// persona (Vision juntó a varias personas que se tocaban; ver
+    /// `PersonSplitter`), nil si la persona es una instancia de Vision tal cual.
+    public let splitFrom: Int?
 
     public init(id: Int, mask: [UInt8], coverage: Double, bbox: CGRect, pose: Pose?, faceSampleMask: [UInt8]?,
-                faceBox: CGRect? = nil) {
+                faceBox: CGRect? = nil, splitFrom: Int? = nil) {
         self.id = id
         self.mask = mask
         self.coverage = coverage
@@ -135,14 +231,23 @@ public struct PersonInstance: Equatable, Sendable, Identifiable {
         self.pose = pose
         self.faceSampleMask = faceSampleMask
         self.faceBox = faceBox
+        self.splitFrom = splitFrom
     }
 
     /// Calcula `coverage` y `bbox` a partir de la máscara (`width` x `height`).
     public init(id: Int, mask: [UInt8], width: Int, height: Int, pose: Pose? = nil, faceSampleMask: [UInt8]? = nil,
-                faceBox: CGRect? = nil) {
+                faceBox: CGRect? = nil, splitFrom: Int? = nil) {
         let stats = MaskOps.stats(mask, width: width, height: height)
         self.init(id: id, mask: mask, coverage: stats.coverage, bbox: stats.bbox, pose: pose,
-                  faceSampleMask: faceSampleMask, faceBox: faceBox)
+                  faceSampleMask: faceSampleMask, faceBox: faceBox, splitFrom: splitFrom)
+    }
+
+    /// (Nuevo, aditivo) Paso de separación de esta persona: `.splitByPose` si su
+    /// semilla fue una pose (la persona separada lleva esa pose), `.splitByFace`
+    /// si fue una cara sin pose; nil si no se separó.
+    public var splitStep: MaskFallback? {
+        guard splitFrom != nil else { return nil }
+        return pose != nil ? .splitByPose : .splitByFace
     }
 }
 
@@ -170,6 +275,61 @@ public enum MaskFallback: String, Sendable {
     case skinGuard
     /// Vision lanzó un error (p. ej. simulador sin soporte): sin máscara.
     case visionUnavailable
+    /// (Nuevo, aditivo) Vision devolvió al menos una instancia sin evidencia corporal
+    /// (sin pose con torso dentro, sin cara y sin silueta plausible: `PersonEvidence`) y se
+    /// descartó. Va PRIMERO en los pasos: le siguen los de las personas que quedan o
+    /// `.noPeople` (foto completa) si no queda ninguna. Las instancias descartadas están
+    /// en `SubjectMaskResult.rejectedPhantoms`. Los `switch` exhaustivos sobre
+    /// `MaskFallback` deben añadir este caso (p. ej. «Persona fantasma descartada»).
+    case rejectedPhantom
+    /// (Nuevo, aditivo) Mapa de regiones de prenda calculado con la pose
+    /// (`SubjectOptions.computeGarmentRegions`, `SubjectMaskResult.garmentRegions`: 1 arriba,
+    /// 2 abajo). Va AL FINAL de los pasos (después de la piel y del respaldo): no cambia la
+    /// máscara, solo reparte sus píxeles en prendas. Sin pose no aparece (mapa nil: camino
+    /// clásico). Los `switch` exhaustivos sobre `MaskFallback` deben añadir este caso (p. ej.
+    /// «Regiones de prenda»).
+    case garmentRegions
+    /// (Nuevo, aditivo) La persona sale de una instancia de Vision que juntaba a varias,
+    /// separada con su POSE como semilla (`ce_mask_split_instance`). Va PRIMERO en los
+    /// pasos de esa persona. Los `switch` exhaustivos sobre `MaskFallback` deben añadir
+    /// este caso (p. ej. «Persona separada por su pose»).
+    case splitByPose
+    /// (Nuevo, aditivo) Idem con su CARA como semilla (cara sin pose utilizable). Los
+    /// `switch` exhaustivos deben añadir este caso (p. ej. «Persona separada por su cara»).
+    case splitByFace
+}
+
+/// (Nuevo, aditivo) Recuentos del mapa de regiones de prenda de una persona
+/// (`PersonLayers.garmentRegionStats`).
+public struct GarmentRegionStats: Equatable, Sendable {
+    /// Píxeles con 1 (arriba: torso y brazos) en el mapa final.
+    public let upperPixels: Int
+    /// Píxeles con 2 (abajo: caderas a tobillos) en el mapa final.
+    public let lowerPixels: Int
+    /// Píxeles > 0 de la máscara con la que se calculó el mapa (la que recibe el motor para esta
+    /// persona). Con la silueta de la pose como opciones, upper + lower == maskPixels.
+    public let maskPixels: Int
+    /// true si la pose tenía las caderas ESTIMADAS (plano medio, `RegionDecision.hipsEstimated`):
+    /// no se ve la parte de abajo y los píxeles que el motor etiquetó 2 (franja del torso más
+    /// allá de las caderas inventadas) pasan a 1 (una sola prenda, la de arriba).
+    public let lowerMergedIntoUpper: Bool
+    /// Píxeles que el motor etiquetó 2 antes de unirlos a la parte de arriba (0 si no se unieron).
+    public let mergedLowerPixels: Int
+    /// Opciones de `ce_mask_garment_regions` usadas (`SubjectExtractor.garmentRegionOptions`).
+    public let options: RegionOptions
+    /// Pose entregada al motor (`RegionDecision.regionPose`).
+    public let pose: Pose
+
+    public init(upperPixels: Int, lowerPixels: Int, maskPixels: Int, lowerMergedIntoUpper: Bool, mergedLowerPixels: Int,
+                options: RegionOptions, pose: Pose) {
+        self.upperPixels = upperPixels
+        self.lowerPixels = lowerPixels
+        self.maskPixels = maskPixels
+        self.lowerMergedIntoUpper = lowerMergedIntoUpper
+        self.mergedLowerPixels = mergedLowerPixels
+        self.options = options
+        self.pose = pose
+    }
 }
 
 /// De dónde sale la región de una persona.
@@ -217,20 +377,36 @@ public struct RegionDecision: Equatable, Sendable {
     /// `SubjectExtractor.silhouetteOptions` de estas); nil si no se llamó con pose.
     public let regionOptions: RegionOptions?
     /// true si se quitaron los brazos de las opciones de la app porque se pidió
-    /// excluir piel y no había muestra de piel (propia ni compartida).
+    /// excluir piel, no había muestra de piel (propia ni compartida) y la prueba de
+    /// mangas no los reconoció como mangas de la prenda del torso (`sleevesKept`).
     public let upperArmsDropped: Bool
     /// Prueba de brazos desnudos (con modelo de piel y brazos pedidos): píxeles de
-    /// los brazos (regiones con brazos menos sin brazos); nil si no se hizo.
+    /// los brazos (regiones con brazos menos sin brazos); nil si no se hizo. La piel
+    /// (`armSkinPixels`) se cuenta con el modelo final (el aprendido si lo hubo).
     public let armPixels: Int?
     /// Píxeles de esos brazos que el modelo de piel marca como piel (sin salvaguarda).
     public let armSkinPixels: Int?
     /// true si los brazos se quitaron porque armSkinPixels >= ceil(bareArmsSkinFraction · armPixels).
     public let bareArmsDropped: Bool
+    /// Prueba de piernas desnudas (con modelo de piel y piernas en la región): píxeles de las
+    /// piernas (regiones menos regiones sin piernas); nil si no se hizo. Solo decide si se
+    /// aprende la piel del cuerpo (las piernas no se quitan).
+    public let legPixels: Int?
+    /// Píxeles de esas piernas que el modelo de la cara marca como piel (sin salvaguarda).
+    public let legSkinPixels: Int?
+    /// Prueba de mangas sin modelo de piel: píxeles de los brazos probados; nil si no se hizo.
+    public let sleevePixels: Int?
+    /// Píxeles de esos brazos parecidos al torso (Mahalanobis <= sleeveMatchMahalanobis).
+    public let sleeveMatchPixels: Int?
+    /// true si sin modelo de piel los brazos se quedaron por ser mangas de la prenda del torso.
+    public let sleevesKept: Bool
 
     public init(source: RegionSource, bodyPixels: Int, requiredPixels: Int, poseRegionPixels: Int?,
                 silhouettePixels: Int?, regionPixels: Int, regionPose: Pose?, hipsEstimated: Bool,
                 headCutFraction: Double?, regionOptions: RegionOptions? = nil, upperArmsDropped: Bool = false,
-                armPixels: Int? = nil, armSkinPixels: Int? = nil, bareArmsDropped: Bool = false) {
+                armPixels: Int? = nil, armSkinPixels: Int? = nil, bareArmsDropped: Bool = false,
+                legPixels: Int? = nil, legSkinPixels: Int? = nil, sleevePixels: Int? = nil,
+                sleeveMatchPixels: Int? = nil, sleevesKept: Bool = false) {
         self.source = source
         self.bodyPixels = bodyPixels
         self.requiredPixels = requiredPixels
@@ -245,6 +421,11 @@ public struct RegionDecision: Equatable, Sendable {
         self.armPixels = armPixels
         self.armSkinPixels = armSkinPixels
         self.bareArmsDropped = bareArmsDropped
+        self.legPixels = legPixels
+        self.legSkinPixels = legSkinPixels
+        self.sleevePixels = sleevePixels
+        self.sleeveMatchPixels = sleeveMatchPixels
+        self.sleevesKept = sleevesKept
     }
 }
 
@@ -267,12 +448,13 @@ public struct PersonLayers: Sendable {
     /// Silueta de la pose (persona binaria ∩ envolvente ancha del esqueleto, sin
     /// cabeza ni manos); nil sin pose aceptada por el motor.
     public let silhouetteMask: [UInt8]?
-    /// Brazos probados en la prueba de brazos desnudos (255 = píxel de brazo); nil si no se hizo.
+    /// Brazos probados en la prueba de brazos desnudos o, sin modelo de piel, en la de mangas
+    /// (255 = píxel de brazo); nil si no se hizo.
     public let armsMask: [UInt8]?
     /// Muestra de piel de la cara usada para el modelo (la propia o, con
     /// `shareSkinModel`, la de `skinSampleSource`); nil sin muestra o sin `adaptiveSkin`.
     public let faceSampleMask: [UInt8]?
-    /// 255 donde se quitó piel; nil si no se aplicó o si saltó la salvaguarda.
+    /// 255 donde se quitó piel (exclusión, crecimiento y halo); nil si no se aplicó o si saltó la salvaguarda.
     public let skinRemovedMask: [UInt8]?
     /// Máscara de esta persona al final de su cadena (región y piel), ANTES del
     /// suelo `minCoverage`: si luego se volvió a la persona completa
@@ -281,9 +463,12 @@ public struct PersonLayers: Sendable {
     public let finalMask: [UInt8]
     /// Pasos de esta persona.
     public let steps: [MaskFallback]
-    /// Modelo de piel ajustado (nil si no se ajustó).
+    /// Modelo de piel con el que se excluyó (el de la cara o, si se aprendió piel del
+    /// cuerpo, el reajustado con la última de `learnedSampleMasks`); nil si no se ajustó.
     public let skinModel: SkinModel?
-    /// Píxeles que la exclusión de piel pasó a 0 (0 con la salvaguarda o sin modelo).
+    /// Píxeles que la exclusión de piel pasó a 0, crecimiento y halo incluidos (0 con la
+    /// salvaguarda o sin modelo); los del crecimiento solos están en `skinGrownPixels` y los del
+    /// halo en `skinHaloPixels`.
     public let skinExcludedPixels: Int
     /// Por qué no se aplicó la piel teniendo muestra (p. ej. "tooFewSkinSamples"); nil si se aplicó.
     public let skinNote: String?
@@ -299,12 +484,44 @@ public struct PersonLayers: Sendable {
     /// cadena (`.poseSilhouette` con pose, `.wholePerson` = persona binaria sin
     /// ella); nil si no hubo que volver.
     public let fallbackSource: RegionSource?
+    /// Muestras de piel ampliadas con la piel del cuerpo, una por pasada de aprendizaje
+    /// (`faceSampleMask` ∪ candidatos acumulados); la última ajustó `skinModel`. Vacío sin aprendizaje.
+    public let learnedSampleMasks: [[UInt8]]
+    /// Candidatos de piel de la región (lo que cuenta `excludeSkin` sin salvaguarda) en cada
+    /// pasada de aprendizaje aceptada (mismo orden que `learnedSampleMasks`).
+    public let skinLearningPixels: [Int]
+    /// Piernas probadas en la prueba de piernas desnudas (255 = píxel de pierna); nil si no se hizo.
+    public let legsMask: [UInt8]?
+    /// Máscara justo después de `excludeSkin`, antes del halo; nil sin exclusión.
+    public let skinExcludedMask: [UInt8]?
+    /// Píxeles quitados por el halo alrededor de la piel (`skinHaloRadius`).
+    public let skinHaloPixels: Int
+    /// Torso usado en la prueba de mangas (255 = torso); nil si no se hizo.
+    public let sleeveTorsoMask: [UInt8]?
+    /// (Nuevo) Píxeles quitados por el crecimiento de la piel en sombra (`skinGrowMahalanobis`);
+    /// 0 si no hubo crecimiento.
+    public let skinGrownPixels: Int
+    /// (Nuevo) 255 en los píxeles quitados por el crecimiento; nil sin crecimiento aplicado.
+    public let skinGrownMask: [UInt8]?
+    /// (Nuevo) Candidatos del crecimiento: píxeles de `skinExcludedMask` a Mahalanobis <=
+    /// `skinGrowMahalanobis` (lo que cuenta `ce skin` sobre skin_excluded.pgm); nil si no se probó.
+    public let skinGrowCandidatePixels: Int?
+    /// (Nuevo) Mapa de regiones de prenda de esta persona (width * height bytes: 0 fuera, 1 arriba,
+    /// 2 abajo) calculado sobre la máscara que esta persona aporta al motor; nil sin
+    /// `computeGarmentRegions`, sin pose o si la persona no aporta máscara (ver `SubjectOptions`).
+    public let garmentRegions: [UInt8]?
+    /// (Nuevo) Recuentos y entradas del mapa; nil si `garmentRegions` es nil.
+    public let garmentRegionStats: GarmentRegionStats?
 
     public init(personIndex: Int, instanceId: Int, personMask: [UInt8], pose: Pose?, regionMask: [UInt8]?,
                 faceSampleMask: [UInt8]?, skinRemovedMask: [UInt8]?, finalMask: [UInt8], steps: [MaskFallback],
                 skinModel: SkinModel?, skinExcludedPixels: Int, skinNote: String?,
                 regionDecision: RegionDecision? = nil, usedInMask: Bool = true, skinSampleSource: Int? = nil,
-                silhouetteMask: [UInt8]? = nil, armsMask: [UInt8]? = nil, fallbackSource: RegionSource? = nil) {
+                silhouetteMask: [UInt8]? = nil, armsMask: [UInt8]? = nil, fallbackSource: RegionSource? = nil,
+                learnedSampleMasks: [[UInt8]] = [], skinLearningPixels: [Int] = [], skinExcludedMask: [UInt8]? = nil,
+                skinHaloPixels: Int = 0, sleeveTorsoMask: [UInt8]? = nil, legsMask: [UInt8]? = nil,
+                skinGrownPixels: Int = 0, skinGrownMask: [UInt8]? = nil, skinGrowCandidatePixels: Int? = nil,
+                garmentRegions: [UInt8]? = nil, garmentRegionStats: GarmentRegionStats? = nil) {
         self.personIndex = personIndex
         self.instanceId = instanceId
         self.personMask = personMask
@@ -323,6 +540,17 @@ public struct PersonLayers: Sendable {
         self.silhouetteMask = silhouetteMask
         self.armsMask = armsMask
         self.fallbackSource = fallbackSource
+        self.learnedSampleMasks = learnedSampleMasks
+        self.skinLearningPixels = skinLearningPixels
+        self.legsMask = legsMask
+        self.skinExcludedMask = skinExcludedMask
+        self.skinHaloPixels = skinHaloPixels
+        self.sleeveTorsoMask = sleeveTorsoMask
+        self.skinGrownPixels = skinGrownPixels
+        self.skinGrownMask = skinGrownMask
+        self.skinGrowCandidatePixels = skinGrowCandidatePixels
+        self.garmentRegions = garmentRegions
+        self.garmentRegionStats = garmentRegionStats
     }
 }
 
@@ -356,7 +584,8 @@ public struct SubjectLayers: Sendable {
 public struct SubjectMaskResult: Sendable {
     public let width: Int
     public let height: Int
-    /// Personas detectadas, ordenadas por cobertura descendente (desempate por id).
+    /// Personas detectadas, ordenadas por cobertura descendente (desempate por
+    /// id); incluye las separadas de instancias que juntaban a varias (hasta 8).
     public let people: [PersonInstance]
     /// Índice en `people` de la persona usada (nil con `allPeople`, `off` o sin personas).
     public let chosenIndex: Int?
@@ -371,9 +600,19 @@ public struct SubjectMaskResult: Sendable {
     public let maskCoverage: Double
     /// Capas para ver cada etapa.
     public let layers: SubjectLayers
+    /// Instancias de Vision descartadas por no tener evidencia corporal (paso `.rejectedPhantom`).
+    public let rejectedPhantoms: [RejectedPerson]
+    /// (Nuevo, aditivo) Mapa de regiones de prenda de la persona elegida (width * height bytes, sin
+    /// stride: 0 fuera de la máscara, 1 arriba = torso y brazos, 2 abajo = caderas a tobillos),
+    /// para `analyzeGarments(..., mask: mask, regions: garmentRegions, regionCount: garmentMaxRegions)`.
+    /// Sus píxeles > 0 son los de `mask`. nil sin `SubjectOptions.computeGarmentRegions`, sin pose
+    /// (recorte de cabeza), con `wholePerson`, sin máscara o con `allPeople` (ahí el mapa va por
+    /// persona en `layers.persons[i].garmentRegions`): entonces la app usa el camino clásico.
+    public let garmentRegions: [UInt8]?
 
     public init(width: Int, height: Int, people: [PersonInstance], chosenIndex: Int?, mask: [UInt8]?,
-                steps: [MaskFallback], timings: [String: Double], maskCoverage: Double, layers: SubjectLayers) {
+                steps: [MaskFallback], timings: [String: Double], maskCoverage: Double, layers: SubjectLayers,
+                rejectedPhantoms: [RejectedPerson] = [], garmentRegions: [UInt8]? = nil) {
         self.width = width
         self.height = height
         self.people = people
@@ -383,6 +622,8 @@ public struct SubjectMaskResult: Sendable {
         self.timings = timings
         self.maskCoverage = maskCoverage
         self.layers = layers
+        self.rejectedPhantoms = rejectedPhantoms
+        self.garmentRegions = garmentRegions
     }
 }
 
@@ -392,7 +633,10 @@ public enum SubjectError: Error, Equatable, Sendable {
     case invalidDimensions(width: Int, height: Int)
     /// Una máscara de persona o su muestra de cara no mide width * height.
     case maskSizeMismatch(personId: Int, expected: Int, actual: Int)
-    /// `minCoverage`, `minRegionFraction` o `bareArmsSkinFraction` no finitos o fuera de 0...1.
+    /// `minCoverage`, `minRegionFraction`, `bareArmsSkinFraction`, `sleeveMatchFraction` o `skinGrowMaxRatio` no finitos o
+    /// fuera de 0...1; `skinLearningIterations` o `skinHaloRadius` fuera de 0...8; `skinGrowRadius`
+    /// fuera de 0...64; `skinLearningMahalanobis`, `sleeveMatchMahalanobis` o `skinGrowMahalanobis`
+    /// no finitos o negativos.
     case invalidOptions(String)
     /// CoreGraphics no pudo crear un contexto o una imagen.
     case graphicsUnavailable

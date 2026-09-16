@@ -1,14 +1,15 @@
 // Visor de capas tipo historias (docs/design/DESIGN_SYSTEM.md §4 n.º 30 y §5.2 «Ver capas»):
-// las 11 capas del último análisis en el orden del pipeline, a pantalla completa sobre el
+// las 12 capas del último análisis en el orden del pipeline, a pantalla completa sobre el
 // neutro #121212 (`Theme.storyBackdrop`):
-//   - arriba, 11 segmentos de progreso (tocar uno salta a esa capa), «9 · Asignación a
+//   - arriba, 12 segmentos de progreso (tocar uno salta a esa capa), «10 · Asignación a
 //     colores», compartir (PNG vertical con todas: LayersShareSheet, id `layers.share`) y cerrar;
 //   - en medio, la foto con la capa superpuesta; tocar el tercio izquierdo = anterior, el resto
 //     = siguiente; mantener pulsado = ocultar la interfaz para ver la capa limpia; deslizar
 //     hacia abajo = cerrar. Sin avance automático: cada capa se lee a su ritmo;
 //   - abajo, un panel oscuro neutro (radio 24) con el título, qué significa, el aviso, los
-//     números y la opacidad; en la capa 9, los colores para aislar sus píxeles; las capas 10
-//     y 11 (paleta y por qué ganó) abren el panel expandido con desplazamiento.
+//     números y la opacidad; en la capa 8 («Prendas», ADR-011), un pocillo por prenda con los
+//     tonos que se agruparon en cada color; en la capa 10, los colores para aislar sus píxeles;
+//     las capas 8, 11 y 12 (prendas, paleta y por qué ganó) abren el panel expandido con desplazamiento.
 // Abrirlo no vuelve a ejecutar Vision ni el motor (LayerStack solo pinta lo guardado). Los
 // colores de datos del panel van en pocillos neutros (#303030 en el visor, blanco en el PNG).
 import SwiftUI
@@ -43,7 +44,7 @@ final class LayersInspectorModel: ObservableObject {
     @Published private(set) var stack: LayerStack?
     /// Opacidad de cada capa (número -> 0...1).
     @Published var opacity: [Int: Double] = [:]
-    /// Swatch aislado en la capa 9 (nil = todos).
+    /// Swatch aislado en la capa 10 (nil = todos).
     @Published private(set) var isolatedSwatch: Int?
     @Published private(set) var isolatedOverlay: CGImage?
     /// PNG de "Compartir capas" en un fichero temporal.
@@ -271,7 +272,7 @@ struct StoryLayerPanel: View {
     let count: Int
     var showsHint = false
 
-    private var expanded: Bool { layer.kind == .palette || layer.kind == .explanation }
+    private var expanded: Bool { layer.kind == .palette || layer.kind == .explanation || layer.kind == .garments }
 
     var body: some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: Radius.sheet, topTrailingRadius: Radius.sheet, style: .continuous)
@@ -356,6 +357,8 @@ struct StoryLayerPanel: View {
 
     @ViewBuilder private var extra: some View {
         switch layer.kind {
+        case .garments:
+            GarmentsDetail(rows: stack.garments)
         case .labels:
             LabelsDetail(stack: stack, model: model)
         case .palette:
@@ -458,7 +461,7 @@ struct SkeletonShape: View {
     }
 }
 
-// MARK: - Detalles de las capas 9–11 (pocillos neutros)
+// MARK: - Detalles de las capas 8 y 10–12 (pocillos neutros)
 
 /// Muestra plana de un color de datos con su filo fino.
 struct LayerSwatchChip: View {
@@ -474,7 +477,7 @@ struct LayerSwatchChip: View {
     }
 }
 
-/// Capa 9: swatches que se pueden aislar y clusters descartados o fusionados.
+/// Capa 10: swatches que se pueden aislar y clusters descartados o fusionados.
 struct LabelsDetail: View {
     let stack: LayerStack
     @ObservedObject var model: LayersInspectorModel
@@ -549,7 +552,64 @@ struct LabelsDetail: View {
     }
 }
 
-/// Capa 10: paleta con porcentajes y el color más cercano del diccionario, en un pocillo.
+/// Capa 8: un pocillo por prenda (arriba / abajo / entera) con su color, su cuota y los TONOS
+/// que el motor agrupó en él (la luz, la sombra y los pliegues de la misma tela). Es la
+/// respuesta visible a «el pantalón es de un solo color» (CONTEXT §13).
+struct GarmentsDetail: View {
+    let rows: [GarmentRow]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            if rows.isEmpty {
+                Text("Esta foto no tiene regiones de prenda.")
+                    .textRole(.bodySM)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            ForEach(rows) { row in
+                SwatchWell(padding: Spacing.md, cornerRadius: Radius.card) {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        HStack(alignment: .top, spacing: Spacing.sm) {
+                            LayerSwatchChip(color: Color(swatch: row.swatch), size: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(row.index + 1). \(row.regionLabel)")
+                                    .textRole(.labelLG)
+                                    .foregroundStyle(Theme.wellText)
+                                Text("\(row.swatch.hex.uppercased()) · \(SubjectExplanation.percent(row.shareInRegion)) de su prenda · \(SubjectExplanation.percent(row.regionShare)) de la máscara")
+                                    .textRole(.bodySM)
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.wellTextSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        Text(row.reason)
+                            .textRole(.bodySM)
+                            .foregroundStyle(Theme.wellTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !row.tones.isEmpty {
+                            Text("Tonos agrupados").textRole(.labelSM).foregroundStyle(Theme.wellTextSecondary)
+                            ForEach(row.tones) { tone in
+                                HStack(spacing: Spacing.sm) {
+                                    LayerSwatchChip(color: Color(rgb8: tone.rgb.0, tone.rgb.1, tone.rgb.2), size: 16)
+                                    Text("\(tone.hex) · peso \(SubjectExplanation.percent(tone.weight)) · \(SubjectExplanation.count(tone.pixels)) px")
+                                        .textRole(.bodySM)
+                                        .monospacedDigit()
+                                        .foregroundStyle(Theme.wellText)
+                                    Spacer(minLength: 0)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("layers.garment.\(row.index)")
+            }
+        }
+    }
+}
+
+/// Capa 11: paleta con porcentajes y el color más cercano del diccionario, en un pocillo.
 struct PaletteDetail: View {
     let rows: [SwatchRow]
 
@@ -586,7 +646,7 @@ struct PaletteDetail: View {
     }
 }
 
-/// Capa 11: una combinación del top-3 y por qué tiene su score, en un pocillo.
+/// Capa 12: una combinación del top-3 y por qué tiene su score, en un pocillo.
 struct ExplanationCardView: View {
     let card: ExplanationCard
 

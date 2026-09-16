@@ -8,7 +8,7 @@
 // Comprueba: batch con máscara por línea (sin máscara, con máscara, rutas con
 // espacios entre comillas y tabulador, máscara inexistente -> error en esa
 // línea y el proceso continúa; la de la línea gana a --mask), `ce regions`,
-// `ce skin` y `ce cut-head` contra la API, y `--debug-dir` en palette y match
+// `ce skin`, `ce cut-head` y `ce split` contra la API, y `--debug-dir` en palette y match
 // (ficheros, dimensiones, coherencia labels/swatch_k/weights, debug.json y
 // explicación con score_equals_match). Sale con 0 si todo cuadra.
 'use strict';
@@ -141,6 +141,46 @@ let same = true;
 for (let i = 90 * 200; i < cut.data.length; i++) if (cut.data[i] !== person.data[i]) same = false;
 assert(same, 'cut-head: resto intacto');
 assert(run(['cut-head', '--mask', f('mask_person.pgm'), '--fraction', '0.9', '--out', cutOut]).status === 1, 'cut-head fraction 0.9 -> 1');
+
+// 4b. ce split (fixtures split_* de test_mask.c: salida de la API).
+const splitOut = path.join(tmp, 'split.pgm');
+const rsp = run(['split', '--mask', f('split_mask.pgm'), '--seeds', f('split_seeds.txt'), '--out', splitOut]);
+assert(rsp.status === 0, 'split exit 0: ' + rsp.stderr);
+const spj = JSON.parse(rsp.stdout);
+const spExpected = JSON.parse(fs.readFileSync(f('split_expected.json'), 'utf8'));
+assert(JSON.stringify(Object.keys(spj)) === '["labels","mask_pixels","counts"]', 'split: claves');
+assert(JSON.stringify(spj) === JSON.stringify(spExpected), 'split: JSON == API (' + rsp.stdout.trim() + ')');
+assert(Buffer.compare(fs.readFileSync(splitOut), fs.readFileSync(f('split_expected_labels.pgm'))) === 0, 'split: etiquetas == API byte a byte');
+{
+  const lab = readPnm(splitOut);
+  const msk = readPnm(f('split_mask.pgm'));
+  let okInside = true;
+  const counts = [0, 0, 0];
+  for (let i = 0; i < lab.data.length; i++) {
+    if ((msk.data[i] >= 128) !== (lab.data[i] !== 0) || lab.data[i] > 2) okInside = false;
+    counts[lab.data[i]]++;
+  }
+  assert(okInside && counts[1] === spj.counts[0] && counts[2] === spj.counts[1] && counts[1] + counts[2] === spj.mask_pixels,
+    'split: etiqueta 0 fuera de la máscara (>= 128) y recuentos');
+}
+const splitBad = path.join(tmp, 'split_bad.pgm');
+const rspb = run(['split', '--mask', f('split_mask.pgm'), '--seeds', f('split_seeds_bad.txt'), '--out', splitBad]);
+assert(rspb.status === 1 && /CE_ERR_ARG/.test(rspb.stderr) && !fs.existsSync(splitBad), 'split con half_width 0: exit 1 sin fichero');
+const seedsNine = path.join(tmp, 'seeds9.txt');
+fs.writeFileSync(seedsNine, Array.from({ length: 9 }, (_, k) => (10 + 20 * k) + ' 10 ' + (10 + 20 * k) + ' 200 12').join('\n') + '\n');
+assert(run(['split', '--mask', f('split_mask.pgm'), '--seeds', seedsNine, '--out', splitBad]).status === 2, 'split con 9 semillas -> 2');
+const seedsShort = path.join(tmp, 'seeds_short.txt');
+fs.writeFileSync(seedsShort, '10 10 10 200\n');
+assert(run(['split', '--mask', f('split_mask.pgm'), '--seeds', seedsShort, '--out', splitBad]).status === 2, 'split con 4 números -> 2');
+const seedsEmpty = path.join(tmp, 'seeds_empty.txt');
+fs.writeFileSync(seedsEmpty, '# nada\n');
+assert(run(['split', '--mask', f('split_mask.pgm'), '--seeds', seedsEmpty, '--out', splitBad]).status === 2, 'split sin semillas -> 2');
+assert(run(['split', '--mask', f('split_mask.pgm'), '--out', splitOut]).status === 2, 'split sin --seeds -> 2');
+// Una sola semilla: todo lo que está dentro es la etiqueta 1.
+const seedsOne = path.join(tmp, 'seeds_one.txt');
+fs.writeFileSync(seedsOne, '120 40 120 300 50\n');
+const rs1 = run(['split', '--mask', f('split_mask.pgm'), '--seeds', seedsOne, '--out', splitOut]);
+assert(rs1.status === 0 && JSON.parse(rs1.stdout).labels === 1 && JSON.parse(rs1.stdout).counts[0] === spj.mask_pixels, 'split con una semilla');
 
 // 5. --debug-dir en match y palette.
 function checkDebugDir(dir, withMask, withMatch, stdoutPlain, stdoutDebug) {

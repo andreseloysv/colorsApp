@@ -15,6 +15,20 @@
 //     caras para una persona se queda una (ver associateFaces). La muestra de
 //     piel sale de FaceSample (solo caras con ojos y labios); el rectángulo de
 //     cualquier cara fija el recorte de cabeza sin pose.
+//   - Separación de instancias fusionadas (PersonSplit.swift): ANTES de asociar, las
+//     instancias en las que caen dos o más semillas de persona (poses y caras de Vision)
+//     se reparten con `ce_mask_split_instance`; cada persona separada lleva su pose, su
+//     cara y `splitFrom` = id de la instancia de Vision. Hasta 8 personas. Una semilla de
+//     CARA sin pose necesita evidencia corporal (rectángulo de persona de Vision o puntos
+//     de pose dentro de su eje): sin eso un póster, una pantalla o un retrato detrás de
+//     una persona real creaba una persona fantasma (`SplitOptions.requireBodyForFaceSeeds`).
+//   - Evidencia corporal (PersonEvidence.swift): tras asociar poses y caras, si alguna
+//     instancia no tiene pose con torso dentro ni cara se piden rectángulos de persona
+//     (VNDetectHumanRectanglesRequest, cuerpo entero; solo entonces, para no pagar la
+//     petición en fotos con personas claras). Una instancia sin pose, cara ni rectángulo
+//     de persona es una «persona fantasma» (Vision las devuelve en imágenes sin nadie y en
+//     prendas colgadas) y se descarta (`PeopleDetection.rejectedPhantoms`; paso
+//     `.rejectedPhantom` en `compute`).
 // Coordenadas: Vision normaliza con origen abajo-izquierda; aquí
 // x_px = x · W, y_px = (1 − y) · H.
 import CoreGraphics
@@ -26,7 +40,8 @@ import ColorEngine
 /// Detección completa con avisos y tiempos (visionmask la vuelca en JSON).
 public struct PeopleDetection: Sendable {
     public let people: [PersonInstance]
-    /// Milisegundos: "vision.instances", "vision.masks", "vision.pose", "vision.face", "associate", "detect".
+    /// Milisegundos: "vision.instances", "vision.masks", "vision.pose", "vision.face",
+    /// "split", "associate", "vision.humans", "evidence", "detect".
     public let timings: [String: Double]
     /// Avisos no fatales (p. ej. la petición de pose falló y se sigue sin pose).
     public let warnings: [String]
@@ -43,6 +58,53 @@ public struct PeopleDetection: Sendable {
     public let orphanPoses: [Pose]
     /// Caras de Vision sin persona asociada.
     public let orphanFaces: [FaceLandmarkPoints]
+    /// Instancias sin evidencia corporal (personas fantasma), descartadas: no están en
+    /// `people` ni en `faces`. Vacío con `PhantomOptions.enabled == false`.
+    public var rejectedPhantoms: [RejectedPerson] = []
+    /// Evidencia corporal de cada persona de `people` (mismo orden).
+    public var evidence: [PersonEvidence] = []
+    /// (Nuevo) Rectángulos de persona de Vision (píxeles del raster, confianza >=
+    /// `PhantomOptions.minHumanConfidence`); vacío si no hizo falta pedirlos o si falló la petición.
+    public var humanRectangles: [CGRect] = []
+    /// (Nuevo) true si se ejecutó `VNDetectHumanRectanglesRequest`.
+    public var humanRectanglesRequested = false
+    /// (Nuevo) Instancias tal como las devolvió Vision, antes de separar (sin pose ni cara).
+    public var visionInstances: [PersonInstance] = []
+    /// (Nuevo) Todas las poses de Vision (píxeles del raster).
+    public var poses: [Pose] = []
+    /// (Nuevo) Todas las caras de Vision (rectángulo y, si los hay, landmarks).
+    public var detectedFaces: [FaceLandmarkPoints] = []
+    /// (Nuevo) Semillas de persona construidas con poses y caras (las de cara sin evidencia
+    /// corporal ya están fuera: ver `faceSeedsWithoutBody`).
+    public var seeds: [SubjectSeed] = []
+    /// (Nuevo) Id de Vision de la instancia principal de cada semilla (nil: ninguna).
+    public var seedInstanceIds: [Int?] = []
+    /// (Nuevo) Instancias separadas (vacío si Vision no juntó a nadie).
+    public var splits: [InstanceSplit] = []
+    /// (Nuevo) Instancias de Vision sin separar unidas a una persona separada.
+    public var absorbedInstances: [Int] = []
+    /// (Nuevo) Semillas de cara descartadas por no tener evidencia corporal (póster, pantalla,
+    /// retrato): no crean persona.
+    public var faceSeedsWithoutBody: [SubjectSeed] = []
+
+    /// Detección construida a mano (tests, personas reutilizadas): `faces` y `evidence`
+    /// vacíos o con una entrada por persona.
+    public init(people: [PersonInstance], timings: [String: Double] = [:], warnings: [String] = [],
+                unassignedPoses: Int = 0, unassignedFaces: Int = 0, faces: [FaceLandmarkPoints?] = [],
+                discardedPeople: Int = 0, orphanPoses: [Pose] = [], orphanFaces: [FaceLandmarkPoints] = [],
+                rejectedPhantoms: [RejectedPerson] = [], evidence: [PersonEvidence] = []) {
+        self.people = people
+        self.timings = timings
+        self.warnings = warnings
+        self.unassignedPoses = unassignedPoses
+        self.unassignedFaces = unassignedFaces
+        self.faces = faces
+        self.discardedPeople = discardedPeople
+        self.orphanPoses = orphanPoses
+        self.orphanFaces = orphanFaces
+        self.rejectedPhantoms = rejectedPhantoms
+        self.evidence = evidence
+    }
 }
 
 extension SubjectExtractor {
@@ -51,12 +113,30 @@ extension SubjectExtractor {
     /// `rasterWidth` x `rasterHeight`, ordenadas por cobertura descendente. Lanza
     /// el error de Vision si falla la petición de instancias (p. ej. en el
     /// simulador); los fallos de pose o de caras solo dejan esas partes en nil.
+    /// Las instancias sin evidencia corporal (`PhantomOptions.default`) no se devuelven.
     public static func detectPeople(in image: CGImage, rasterWidth: Int, rasterHeight: Int) throws -> [PersonInstance] {
         try detectPeopleDetailed(in: image, rasterWidth: rasterWidth, rasterHeight: rasterHeight).people
     }
 
-    /// `detectPeople` con tiempos, avisos y landmarks.
+    /// `detectPeople` con tiempos, avisos y landmarks (evidencia corporal con `PhantomOptions.default`).
     public static func detectPeopleDetailed(in image: CGImage, rasterWidth: Int, rasterHeight: Int) throws -> PeopleDetection {
+        try detectPeopleDetailed(in: image, rasterWidth: rasterWidth, rasterHeight: rasterHeight, phantomOptions: .default)
+    }
+
+    /// `detectPeopleDetailed` con umbrales propios de evidencia corporal (`enabled = false`:
+    /// toda instancia por encima de `minPersonCoverage` es persona) y separación por defecto.
+    public static func detectPeopleDetailed(in image: CGImage, rasterWidth: Int, rasterHeight: Int,
+                                            phantomOptions: PhantomOptions) throws -> PeopleDetection {
+        try detectPeopleDetailed(in: image, rasterWidth: rasterWidth, rasterHeight: rasterHeight,
+                                 phantomOptions: phantomOptions, splitOptions: .default)
+    }
+
+    /// (Nuevo) `detectPeopleDetailed` con umbrales de evidencia corporal y de separación de
+    /// instancias fusionadas (`SplitOptions.enabled = false`: cada instancia de Vision es una
+    /// persona, el comportamiento anterior).
+    public static func detectPeopleDetailed(in image: CGImage, rasterWidth: Int, rasterHeight: Int,
+                                            phantomOptions: PhantomOptions,
+                                            splitOptions: SplitOptions) throws -> PeopleDetection {
         let W = rasterWidth, H = rasterHeight
         guard W >= 1, H >= 1, W.multipliedReportingOverflow(by: H).overflow == false else {
             throw SubjectError.invalidDimensions(width: W, height: H)
@@ -118,46 +198,122 @@ extension SubjectExtractor {
         }
         timings["vision.face"] = clock.elapsedMs
 
-        // 4. Asociación.
+        // 4. Semillas de persona (poses y caras) y separación de instancias fusionadas.
         clock = Stopwatch()
-        let maskArrays = masks.map(\.mask)
-        let poseOf = associatePoses(poses, masks: maskArrays, width: W, height: H)
-        let faceLinks = associateFacesDetailed(faces, masks: maskArrays, width: W, height: H)
-        let faceOf = faceLinks.map { $0?.face }
-        var people: [PersonInstance] = []
-        var faceByPerson: [Int: FaceLandmarkPoints] = [:]
-        for (k, entry) in masks.enumerated() {
-            let pose = poseOf[k].map { poses[$0] }
-            var sample: [UInt8]? = nil
-            if let link = faceLinks[k] {
-                let f = link.face
-                faceByPerson[entry.id] = faces[f]
-                // Muestra recortada con la persona (>= 128, erosión 2 px). Una cara
-                // asociada por debajo (fuera de su instancia) solo aporta el rectángulo
-                // para el recorte de cabeza: recortarla con la máscara blanda metía gafas,
-                // capucha y fondo en la muestra (05: desviación típica de b* ≈ 20).
-                if link.direct {
-                    sample = FaceSample.mask(faces[f], width: W, height: H, personMask: entry.mask)
-                }
+        let instances = masks.map { PersonInstance(id: $0.id, mask: $0.mask, width: W, height: H) }
+        let seeds = PersonSplitter.seeds(poses: poses, faces: faces)
+        timings["seeds"] = clock.elapsedMs
+        // Rectángulos de persona: una semilla de CARA sin pose solo cuenta con evidencia
+        // corporal (ADR-010), así que la petición se adelanta aquí si hace falta.
+        var humanBoxes: [CGRect] = []
+        var humansRequested = false
+        let needFaceSeedBody = splitOptions.enabled && splitOptions.requireBodyForFaceSeeds
+            && seeds.contains { $0.kind == .face }
+        func requestHumans() {
+            guard !humansRequested else { return }
+            humansRequested = true
+            let humanClock = Stopwatch()
+            do {
+                humanBoxes = try humanRectangles(handler: handler, width: W, height: H,
+                                                 minConfidence: phantomOptions.minHumanConfidence)
+            } catch {
+                warnings.append("human rectangles: \(error.localizedDescription)")
             }
-            people.append(PersonInstance(id: entry.id, mask: entry.mask, width: W, height: H, pose: pose,
-                                         faceSampleMask: sample, faceBox: faceOf[k].map { faces[$0].boundingBox }))
+            timings["vision.humans"] = humanClock.elapsedMs
         }
-        people = sortPeople(people)
+        if phantomOptions.humanRectangles, needFaceSeedBody {
+            requestHumans()
+        }
+        clock = Stopwatch()
+        let outcome = try PersonSplitter.apply(instances: instances, poses: poses, faces: faces, seeds: seeds,
+                                               width: W, height: H, humanBoxes: humanBoxes, options: splitOptions)
+        var people = outcome.people
+        let faceByPerson: [Int: FaceLandmarkPoints] = {
+            var d: [Int: FaceLandmarkPoints] = [:]
+            for (i, p) in people.enumerated() where outcome.faces[i] != nil { d[p.id] = outcome.faces[i] }
+            return d
+        }()
+        for split in outcome.splits {
+            warnings.append("instancia \(split.instanceId): \(split.seeds.count) semillas -> personas \(split.personIds.map(String.init).joined(separator: ", ")) (\(split.step.rawValue))")
+        }
+        for seed in outcome.faceSeedsWithoutBody {
+            warnings.append("cara en (\(Int(seed.seed.x0)), \(Int(seed.seed.y0))) sin evidencia corporal (rectángulo de persona o puntos de pose): no crea persona")
+        }
+        timings["split"] = clock.elapsedMs
         timings["associate"] = clock.elapsedMs
+        // 5. Evidencia corporal: rectángulos de persona solo si alguna persona no tiene pose ni
+        // cara; fuera las personas fantasma.
+        clock = Stopwatch()
+        if phantomOptions.enabled, phantomOptions.humanRectangles, !humansRequested,
+           people.contains(where: { !bodyEvidence(for: $0, width: W, height: H, options: phantomOptions).isPerson }) {
+            requestHumans()
+        }
+        let screened = rejectPhantoms(people, width: W, height: H, options: phantomOptions, humanBoxes: humanBoxes)
+        let boxOf = associateHumanRectangles(phantomOptions.humanRectangles ? humanBoxes : [], masks: people.map(\.mask),
+                                             width: W, height: H)
+        let evidenceAll = people.indices.map {
+            bodyEvidence(for: people[$0], width: W, height: H, options: phantomOptions, humanBox: boxOf[$0].map { humanBoxes[$0] })
+        }
+        let keptIds = Set(screened.people.map(\.id))
+        let keptEvidence = zip(people, evidenceAll).filter { keptIds.contains($0.0.id) }.map(\.1)
+        people = screened.people
+        for r in screened.rejected {
+            warnings.append("instancia \(r.instance.id): sin evidencia corporal (torso \(r.evidence.torsoJointsInside), cara \(r.evidence.hasFace), rectángulo de persona \(r.evidence.humanBox != nil), cobertura \(r.evidence.coverage), alto/ancho \(r.evidence.aspect), relleno \(r.evidence.extent), solidez \(r.evidence.solidity)): fantasma")
+        }
+        timings["evidence"] = clock.elapsedMs
         timings["detect"] = total.elapsedMs
-        let assignedPoseSet = Set(poseOf.compactMap { $0 })
-        let assignedFaceSet = Set(faceOf.compactMap { $0 })
-        return PeopleDetection(people: people, timings: timings, warnings: warnings,
-                               unassignedPoses: poses.count - assignedPoseSet.count,
-                               unassignedFaces: faces.count - assignedFaceSet.count,
-                               faces: people.map { faceByPerson[$0.id] }, discardedPeople: discarded,
-                               orphanPoses: poses.indices.filter { !assignedPoseSet.contains($0) }.map { poses[$0] },
-                               orphanFaces: faces.indices.filter { !assignedFaceSet.contains($0) }.map { faces[$0] })
+        // Poses y caras que acabaron en alguna persona (separada o no).
+        let usedPoseSet = Set(people.compactMap { p in poses.firstIndex { $0 == p.pose } })
+        let usedFaceSet = Set(people.compactMap { p in faceByPerson[p.id].flatMap { f in faces.firstIndex(of: f) } })
+        var detection = PeopleDetection(people: people, timings: timings, warnings: warnings,
+                                        unassignedPoses: poses.count - usedPoseSet.count,
+                                        unassignedFaces: faces.count - usedFaceSet.count,
+                                        faces: people.map { faceByPerson[$0.id] }, discardedPeople: discarded,
+                                        orphanPoses: poses.indices.filter { !usedPoseSet.contains($0) }.map { poses[$0] },
+                                        orphanFaces: faces.indices.filter { !usedFaceSet.contains($0) }.map { faces[$0] })
+        detection.rejectedPhantoms = screened.rejected
+        detection.evidence = phantomOptions.enabled ? keptEvidence
+            : people.map { bodyEvidence(for: $0, width: W, height: H, options: phantomOptions) }
+        detection.humanRectangles = humanBoxes
+        detection.humanRectanglesRequested = humansRequested
+        detection.visionInstances = instances
+        detection.poses = poses
+        detection.detectedFaces = faces
+        detection.seeds = outcome.seeds
+        detection.seedInstanceIds = outcome.seedInstance.map { $0.map { instances[$0].id } }
+        detection.splits = outcome.splits
+        detection.absorbedInstances = outcome.absorbedInstances
+        detection.faceSeedsWithoutBody = outcome.faceSeedsWithoutBody
+        return detection
+    }
+
+    /// (Nuevo) Rectángulos de persona de cuerpo entero de Vision (`VNDetectHumanRectanglesRequest`,
+    /// `upperBodyOnly = false`) con confianza >= `minConfidence`, en píxeles de un raster de
+    /// `rasterWidth` x `rasterHeight` (origen arriba-izquierda). Lanza el error de Vision.
+    public static func detectHumanRectangles(in image: CGImage, rasterWidth: Int, rasterHeight: Int,
+                                             minConfidence: Double = PhantomOptions.default.minHumanConfidence) throws -> [CGRect] {
+        guard rasterWidth >= 1, rasterHeight >= 1 else {
+            throw SubjectError.invalidDimensions(width: rasterWidth, height: rasterHeight)
+        }
+        return try humanRectangles(handler: VNImageRequestHandler(cgImage: image, options: [:]), width: rasterWidth,
+                                   height: rasterHeight, minConfidence: minConfidence)
+    }
+
+    static func humanRectangles(handler: VNImageRequestHandler, width: Int, height: Int,
+                                minConfidence: Double) throws -> [CGRect] {
+        let request = VNDetectHumanRectanglesRequest()
+        request.upperBodyOnly = false
+        try handler.perform([request])
+        return (request.results ?? []).compactMap { o in
+            guard Double(o.confidence) >= minConfidence else { return nil }
+            return visionRect(o.boundingBox, width: width, height: height)
+        }
     }
 
     /// Detecta y aplica la cadena. Si Vision lanza, devuelve mask nil y steps
     /// [.visionUnavailable] (nunca lanza por Vision). Con `mode == .off` no ejecuta Vision.
+    /// Si se descartaron personas fantasma (`options.phantomOptions`), los pasos empiezan
+    /// por `.rejectedPhantom` (y siguen con `.noPeople` si no queda nadie: foto completa).
     public static func compute(image: CGImage, rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int,
                                stride: Int, options: SubjectOptions) throws -> SubjectMaskResult {
         if options.mode == .off {
@@ -165,7 +321,9 @@ extension SubjectExtractor {
         }
         let detection: PeopleDetection
         do {
-            detection = try detectPeopleDetailed(in: image, rasterWidth: width, rasterHeight: height)
+            detection = try detectPeopleDetailed(in: image, rasterWidth: width, rasterHeight: height,
+                                                 phantomOptions: options.phantomOptions,
+                                                 splitOptions: options.splitOptions)
         } catch let e as SubjectError where e == .invalidDimensions(width: width, height: height) {
             throw e
         } catch {
@@ -174,8 +332,17 @@ extension SubjectExtractor {
             return SubjectMaskResult(width: width, height: height, people: [], chosenIndex: nil, mask: nil,
                                      steps: [.visionUnavailable], timings: [:], maskCoverage: 0, layers: layers)
         }
-        return try mask(people: detection.people, rgba: rgba, width: width, height: height, stride: stride,
-                        options: options, detectTimings: detection.timings)
+        return try mask(detection: detection, rgba: rgba, width: width, height: height, stride: stride,
+                        options: options)
+    }
+
+    /// Aplica la cadena a una detección ya hecha: como `mask(people:)` con `detection.people`,
+    /// más el paso `.rejectedPhantom` al principio si la detección descartó personas fantasma
+    /// (`SubjectMaskResult.rejectedPhantoms`).
+    public static func mask(detection: PeopleDetection, rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int,
+                            stride: Int, options: SubjectOptions) throws -> SubjectMaskResult {
+        try mask(people: detection.people, rgba: rgba, width: width, height: height, stride: stride,
+                 options: options, detectTimings: detection.timings, rejected: detection.rejectedPhantoms)
     }
 
     // MARK: - Conversión de observaciones
@@ -198,6 +365,15 @@ extension SubjectExtractor {
             pose[joint] = Keypoint(x: x, y: y, confidence: Double(p.confidence))
         }
         return pose
+    }
+
+    /// Rectángulo normalizado de Vision (origen abajo-izquierda) en píxeles del raster; nil si no es finito.
+    static func visionRect(_ bb: CGRect, width: Int, height: Int) -> CGRect? {
+        let box = CGRect(x: bb.minX * CGFloat(width), y: (1 - bb.maxY) * CGFloat(height),
+                         width: bb.width * CGFloat(width), height: bb.height * CGFloat(height))
+        guard box.minX.isFinite, box.minY.isFinite, box.width.isFinite, box.height.isFinite, box.width > 0,
+              box.height > 0 else { return nil }
+        return box
     }
 
     /// Cara en píxeles del raster. Sin landmarks (o sin ojos o labios) conserva

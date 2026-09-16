@@ -201,9 +201,11 @@ enum FeedPostText {
         return (text, steps.contains(.skinGuard))
     }
 
-    /// «Paleta de la ropa» con máscara de ropa, «Paleta de la persona» con la persona entera,
-    /// «Paleta de la foto» sin máscara.
+    /// «Paleta por prenda» cuando el scan se analizó con el mapa de regiones de la pose
+    /// (ADR-011), «Paleta de la ropa» con máscara de ropa, «Paleta de la persona» con la
+    /// persona entera, «Paleta de la foto» sin máscara.
     static func paletteTitle(_ scan: ScanRecord) -> String {
+        if !scan.garmentColors.isEmpty { return "Paleta por prenda" }
         guard let raw = scan.subjectMode, SubjectMode(rawValue: raw) != .off, (scan.maskCoverage ?? 0) > 0 else {
             return "Paleta de la foto"
         }
@@ -214,11 +216,23 @@ enum FeedPostText {
         return "Paleta de la ropa"
     }
 
-    /// Paleta del scan con el nombre del color de Wada más cercano (motor) y su peso.
+    /// Tira de colores del scan. Con paleta POR PRENDA (columna `garments_json`, v4) cada gota
+    /// lleva su prenda («Arriba», «Abajo», «Prenda entera»): es lo que distingue un color de
+    /// otro cuando ya hay uno por prenda. Sin ella, el nombre del color de Wada más cercano
+    /// (motor), como hasta v3.
     static func palette(_ scan: ScanRecord, in dictionary: WadaDictionary) -> [PaletteColor] {
-        scan.palette.enumerated().compactMap { i, entry in
+        let garments = scan.garmentColors
+        if !garments.isEmpty { return GarmentPalette.colors(garments) }
+        return scan.palette.enumerated().compactMap { i, entry in
             PaletteColor(id: i, hex: entry.hex, weight: entry.weight)?.namedByNearestWada(in: dictionary)
         }
+    }
+
+    /// Marca discreta de un análisis hecho con una versión anterior del motor o de la política
+    /// (`AnalysisPolicy.needsReanalysis`): la publicación lo dice y, al abrirla en Extraer, la
+    /// app la vuelve a analizar y la actualiza (CONTEXT §13, caso del Nº 067).
+    static func outdatedNotice(_ scan: ScanRecord) -> String? {
+        scan.needsReanalysis ? "Análisis antiguo" : nil
     }
 
     static func verdict(_ verdict: FeedbackVerdict?) -> Verdict? {

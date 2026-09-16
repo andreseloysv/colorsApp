@@ -161,6 +161,49 @@ enum EngineBridge {
         }
     }
 
+    /// Paleta POR PRENDA + match (`ce_analyze_garments`, ADR-011 y CONTEXT §13): el motor
+    /// agrupa los tonos de una misma prenda con distinta luz y devuelve UN color por prenda
+    /// lisa (el tono iluminado), dos si es de verdad bicolor. `regions` es el mapa de
+    /// SubjectKit (`SubjectMaskResult.garmentRegions`: width * height bytes, 0 fuera, 1 arriba,
+    /// 2 abajo) y `mask` la máscara del sujeto; sin mapa hay que usar `analyze` (camino clásico).
+    /// `result.swatches` son ya los swatches de prenda: el match no cambia.
+    static func analyzeGarments(raster: Raster, paletteOptions: PaletteOptions = .default,
+                                garmentOptions: GarmentOptions = .default,
+                                matchOptions: MatchOptions = .default, topK: Int = 3,
+                                mask: [UInt8]? = nil, regions: [UInt8],
+                                regionCount: Int = garmentMaxRegions) throws -> GarmentAnalysisResult {
+        try raster.pixels.withUnsafeBufferPointer { px in
+            try withOptionalMask(mask) { m in
+                try regions.withUnsafeBufferPointer { r in
+                    try ColorEngine.analyzeGarments(rgba: px, width: raster.width, height: raster.height,
+                                                    stride: raster.stride, paletteOptions: paletteOptions,
+                                                    garmentOptions: garmentOptions, matchOptions: matchOptions,
+                                                    topK: topK, mask: m, regions: r, regionCount: regionCount)
+                }
+            }
+        }
+    }
+
+    /// `analyzeGarments` + capas de depuración (las mismas de `analyzeWithLayers` más la capa
+    /// «Prendas»: `garmentMap` y `regionMap` de la imagen reducida) en un único `ce_analyze_garments`
+    /// y un único `ce_ctx`: el resultado es idéntico al de `analyzeGarments`.
+    static func analyzeGarmentsWithLayers(raster: Raster, paletteOptions: PaletteOptions = .default,
+                                          garmentOptions: GarmentOptions = .default,
+                                          matchOptions: MatchOptions = .default, topK: Int = 3,
+                                          mask: [UInt8]? = nil, regions: [UInt8],
+                                          regionCount: Int = garmentMaxRegions) throws -> GarmentDebugLayers {
+        try raster.pixels.withUnsafeBufferPointer { px in
+            try withOptionalMask(mask) { m in
+                try regions.withUnsafeBufferPointer { r in
+                    try ColorEngine.garmentDebugLayers(rgba: px, width: raster.width, height: raster.height,
+                                                       stride: raster.stride, paletteOptions: paletteOptions,
+                                                       garmentOptions: garmentOptions, matchOptions: matchOptions,
+                                                       topK: topK, mask: m, regions: r, regionCount: regionCount)
+                }
+            }
+        }
+    }
+
     /// Solo la paleta (ce_palette_extract), sin match: "Extraer de una foto" en Explorar.
     static func extractPalette(cgImage: CGImage, maxSide: Int = defaultMaxSide,
                                options: PaletteOptions = .default, mask: CGImage? = nil) throws -> [Swatch] {

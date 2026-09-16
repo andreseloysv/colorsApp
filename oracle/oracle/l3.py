@@ -11,9 +11,12 @@ Flujo (sección 6 del plan; la lógica vive aquí para ``oracle.eval`` y ``tests
    combinaciones fijas (``fast_combo_ids``, semilla 20260915), todas las variantes, en
    ``<out>/synth_fast`` (o el subconjunto del dev completo si ya está al día).
 2. **Match**: una sola invocación de ``ce batch lista.txt ... --json`` por columna:
-   ``kL1`` (oficial: opciones por defecto), ``kL2`` (``--kL 2``) y ``skin1``
-   (``--skin-rule 1``); sigma por defecto. Si el CLI no tiene ``batch`` se cae a un
-   ``ce match`` por imagen. Sin ``match`` la capa es ``not implemented``.
+   ``kL1`` (oficial: opciones por defecto, sin hipótesis de iluminante desde ADR-009),
+   ``kL2`` (``--kL 2``), ``skin1`` (``--skin-rule 1``), ``noadapt`` (match v0), ``illum1``
+   (defaults + ``--illuminant-search 1``) y ``garments`` (``ce batch --garments``: paleta por
+   prenda sin mapa de regiones, porque los sintéticos no tienen pose y la app usa ahí el camino
+   clásico); sigma por defecto. Todas salvo kL1 informativas.
+   Si el CLI no tiene ``batch`` se cae a un ``ce match`` por imagen. Sin ``match`` la capa es ``not implemented``.
 3. **Métricas** (``oracle.metrics``) por grupo de degradación y agregadas: recall@1, recall@3,
    entropía normalizada del top-1 sobre 348 clases, cuota de la clase más frecuente y tasa
    de ``ambiguous``. Umbrales de ``harness/thresholds.json`` sección L3 (solo la columna
@@ -30,6 +33,13 @@ Flujo (sección 6 del plan; la lógica vive aquí para ``oracle.eval`` y ``tests
    líneas JSON deben ser idénticas.
 6. **golden-check** (``oracle.golden``): los goldens de ``harness/golden`` a 1e-9 y mismo
    top-3 (parte de ``make eval``).
+7. **Giro de tono** (``oracle.hue_shift``): >= 2000 paletas realistas fuera del diccionario
+   (apagados, pasteles, tierras, neutros con un color, sombras de una prenda y, si hay datos,
+   ``harness/people``) por ``ce match-palette``; fracción cuyo swatch cromático dominante y el
+   color más cercano de la top-1 difieren > 60° en tono cuando con el match v0 no. Gate:
+   defaults <= ``L3.hue_shift_max`` (0,01 por defecto hasta que el usuario lo promueva; propuesto
+   en ``harness/out/thresholds.proposed.json``); ``+iluminante`` informativo. Mismo conjunto en
+   ``--fast`` (unos segundos).
 
 Artefactos: ``<out>/l3_detail.json`` (métricas y resultados por imagen de la columna oficial)
 y ``<out>/l3_batch_<columna>.jsonl`` (salida cruda del CLI).
@@ -69,6 +79,12 @@ COLUMNS: dict[str, dict[str, dict[str, Any]]] = {
     # Match v0 (fase 3): sin hipótesis de exposición ni de iluminante; informativa, para
     # que el scorecard muestre lo que aporta la búsqueda de hipótesis de la columna oficial.
     "noadapt": {"palette": {}, "match": {"exposure_ev_max": 0.0, "illuminant_search": 0}},
+    # Hipótesis de iluminante (defaults hasta ADR-009, 2026-09-15; hoy opción): informativa.
+    "illum1": {"palette": {}, "match": {"illuminant_search": 1}},
+    # Paleta por prenda (``ce batch --garments``) sin mapa de regiones: los sintéticos de Wada no
+    # tienen pose, así que la app usaría el camino clásico; informativa, mide cuánto perdería
+    # el camino de prendas con una sola región (máx. 2 colores por región, segundo color >= 25 %).
+    "garments": {"palette": {}, "match": {}, "extra": ["--garments"]},
 }
 TOP_K = 3
 DETERMINISM_FILES = 20
@@ -81,12 +97,15 @@ DEFAULTS: dict[str, Any] = {
     "holdout_minus_dev_min": -0.03,
     "fast_combos": 35,
     "eval_fast_seconds_max": 120.0,
+    # Giro de tono (oracle.hue_shift): propuesto en harness/out/thresholds.proposed.json, no promovido.
+    "hue_shift_max": 0.01,
+    "hue_shift_palettes": 2000,
 }
 
 #: Opciones por defecto del motor (``ce_match_opts_default``) para validar ``opts.match``.
 ENGINE_DEFAULT_MATCH_OPTS: dict[str, float] = {
     "kL": 1.0, "kC": 1.0, "kH": 1.0, "coverage_lambda": 1.0, "ambiguous_gap": 1.0,
-    "exposure_ev_max": 1.0, "exposure_penalty": 2.0, "illuminant_search": 1.0, "illuminant_penalty": 2.0,
+    "exposure_ev_max": 1.0, "exposure_penalty": 2.0, "illuminant_search": 0.0, "illuminant_penalty": 2.0,
 }
 
 
@@ -207,12 +226,20 @@ def _run_batch_cli(cli: Path, files: list[Path], args: list[str], timeout: float
 
 def run_batch(cli: Path, files: list[Path], *, palette_opts: dict[str, Any] | None = None,
               match_opts: dict[str, Any] | None = None, top: int = TOP_K, use_batch: bool | None = None,
-              timeout: float = BATCH_TIMEOUT) -> list[dict[str, Any]]:
+              timeout: float = BATCH_TIMEOUT, extra_args: list[str] | None = None) -> list[dict[str, Any]]:
     """Resultados de match para ``files`` en orden: ``ce batch`` (una invocación) o, si no existe,
-    ``ce match`` por fichero. Un fichero ilegible produce ``{"file", "error"}`` sin abortar."""
+    ``ce match`` por fichero. Un fichero ilegible produce ``{"file", "error"}`` sin abortar.
+    ``extra_args`` (p. ej. ``["--garments"]``) solo con ``ce batch``; sin él, cada fichero da error."""
     if use_batch is None:
         use_batch = has_batch(cli)
     common = match_args(palette_opts=palette_opts, match_opts=match_opts, top=top)[:-1]  # sin --json
+    if extra_args:
+        if not use_batch:
+            return [{"file": str(p), "error": f"{' '.join(extra_args)} exige ce batch", "_line": ""} for p in files]
+        try:
+            return _run_batch_cli(cli, files, [*extra_args, *common], timeout=timeout)
+        except MatchError as exc:
+            return [{"file": str(p), "error": str(exc), "_line": ""} for p in files]
     if use_batch:
         return _run_batch_cli(cli, files, common, timeout=timeout)
     rows: list[dict[str, Any]] = []
@@ -426,7 +453,8 @@ def _pct(x: float) -> str:
 def _run_column(cli: Path, files: list[Path], column: str, use_batch: bool, out_dir: Path | None) -> tuple[list[dict[str, Any]], float]:
     spec = COLUMNS[column]
     t0 = time.perf_counter()
-    results = run_batch(cli, files, palette_opts=spec["palette"], match_opts=spec["match"], use_batch=use_batch)
+    results = run_batch(cli, files, palette_opts=spec["palette"], match_opts=spec["match"], use_batch=use_batch,
+                        extra_args=spec.get("extra"))
     seconds = round(time.perf_counter() - t0, 2)
     if out_dir is not None:
         (out_dir / f"l3_batch_{column}.jsonl").write_text("".join(r["_line"] + "\n" for r in results), encoding="utf-8")
@@ -561,6 +589,34 @@ def run_layer3(cli: Path, thresholds: dict[str, Any] | None, out_dir: Path | Non
         add(Check(f"columna {column} (informativa: {COLUMNS[column]})", "info",
                   f"recall@1 {_pct(a['recall_at_1'])}, recall@3 {_pct(a['recall_at_3'])}, ambiguous {_pct(a['ambiguous_rate'])}, cuota máxima {_pct(a['max_class_share'])}",
                   value=float(a["recall_at_1"])))
+
+    # 4b. Giro de tono (paletas realistas fuera del diccionario, sin imágenes)
+    from oracle import hue_shift
+
+    t_hs = time.perf_counter()
+    try:
+        hs = hue_shift.evaluate(cli, n=int(th["hue_shift_palettes"]), log=log)
+    except hue_shift.HueShiftError as exc:
+        detail["hue_shift"] = {"error": str(exc)}
+        add(Check(f"giro de tono (defaults) <= {th['hue_shift_max']}", "fail", str(exc), threshold=float(th["hue_shift_max"])))
+    else:
+        detail["hue_shift"] = hs
+        if out_dir is not None:
+            (out_dir / "hue_shift.json").write_text(json.dumps(hs, indent=1, ensure_ascii=False, default=float) + "\n", encoding="utf-8")
+        seconds_hs = round(time.perf_counter() - t_hs, 1)
+        for name in hue_shift.REPORTED:
+            c = hs["configs"][name]
+            fams = ", ".join(f"{f} {_pct(m['rate'])}" for f, m in c["by_family"].items())
+            text = (f"{_pct(c['hue_shift_rate'])} ({c['hue_shift_count']}/{hs['n_evaluated']} paletas con swatch cromático; "
+                    f"{hs['n_palettes']} fuera del diccionario, {hs['people'].get('palettes', 0)} de harness/people); "
+                    f"top-1 distinto de v0 {_pct(c['top1_changed_vs_v0'])}; por familia: {fams}")
+            if name == "defaults":
+                add(Check(f"giro de tono > {hue_shift.HUE_SHIFT_DEG:.0f}° (defaults, respecto a v0) <= {th['hue_shift_max']}",
+                          "pass" if float(c["hue_shift_rate"]) <= float(th["hue_shift_max"]) else "fail", text,
+                          value=float(c["hue_shift_rate"]), threshold=float(th["hue_shift_max"]), seconds=seconds_hs))
+            else:
+                add(Check(f"giro de tono con {name} (informativo: {hue_shift.CONFIGS[name]})", "info", text,
+                          value=float(c["hue_shift_rate"])))
 
     # 5. Determinismo
     n_det = min(DETERMINISM_FILES, len(files))

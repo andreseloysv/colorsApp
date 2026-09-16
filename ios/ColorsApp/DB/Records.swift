@@ -94,15 +94,12 @@ struct GarmentEntry: Codable, Hashable, Sendable {
         self.mergedClusters = mergedClusters
     }
 
-    /// Etiqueta de la región para las tarjetas (CONTEXT §13).
-    var regionLabel: String {
-        switch region {
-        case 1: "Parte de arriba"
-        case 2: "Parte de abajo"
-        case 3: "Prenda entera"
-        default: "Prenda"
-        }
-    }
+    /// Etiqueta de la región para las tarjetas (CONTEXT §13); `GarmentText` es el único sitio
+    /// donde se nombran las regiones (con `default` para los valores futuros del motor).
+    var regionLabel: String { GarmentText.regionLabel(region) }
+
+    /// Etiqueta corta para las gotas del Feed y la tarjeta compartible.
+    var shortRegionLabel: String { GarmentText.shortRegionLabel(region) }
 }
 
 /// Datos de la paleta por prenda de un scan (v4): los colores por prenda y cuántas regiones
@@ -238,10 +235,15 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
     /// Sustituye resultado y recorte (p. ej. al elegir otra persona en Resultado, o al
     /// re-analizar un scan viejo): mismo id y origen, rev + 1 y dirty. `garments` y
     /// `policyVersion` son aditivos (sin ellos el scan vuelve al camino clásico).
+    /// `engineVersion` / `dictVersion` nil = se conservan los del scan; al RE-ANALIZAR hay que
+    /// pasar los actuales (`colorEngineVersion`, `dictionaryVersion`), porque si no el scan
+    /// seguiría pidiendo re-análisis para siempre (`AnalysisPolicy.needsReanalysis`).
     func updated(with result: AnalysisResult, subject: ScanSubjectInfo?, now: Date = Date(),
-                 garments: ScanGarmentInfo? = nil, policyVersion: Int? = nil) -> ScanRecord {
+                 garments: ScanGarmentInfo? = nil, policyVersion: Int? = nil,
+                 engineVersion: String? = nil, dictVersion: String? = nil) -> ScanRecord {
         var copy = ScanRecord.make(from: result, source: source, assetLocalId: assetLocalId, subject: subject,
-                                   engineVersion: engineVersion, dictVersion: dictVersion, now: scannedAt, id: id,
+                                   engineVersion: engineVersion ?? self.engineVersion,
+                                   dictVersion: dictVersion ?? self.dictVersion, now: scannedAt, id: id,
                                    garments: garments, policyVersion: policyVersion)
         copy.updatedAt = updatedAt
         copy.rev = rev

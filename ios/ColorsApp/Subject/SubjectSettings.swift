@@ -23,9 +23,15 @@ struct SubjectSettings: Equatable, Sendable {
     /// Modos que ofrece Ajustes, en orden.
     static let settingsModes: [SubjectMode] = [.off, .allPeople, .largestPerson]
 
-    /// Opciones de SubjectKit (cobertura mínima y opciones del motor por defecto).
+    /// Opciones de SubjectKit (cobertura mínima y opciones del motor por defecto) con el
+    /// mapa de regiones de prenda ACTIVADO (ADR-011): la app pide a SubjectKit que reparta la
+    /// máscara en «arriba» y «abajo» con la pose para poder usar `ce_analyze_garments` y dar un
+    /// color por prenda (CONTEXT §13). Sin pose el mapa sale nil y el análisis sigue el camino
+    /// clásico, así que activarlo no cambia nada en esas fotos.
     var subjectOptions: SubjectOptions {
-        SubjectOptions(mode: mode, region: region, adaptiveSkin: adaptiveSkin)
+        var options = SubjectOptions(mode: mode, region: region, adaptiveSkin: adaptiveSkin)
+        options.computeGarmentRegions = true
+        return options
     }
 
     /// Política del escaneo del carrete con el umbral de estos ajustes.
@@ -116,6 +122,9 @@ enum MaskStepsText {
             let index = result.chosenIndex ?? 0
             parts.append(index == 0 ? "Persona principal de \(n)" : "Persona \(index + 1) de \(n)")
         }
+        if steps.contains(.splitByPose) || steps.contains(.splitByFace) {
+            parts.append(steps.contains(.splitByPose) ? "personas separadas por su pose" : "personas separadas por su cara")
+        }
         if steps.contains(.poseRegions) && steps.contains(.headCut) {
             parts.append("solo ropa (pose o sin cabeza)")
         } else if steps.contains(.poseRegions) {
@@ -147,12 +156,17 @@ enum MaskStepsText {
             parts.append("persona demasiado pequeña: foto completa")
             fallback = true
         }
+        if steps.contains(.garmentRegions) {
+            parts.append("un color por prenda")
+        }
         let text = capitalizedFirst(parts.joined(separator: " · "))
         let icon = result.mask == nil ? "person.crop.rectangle.badge.xmark" : "person.crop.rectangle"
         return Notice(text: text.isEmpty ? "Persona" : text, systemImage: icon, isFallback: fallback)
     }
 
-    /// Nombre corto de un paso (inspector de capas y diagnóstico).
+    /// Nombre corto de un paso (inspector de capas y diagnóstico). El `default` final cubre
+    /// los pasos que SubjectKit añada en el futuro: un caso nuevo no rompe la compilación ni
+    /// deja un hueco en la interfaz (sale su `rawValue`).
     static func stepTitle(_ step: MaskFallback) -> String {
         switch step {
         case .none: "Sin máscara"
@@ -165,6 +179,9 @@ enum MaskStepsText {
         case .visionUnavailable: "Vision no disponible"
         case .rejectedPhantom: "Persona fantasma descartada"
         case .garmentRegions: "Regiones de prenda (arriba / abajo)"
+        case .splitByPose: "Personas separadas por su pose"
+        case .splitByFace: "Personas separadas por su cara"
+        default: step.rawValue
         }
     }
 

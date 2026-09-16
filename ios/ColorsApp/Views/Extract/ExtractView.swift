@@ -196,14 +196,17 @@ struct ExtractView: View {
         case .layersDemo, .resultDemoPerson:
             let scene = SyntheticPersonScene.make()
             guard let image = scene.image else { return }
-            await debugAnalyze(image: image, subject: .default, people: [scene.person]) { outcome in
+            // Las opciones REALES de la app (incluye el mapa de regiones de prenda, ADR-011).
+            await debugAnalyze(image: image, subject: SubjectSettings.default.subjectOptions,
+                               people: [scene.person]) { outcome in
                 show(outcome, example: true)
                 if screen == .layersDemo { layersRoute = LayersRoute(outcome: outcome, initialLayer: layer) }
             }
         case .resultDemoPeople, .resultDemoPeopleMask:
             let scene = SyntheticPersonScene.makeTwo()
             guard let image = scene.image else { return }
-            await debugAnalyze(image: image, subject: .default, people: scene.people) { outcome in
+            await debugAnalyze(image: image, subject: SubjectSettings.default.subjectOptions,
+                               people: scene.people) { outcome in
                 show(outcome, showMask: screen == .resultDemoPeopleMask, example: true)
             }
         default:

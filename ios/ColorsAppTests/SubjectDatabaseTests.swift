@@ -166,7 +166,10 @@ final class SubjectDatabaseTests: XCTestCase {
         let settings = SettingsRepository(db)
         let initial = try await settings.subjectSettings()
         XCTAssertEqual(initial, .default)
-        XCTAssertEqual(initial.subjectOptions, SubjectOptions.default)
+        // Los defectos de SubjectKit + el mapa de regiones de prenda que pide la app (ADR-011).
+        var expected = SubjectOptions.default
+        expected.computeGarmentRegions = true
+        XCTAssertEqual(initial.subjectOptions, expected)
         XCTAssertEqual(initial.scanPolicy().unlockMaxScore, ScanPolicy.defaultUnlockMaxScore)
 
         try await settings.set(.subjectMode, "off")

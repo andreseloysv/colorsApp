@@ -17,6 +17,8 @@ struct FeedItem: Identifiable, Hashable {
     let notice: String?
     let noticeIsFallback: Bool
     let paletteTitle: String
+    /// «Análisis antiguo» si el scan se calculó con otra versión del motor o de la política.
+    let outdatedNotice: String?
 
     var id: String { scan.id }
 
@@ -30,7 +32,11 @@ struct FeedItem: Identifiable, Hashable {
         notice = crop?.text
         noticeIsFallback = crop?.isFallback ?? false
         paletteTitle = FeedPostText.paletteTitle(scan)
+        outdatedNotice = FeedPostText.outdatedNotice(scan)
     }
+
+    /// El análisis es de una versión anterior: al abrirlo en Extraer se recalcula.
+    var isOutdated: Bool { outdatedNotice != nil }
 
     /// Hex de la combinación ganadora (lo que copia «Copiar»).
     var comboHexList: String? { match.map { DesignFormat.hexList($0.colors) } }
@@ -92,6 +98,7 @@ struct FeedPostRow: View {
                         photo: photo.map { Image(decorative: $0, scale: 1) },
                         photoAspectRatio: photo.map { CGFloat($0.width) / CGFloat(max($0.height, 1)) } ?? 4.0 / 5.0,
                         cropNotice: item.notice, cropNoticeIsFallback: item.noticeIsFallback,
+                        outdatedNotice: item.outdatedNotice,
                         paletteTitle: item.paletteTitle, palette: item.palette, match: item.match,
                         verdict: FeedPostText.verdict(verdict), isSaved: isSaved)
     }
@@ -268,6 +275,13 @@ struct FeedAccessiblePostCard: View {
                         .textRole(.bodyMD)
                         .foregroundStyle(content.cropNoticeIsFallback ? Theme.secondary : Theme.onSurfaceVariant)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                if let outdated = content.outdatedNotice {
+                    Label(outdated, systemImage: "clock.arrow.circlepath")
+                        .textRole(.bodyMD)
+                        .foregroundStyle(Theme.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("feed.post.outdated")
                 }
                 Text(content.paletteTitle)
                     .textRole(.overline)

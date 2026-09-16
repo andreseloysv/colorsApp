@@ -230,7 +230,11 @@ enum ShareCardRenderer {
     /// Tarjeta de un resultado recién calculado (nombre, número y colores del top-1).
     @MainActor
     static func card(for outcome: ScanOutcome, dictionary: WadaDictionary, format: ShareCardFormat = .post) -> ShareCardView {
-        let palette = outcome.result.swatches.enumerated().map { PaletteColor(id: $0.offset, swatch: $0.element, dictionary: dictionary) }
+        // Con paleta por prenda cada gota lleva su prenda («Arriba», «Abajo», «Prenda entera»),
+        // igual que la tira del Feed; sin ella, el color de Wada más cercano (motor).
+        let palette = outcome.usesGarments
+            ? GarmentPalette.colors(outcome.garments)
+            : outcome.result.swatches.enumerated().map { PaletteColor(id: $0.offset, swatch: $0.element, dictionary: dictionary) }
         return card(comboId: outcome.result.hits.first?.comboId, palette: palette, photo: outcome.image,
                     dictionary: dictionary, format: format)
     }

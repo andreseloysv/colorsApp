@@ -182,7 +182,9 @@ final class ResultViewModelTests: XCTestCase {
         XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "result-people"]), .resultPeople)
         XCTAssertEqual(DebugLaunch.screen(from: ["ColorsApp", "-uiScreen", "result-people-mask"]), .resultPeopleMask)
         XCTAssertEqual(DebugLaunch.layer(from: ["ColorsApp", "-uiScreen", "layers-demo", "-uiLayer", "6"]), 6)
-        XCTAssertNil(DebugLaunch.layer(from: ["ColorsApp", "-uiLayer", "12"]))
+        // 12 capas desde ADR-011 (la 8 es «Prendas»): 12 vale, 13 no.
+        XCTAssertEqual(DebugLaunch.layer(from: ["ColorsApp", "-uiLayer", "12"]), 12)
+        XCTAssertNil(DebugLaunch.layer(from: ["ColorsApp", "-uiLayer", "13"]))
         XCTAssertNotNil(DebugLaunch.groupPhoto(), "la foto de grupo de depuración está en el bundle de Debug")
     }
 

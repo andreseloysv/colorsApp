@@ -1,8 +1,9 @@
 /*
  * ce_palette.c — extracción de paleta (capa 2): histograma 5 bits/canal ->
  * median cut modificado (MMCQ) -> Lloyd ponderado en Lab -> fusión ΔE00 ->
- * descarte por peso -> orden y recorte. Determinista: sin RNG, bins siempre
- * en orden de índice, empates al índice menor.
+ * fusión de sombras opcional (ΔE00 con kL = 3; experimento, apagada por
+ * defecto) -> descarte por peso -> orden y recorte. Determinista: sin RNG,
+ * bins siempre en orden de índice, empates al índice menor.
  *
  * Reglas: C11, sin I/O, sin malloc, todo en double, sin contracción FMA.
  * Funciones de libm usadas: las de ce_math (pow/cbrt/atan2/sin/cos/exp) y
@@ -40,15 +41,17 @@ void ce_palette_opts_default(ce_palette_opts *o)
     o->merge_de = 5.0;
     o->min_weight = 0.05;
     o->skin_rule = 0;
+    o->merge_light_de = 0.0;
 }
 
-static int ce_opts_valid(const ce_palette_opts *o)
+int ce_palette_opts_valid(const ce_palette_opts *o)
 {
     if (o->k_init < 1 || o->k_init > CE_PALETTE_K_MAX) return 0;
     if (o->max_iters < 0 || o->max_iters > CE_PALETTE_MAX_ITERS) return 0;
     if (o->max_colors < 1 || o->max_colors > CE_PALETTE_MAX_COLORS) return 0;
     if (o->max_side < 1 || o->max_side > CE_PALETTE_MAX_SIDE) return 0;
     if (isnan(o->center_sigma) || isnan(o->merge_de) || isnan(o->min_weight)) return 0;
+    if (isnan(o->merge_light_de)) return 0;
     return 1;
 }
 
@@ -56,7 +59,7 @@ static int ce_opts_valid(const ce_palette_opts *o)
  * Histograma
  * ---------------------------------------------------------------------- */
 
-static void ce_hist_clear(ce_ctx *ctx)
+void ce_hist_clear(ce_ctx *ctx)
 {
     int i;
     for (i = 0; i < CE_HIST_BINS; ++i) {
@@ -65,14 +68,13 @@ static void ce_hist_clear(ce_ctx *ctx)
         b->c[0] = 0.0;
         b->c[1] = 0.0;
         b->c[2] = 0.0;
-        b->count = 0;
-        b->center = -1;
+        ctx->hist_center[i] = -1;
     }
 }
 
 /* Acumula la imagen reducida. Con peso 1.0 las sumas son enteras exactas
  * (<= 255 * 65536 < 2^53): el resultado no depende del orden de los píxeles. */
-static void ce_hist_accumulate(ce_ctx *ctx)
+void ce_hist_accumulate(ce_ctx *ctx)
 {
     const size_t n = (size_t)ctx->reduced_w * (size_t)ctx->reduced_h;
     size_t i;
@@ -81,7 +83,6 @@ static void ce_hist_accumulate(ce_ctx *ctx)
         const double w = ctx->weights[i];
         ce_hist_bin *b = &ctx->hist[CE_HIST_INDEX(p[0] >> CE_HIST_SHIFT, p[1] >> CE_HIST_SHIFT,
                                                  p[2] >> CE_HIST_SHIFT)];
-        b->count++;
         if (w > 0.0) {
             b->wsum += w;
             b->c[0] += w * (double)p[0];
@@ -91,9 +92,32 @@ static void ce_hist_accumulate(ce_ctx *ctx)
     }
 }
 
+/* Como ce_hist_accumulate, pero solo con los píxeles reducidos cuya etiqueta
+ * de región (ctx->region_label, 0..7) tiene su bit en `sel` (paleta por
+ * prenda: una región o la unión de varias). */
+void ce_hist_accumulate_labels(ce_ctx *ctx, unsigned sel)
+{
+    const size_t n = (size_t)ctx->reduced_w * (size_t)ctx->reduced_h;
+    size_t i;
+    for (i = 0; i < n; ++i) {
+        const uint8_t *p = ctx->reduced + i * 3;
+        const double w = ctx->weights[i];
+        const unsigned label = ctx->region_label[i];
+        ce_hist_bin *b;
+        if (label > 7u || ((sel >> label) & 1u) == 0u || !(w > 0.0)) {
+            continue;
+        }
+        b = &ctx->hist[CE_HIST_INDEX(p[0] >> CE_HIST_SHIFT, p[1] >> CE_HIST_SHIFT, p[2] >> CE_HIST_SHIFT)];
+        b->wsum += w;
+        b->c[0] += w * (double)p[0];
+        b->c[1] += w * (double)p[1];
+        b->c[2] += w * (double)p[2];
+    }
+}
+
 /* Color medio (sin cuantizar) de cada bin con peso -> Lab en c[]. Devuelve
  * el peso total. */
-static double ce_hist_finalize(ce_ctx *ctx)
+double ce_hist_finalize(ce_ctx *ctx)
 {
     double total = 0.0;
     int i;
@@ -231,7 +255,7 @@ static void ce_box_split(ce_ctx *ctx, int src, int dst)
 /* Construye hasta k cajas; devuelve cuántas. Los primeros cortes se eligen
  * por población y el resto por población x volumen; siempre la caja de mayor
  * prioridad entre las divisibles (empates: índice menor). */
-static int ce_mmcq(ce_ctx *ctx, int k)
+int ce_mmcq(ce_ctx *ctx, int k)
 {
     int nboxes = 1;
     const int by_pop = (int)(CE_MMCQ_FRACT_BY_POPULATION * (double)k);
@@ -267,7 +291,7 @@ static int ce_mmcq(ce_ctx *ctx, int k)
 }
 
 /* Asigna cada bin con peso a la caja que lo contiene (partición del cubo). */
-static void ce_assign_from_boxes(ce_ctx *ctx, int nboxes)
+void ce_assign_from_boxes(ce_ctx *ctx, int nboxes)
 {
     int j, r, g, b;
     for (j = 0; j < nboxes; ++j) {
@@ -275,9 +299,9 @@ static void ce_assign_from_boxes(ce_ctx *ctx, int nboxes)
         for (r = box->lo[0]; r <= box->hi[0]; ++r) {
             for (g = box->lo[1]; g <= box->hi[1]; ++g) {
                 for (b = box->lo[2]; b <= box->hi[2]; ++b) {
-                    ce_hist_bin *bin = &ctx->hist[CE_HIST_INDEX(r, g, b)];
-                    if (bin->wsum > 0.0) {
-                        bin->center = j;
+                    const int idx = CE_HIST_INDEX(r, g, b);
+                    if (ctx->hist[idx].wsum > 0.0) {
+                        ctx->hist_center[idx] = (int8_t)j;
                     }
                 }
             }
@@ -299,7 +323,7 @@ static double ce_lab_dist2(const double *c, const ce_lab *lab)
 
 /* Recalcula cada centro como media ponderada de sus bins (orden de índice).
  * Un centro sin bins conserva su Lab y queda con wsum 0. */
-static void ce_lloyd_update(ce_ctx *ctx, int k)
+void ce_lloyd_update(ce_ctx *ctx, int k)
 {
     int i, j;
     for (j = 0; j < k; ++j) {
@@ -310,10 +334,10 @@ static void ce_lloyd_update(ce_ctx *ctx, int k)
     for (i = 0; i < CE_HIST_BINS; ++i) {
         const ce_hist_bin *bin = &ctx->hist[i];
         ce_center *c;
-        if (bin->wsum <= 0.0 || bin->center < 0) {
+        if (bin->wsum <= 0.0 || ctx->hist_center[i] < 0) {
             continue;
         }
-        c = &ctx->centers[bin->center];
+        c = &ctx->centers[ctx->hist_center[i]];
         c->wsum += bin->wsum;
         c->sum[0] += bin->wsum * bin->c[0];
         c->sum[1] += bin->wsum * bin->c[1];
@@ -331,7 +355,7 @@ static void ce_lloyd_update(ce_ctx *ctx, int k)
 
 /* Asigna cada bin al centro más cercano (ΔE76 al cuadrado; empates al índice
  * menor). Devuelve 1 si alguna asignación cambió. */
-static int ce_lloyd_assign(ce_ctx *ctx, int k)
+int ce_lloyd_assign(ce_ctx *ctx, int k)
 {
     int changed = 0, i, j;
     for (i = 0; i < CE_HIST_BINS; ++i) {
@@ -349,8 +373,8 @@ static int ce_lloyd_assign(ce_ctx *ctx, int k)
                 best = j;
             }
         }
-        if (bin->center != best) {
-            bin->center = best;
+        if (ctx->hist_center[i] != best) {
+            ctx->hist_center[i] = (int8_t)best;
             changed = 1;
         }
     }
@@ -388,10 +412,13 @@ static void ce_debug_merge_groups(ce_ctx *ctx, int head, int absorbed)
     }
 }
 
-/* Fusiona iterativamente el par más próximo mientras ΔE00 < merge_de.
+/* Fusiona iterativamente el par más próximo mientras su distancia < merge_de.
+ * Distancia: ΔE00 (light = 0) o, en la fusión de sombras (light = 1), ΔE00
+ * con kL = CE_PALETTE_LIGHT_MERGE_KL, que tolera diferencias de L* (la misma
+ * prenda con luz y sombra) sin tolerar las de croma o tono.
  * `slot` (contabilidad de depuración) sigue a los centros: slot[i] es el
  * cluster representante del grupo que ocupa la posición i. */
-static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de, int *slot)
+static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de, int light, int *slot)
 {
     if (!(merge_de > 0.0)) {
         return n;
@@ -401,7 +428,9 @@ static int ce_centers_merge(ce_ctx *ctx, int n, double merge_de, int *slot)
         double best = HUGE_VAL;
         for (i = 0; i < n; ++i) {
             for (j = i + 1; j < n; ++j) {
-                const double d = ce_de2000(ctx->centers[i].lab, ctx->centers[j].lab);
+                const double d = light
+                    ? ce_de2000_k(ctx->centers[i].lab, ctx->centers[j].lab, CE_PALETTE_LIGHT_MERGE_KL, 1.0, 1.0)
+                    : ce_de2000(ctx->centers[i].lab, ctx->centers[j].lab);
                 if (d < best) {
                     best = d;
                     bi = i;
@@ -494,7 +523,7 @@ static void ce_swatch_from_lab(ce_swatch *sw, ce_lab lab, double weight)
 }
 
 /* Peso total 0: un swatch con el color medio (sin ponderar) de la reducida. */
-static int ce_palette_fallback_mean(const ce_ctx *ctx, ce_swatch *out)
+int ce_palette_fallback_mean(const ce_ctx *ctx, ce_swatch *out)
 {
     const size_t n = (size_t)ctx->reduced_w * (size_t)ctx->reduced_h;
     uint64_t sr = 0, sg = 0, sb = 0;
@@ -639,6 +668,7 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
     }
     /* Cualquier llamada invalida las capas de depuración anteriores. */
     ctx->dbg.valid = 0;
+    ctx->dbg.garment = 0;
     rc = ce_image_validate(img);
     if (rc != CE_OK) {
         return rc;
@@ -647,7 +677,7 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
         ce_palette_opts_default(&def);
         o = &def;
     }
-    if (!ce_opts_valid(o)) {
+    if (!ce_palette_opts_valid(o)) {
         return CE_ERR_OPTS;
     }
     n_max = o->max_colors < cap ? o->max_colors : cap;
@@ -697,7 +727,8 @@ int ce_palette_extract(ce_ctx *ctx, const ce_image *img, const ce_palette_opts *
     /* 6. Fusión y descarte (con la contabilidad de clusters para ce_debug.c). */
     ce_debug_record_clusters(ctx, k, slot);
     n = ce_centers_compact(ctx, k);
-    n = ce_centers_merge(ctx, n, o->merge_de, slot);
+    n = ce_centers_merge(ctx, n, o->merge_de, 0, slot);
+    n = ce_centers_merge(ctx, n, o->merge_light_de, 1, slot);
     n = ce_centers_discard(ctx, n, o->min_weight, slot);
 
     /* 7. Orden, recorte, normalización. */
@@ -746,7 +777,7 @@ int ce_dict_nearest_color(ce_lab lab, double *de)
  * Hashes FNV-1a (misma plataforma)
  * ---------------------------------------------------------------------- */
 
-static uint64_t ce_fnv1a_bytes(uint64_t h, const unsigned char *p, size_t n)
+uint64_t ce_fnv1a_bytes(uint64_t h, const unsigned char *p, size_t n)
 {
     size_t i;
     for (i = 0; i < n; ++i) {
@@ -756,7 +787,7 @@ static uint64_t ce_fnv1a_bytes(uint64_t h, const unsigned char *p, size_t n)
     return h;
 }
 
-static uint64_t ce_fnv1a_double(uint64_t h, double v)
+uint64_t ce_fnv1a_double(uint64_t h, double v)
 {
     union {
         double d;

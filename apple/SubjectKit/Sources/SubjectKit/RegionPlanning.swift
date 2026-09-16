@@ -116,6 +116,59 @@ extension SubjectExtractor {
                       includeForearms: o.includeUpperArms, includeLegs: true, includeLowerLegs: true)
     }
 
+    /// Opciones de `ce_mask_garment_regions` para el mapa de regiones de prenda: las de la silueta
+    /// de la pose (`silhouetteOptions`) de las opciones finales de la región. La máscara que recibe
+    /// el motor con pose es un subconjunto de esa silueta (regiones de la pose o la silueta, menos
+    /// la piel), así que todos sus píxeles quedan etiquetados; es la configuración con la que se
+    /// calibró la paleta por prenda (`--torso-margin 0.35 --limb-width 1.0 --forearms 1`,
+    /// engine/BENCHLOG.md, ADR-011).
+    public static func garmentRegionOptions(_ o: RegionOptions) -> RegionOptions {
+        silhouetteOptions(o)
+    }
+
+    /// Mapa de regiones de prenda de una persona (ver `SubjectOptions.computeGarmentRegions`):
+    /// `ce_mask_garment_regions(decision.regionPose, garmentRegionOptions(decision.regionOptions), mask)`
+    /// si la región es de ropa y sale de la pose (`.poseRegions` o `.poseSilhouette`); con caderas
+    /// estimadas (`decision.hipsEstimated`) los 2 pasan a 1. nil si no hay pose utilizable para
+    /// esta persona (recorte de cabeza, persona completa, sin decisión) o si el motor devuelve
+    /// CE_ERR_POSE. `mask` es la máscara que recibe el motor para esta persona (width * height).
+    /// Lanza los demás errores del motor.
+    public static func garmentRegionMap(decision: RegionDecision?, region: RegionMode, mask: [UInt8], width: Int,
+                                        height: Int) throws -> (regions: [UInt8], stats: GarmentRegionStats)? {
+        guard region == .clothing, let d = decision, d.source == .poseRegions || d.source == .poseSilhouette,
+              let pose = d.regionPose, let ro = d.regionOptions else { return nil }
+        let options = garmentRegionOptions(ro)
+        var map: [UInt8]
+        do {
+            // Cualificado: `garmentRegions` es también el nombre de propiedades de SubjectKit.
+            map = try ColorEngine.garmentRegions(pose: pose, options: options, personMask: mask, width: width,
+                                                 height: height).regions
+        } catch let e as ColorEngineError where e == .poseMissing {
+            return nil
+        }
+        var upper = 0, lower = 0, merged = 0
+        map.withUnsafeMutableBufferPointer { b in
+            for i in 0..<b.count {
+                switch b[i] {
+                case 1: upper += 1
+                case 2:
+                    if d.hipsEstimated {
+                        b[i] = 1
+                        upper += 1
+                        merged += 1
+                    } else {
+                        lower += 1
+                    }
+                default: break
+                }
+            }
+        }
+        let stats = GarmentRegionStats(upperPixels: upper, lowerPixels: lower, maskPixels: MaskOps.nonZero(mask),
+                                       lowerMergedIntoUpper: d.hipsEstimated, mergedLowerPixels: merged,
+                                       options: options, pose: pose)
+        return (map, stats)
+    }
+
     /// Fracción de `cutHead` para una persona: sin cara, `headCutFraction`; con
     /// cara, la franja hasta su borde inferior + `headCutNeckFactor`·alto de la cara,
     /// medida sobre el bbox de la persona binaria (y0, H) y acotada a

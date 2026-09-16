@@ -1,4 +1,4 @@
-// cli_match_check.js — valida el contrato JSON de `ce match | analyze | batch`
+// cli_match_check.js — valida el contrato JSON de `ce match | analyze | batch | match-palette`
 // de extremo a extremo (lo registra CMake como test `cli_match_contract` si
 // hay node). Uso:
 //   node cli_match_check.js <dir_fixtures> <cli...>
@@ -25,15 +25,16 @@ function assert(cond, msg) {
   checks++;
   if (!cond) fail(msg);
 }
-function run(args) {
-  const r = spawnSync(cli[0], cli.slice(1).concat(args), { encoding: 'utf8', maxBuffer: 1 << 26 });
+function run(args, input) {
+  const r = spawnSync(cli[0], cli.slice(1).concat(args), { encoding: 'utf8', maxBuffer: 1 << 26, input: input || '' });
   if (r.error) fail('no puedo ejecutar el CLI: ' + r.error.message);
   return r;
 }
 const isInt = (v) => Number.isInteger(v);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
-const PALETTE_KEYS = ['k_init', 'max_iters', 'max_colors', 'max_side', 'center_sigma', 'merge_de', 'min_weight', 'skin_rule'];
+const PALETTE_KEYS = ['k_init', 'max_iters', 'max_colors', 'max_side', 'center_sigma', 'merge_de', 'min_weight', 'skin_rule',
+  'merge_light_de'];
 const MATCH_KEYS = ['kL', 'kC', 'kH', 'coverage_lambda', 'ambiguous_gap', 'exposure_ev_max', 'exposure_penalty',
   'illuminant_search', 'illuminant_penalty', 'top'];
 const RESULT_KEYS = ['engine', 'dict_version', 'file', 'width', 'height', 'reduced_width', 'reduced_height',
@@ -58,7 +59,9 @@ function checkResult(obj, file, top, expectedTop1, batch) {
   assert(obj.opts.match.kL === 1 && obj.opts.match.kC === 1 && obj.opts.match.kH === 1, 'kL/kC/kH por defecto');
   assert(obj.opts.match.coverage_lambda === 1 && obj.opts.match.ambiguous_gap === 1, 'lambda/gap por defecto');
   assert(obj.opts.match.exposure_ev_max === 1 && obj.opts.match.exposure_penalty === 2, 'exposición por defecto');
-  assert(obj.opts.match.illuminant_search === 1 && obj.opts.match.illuminant_penalty === 2, 'iluminante por defecto');
+  // ADR-009 (2026-09-15): la hipótesis de iluminante ya no está activa por defecto.
+  assert(obj.opts.match.illuminant_search === 0 && obj.opts.match.illuminant_penalty === 2, 'iluminante por defecto');
+  assert(obj.opts.palette.merge_light_de === 0, 'fusión de sombras apagada por defecto');
   assert(obj.opts.match.top === top, 'opts.match.top');
   assert(Array.isArray(obj.swatches) && obj.swatches.length >= 1 && obj.swatches.length <= 8, 'swatches 1..8');
   let sum = 0;
@@ -189,5 +192,42 @@ assert(rb1.status === 1 && rb1.stdout.split('\n').filter((l) => l.length > 0).le
 // El hash de cada línea del batch coincide con el de `ce match` de la misma imagen.
 const single = JSON.parse(run(['match', path.join(outDir, 'match_100.ppm'), '--top', '3'].concat(common)).stdout);
 assert(JSON.parse(lines[1]).hash === single.hash, 'hash batch == hash match');
+
+// 6. match-palette: paletas como texto (caso real rosa palo + negro, CONTEXT §11).
+const PINK = '#222524:0.394 #b49aa2:0.227 #917a7e:0.162 #d5b8c0:0.134 #6b5a57:0.083';
+const rp = run(['match-palette', '--top', '3', '--json'], '; comentario\n\n' + PINK + '\n');
+assert(rp.status === 0, 'match-palette exit 0 (fue ' + rp.status + ': ' + rp.stderr + ')');
+const pl = rp.stdout.split('\n').filter((l) => l.length > 0);
+assert(pl.length === 1, 'match-palette: una línea por paleta (comentarios y vacías ignoradas)');
+const po = JSON.parse(pl[0]);
+assert(JSON.stringify(Object.keys(po)) === '["line","swatches","opts","hits","ambiguous","hash"]', 'claves de match-palette');
+assert(po.line === 3 && po.swatches.length === 5 && po.swatches[1].hex === '#b49aa2', 'línea 3, 5 swatches en orden');
+assert(Math.abs(po.swatches.reduce((a, s) => a + s.weight, 0) - 1) < 1e-12, 'pesos normalizados');
+assert(JSON.stringify(Object.keys(po.opts.match)) === JSON.stringify(MATCH_KEYS), 'opts.match de match-palette');
+assert([337, 27].includes(po.hits[0].id) && !po.hits.some((h) => h.id === 67), 'rosa + negro por defecto: 337/27, nunca 67');
+assert(/^[0-9a-f]{16}$/.test(po.hash) && (po.ambiguous === 0 || po.ambiguous === 1), 'hash y ambiguous');
+const rpi = JSON.parse(run(['match-palette', '--top', '3', '--json', '--illuminant-search', '1'], PINK + '\n').stdout);
+assert(rpi.hits[0].id === 67 && rpi.opts.match.illuminant_search === 1, 'con illuminant_search=1 sale Nº 067 (ADR-009)');
+// Pesos sin normalizar y Lab en vez de hex: mismo resultado bit a bit.
+const labTokens = po.swatches.map((s, i) => s.lab.map((v) => v.toPrecision(17)).join(',') + ':' + (2 * [0.394, 0.227, 0.162, 0.134, 0.083][i])).join(' ');
+const rlab = JSON.parse(run(['match-palette', '--top', '3', '--json'], labTokens + '\n').stdout);
+assert(rlab.hash === po.hash && rlab.hits[0].score === po.hits[0].score, 'Lab + pesos x2 == hex (hash ' + rlab.hash + ')');
+// Errores: línea mala -> {line, error}, exit 1; las buenas siguen.
+const re = run(['match-palette', '--json'], PINK + '\n#12345:1\n#ffffff:0\n' + '#000000:1 '.repeat(9) + '\n' + PINK + '\n');
+const rel = re.stdout.split('\n').filter((l) => l.length > 0).map((l) => JSON.parse(l));
+assert(re.status === 1 && rel.length === 5, 'match-palette con errores: exit 1 y 5 líneas');
+assert(!rel[0].error && rel[0].hash === po.hash && rel[1].error && rel[2].error && rel[3].error && rel[4].hash === po.hash,
+  'errores por línea: las paletas buenas antes y después dan el mismo hash');
+assert(JSON.stringify(Object.keys(rel[1])) === '["line","error"]' && rel[1].line === 2, 'línea de error {line, error}');
+assert(rel[2].error.length > 0 && rel[3].error.length > 0 && rel[4].hits.length === 3, 'suma 0 y > 8 swatches rechazadas');
+// Desde fichero y texto sin --json.
+assert(run(['match-palette', path.join(outDir, 'no_palettes.txt')]).status === 2, 'fichero inexistente -> 2');
+const rtx = run(['match-palette'], PINK + '\n');
+assert(rtx.status === 0 && /^line 1: #1 id (337|27) /.test(rtx.stdout), 'salida de texto de match-palette');
+assert(run(['match-palette', '--mask', 'x.pgm'], PINK).status === 2, 'match-palette no admite --mask');
+// --merge-light-de se propaga a opts.palette.
+const rml = JSON.parse(run(['match', f1, '--merge-light-de', '4.5'].concat(common)).stdout);
+assert(rml.opts.palette.merge_light_de === 4.5, '--merge-light-de propagado');
+assert(run(['match', f1, '--merge-light-de', 'nan', '--json']).status === 2, '--merge-light-de nan -> 2');
 
 console.log('cli_match_contract: ' + checks + ' comprobaciones en verde');

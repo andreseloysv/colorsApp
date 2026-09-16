@@ -17,12 +17,29 @@ Variantes de desarrollo (``v`` = 0..9; ``seed_base`` = 0):
 | 1 | shapes          | shapes           | rectángulos anidados, L o elipses sobre fondo                 |
 | 2 | texture         | texture          | ruido opensimplex en L* (±6)                                  |
 | 3 | shading         | shading          | gradiente lineal de L* (±12 %) en dirección aleatoria         |
-| 4 | illuminant_A    | illuminant       | Bradford D65 -> A en XYZ lineal (balance de blancos erróneo)  |
-| 5 | illuminant_F2   | illuminant       | Bradford D65 -> F2                                            |
-| 6 | illuminant_D75  | illuminant       | Bradford D65 -> D75                                           |
+| 4 | illuminant_A    | illuminant       | tinte residual de A tras el balance de blancos (25-35 %)      |
+| 5 | illuminant_F2   | illuminant       | tinte residual de F2 (25-35 %)                                |
+| 6 | illuminant_D75  | illuminant       | tinte residual de D75 (25-35 %)                               |
 | 7 | jpeg            | jpeg_q10/q30     | JPEG (Pillow, 4:2:0) con q = 10 o 30 elegido por semilla      |
 | 8 | exposure        | exposure         | ±1 EV en lineal y croma x0,7..1,3 en Lab                      |
 | 9 | distractor      | distractor       | 40 % del lienzo (marco o banda) con un color ajeno (ΔE00 > 15)|
+
+**Iluminante realista (desde 2026-09-15, ADR-009).** Las variantes 4-6 ya no simulan una foto
+tomada bajo A/F2/D75 *sin* balance de blancos (la adaptación Bradford D65 -> X completa), sino
+el tinte **residual** que deja el balance de blancos automático de un teléfono: la matriz
+``M_s = (1 - s)·I + s·Bradford(D65 -> X)``, con ``s`` uniforme en ``ILLUMINANT_RESIDUAL_RANGE``
+(0,25..0,35) sorteado por imagen con la semilla. Como Bradford es diagonal en su espacio de conos,
+``M_s`` equivale a ganancias de cono ``s·g + (1 - s)``: es la adaptación incompleta con grado
+``D = 1 - s`` de CIECAM02/CAT02 (CIE 159:2004). Razonamiento del intervalo: el grado de adaptación
+de CIECAM02, ``D = F·(1 - (1/3,6)·exp((-L_A - 42)/92))``, vale 0,82-0,98 con entorno medio (F = 1)
+y 0,66-0,78 con entorno oscuro (F = 0,8) para luminancias de adaptación de 0 a 200 cd/m², es decir,
+un residual de 2 a 34 %; el balance de blancos de un teléfono no es público, así que se toma el
+extremo pesimista (25-35 %), que además cubre la costumbre de conservar parte del tono cálido de
+la luz de tungsteno. Motivo del cambio: con el iluminante completo, la mejora de L3 de la
+hipótesis de iluminante del match era tautológica (mismos iluminantes en generador e hipótesis) y
+empujó a activar por defecto una corrección que, en fotos reales ya balanceadas, giraba tonos
+(caso real rosa palo + negro -> Nº 067 azul, CONTEXT §11). ``apply_illuminant(img, X, strength=1)``
+sigue disponible para el iluminante completo.
 
 Holdout ciego (``v`` = 10 y 11): ``seed_base`` = ``$COLORSAPP_HOLDOUT_SEED`` (solo el
 usuario la exporta; ver ``holdout_seed_base``). Cada imagen del holdout sigue **la misma
@@ -82,6 +99,9 @@ DEGRADATION_GROUPS: tuple[str, ...] = (
     "clean", "shapes", "texture", "shading", "illuminant", "jpeg_q10", "jpeg_q30", "exposure", "distractor",
 )
 ILLUMINANTS: tuple[str, ...] = ("A", "F2", "D75")
+#: Fracción de la adaptación Bradford D65 -> X que queda en la foto tras el balance de blancos
+#: automático (variantes 4-6): uniforme en este intervalo por imagen (ver la cabecera).
+ILLUMINANT_RESIDUAL_RANGE: tuple[float, float] = (0.25, 0.35)
 JPEG_Q_DEV: tuple[int, ...] = (10, 30)
 #: Orden canónico de aplicación de las degradaciones a nivel de píxel (JPEG siempre la última).
 DEGRADATION_ORDER: tuple[str, ...] = ("distractor", "texture", "shading", "illuminant", "exposure", "jpeg")
@@ -353,14 +373,30 @@ def apply_shading(img: np.ndarray, rng: np.random.Generator, amp: float = SHADIN
     return _lab_to_img(lab), {"amp": amp, "theta_deg": round(math.degrees(theta), 3)}
 
 
-def apply_illuminant(img: np.ndarray, name: str) -> tuple[np.ndarray, dict[str, Any]]:
-    """sRGB -> XYZ (D65) -> Bradford D65->``name`` -> de vuelta con la matriz sRGB (sin readaptar)."""
-    m = ref.bradford_matrix("D65", name)
+def residual_illuminant_matrix(name: str, strength: float) -> np.ndarray:
+    """``(1 - s)·I + s·Bradford(D65 -> name)``: adaptación incompleta (grado CAT02 ``D = 1 - s``)."""
+    s = float(strength)
+    if not (0.0 <= s <= 1.0):
+        raise ValueError(f"strength {s} fuera de [0, 1]")
+    return (1.0 - s) * np.eye(3) + s * ref.bradford_matrix("D65", name)
+
+
+def apply_illuminant(img: np.ndarray, name: str, strength: float = 1.0) -> tuple[np.ndarray, dict[str, Any]]:
+    """sRGB -> XYZ (D65) -> tinte de ``name`` -> de vuelta con la matriz sRGB (sin readaptar).
+
+    ``strength`` = 1: Bradford D65->``name`` completo (foto sin balance de blancos). ``strength`` < 1:
+    tinte residual tras un balance de blancos parcial (``residual_illuminant_matrix``); las variantes
+    4-6 usan ``ILLUMINANT_RESIDUAL_RANGE``.
+    """
+    m = residual_illuminant_matrix(name, strength)
     lin = _img_to_linear(img)
     xyz = lin @ ref.MATRIX_RGB_TO_XYZ.T
     xyz = xyz @ m.T
     lin2 = xyz @ ref.MATRIX_XYZ_TO_RGB.T
-    return _linear_to_img(lin2), {"illuminant": name}
+    params: dict[str, Any] = {"illuminant": name}
+    if float(strength) != 1.0:
+        params.update({"strength": round(float(strength), 6), "model": "residual_after_awb"})
+    return _linear_to_img(lin2), params
 
 
 def apply_jpeg(img: np.ndarray, quality: int) -> tuple[np.ndarray, dict[str, Any]]:
@@ -517,7 +553,9 @@ def variant(combo_id: int, v: int, seed_base: int = 0, size: int = SIZE,
         elif name == "shading":
             img, p = apply_shading(img, rng)
         elif name == "illuminant":
-            img, p = apply_illuminant(img, plan["illuminant"])
+            # Tinte residual tras el balance de blancos del teléfono (no el iluminante completo).
+            strength = float(rng.uniform(*ILLUMINANT_RESIDUAL_RANGE))
+            img, p = apply_illuminant(img, plan["illuminant"], strength)
         elif name == "exposure":
             ev = float((-1.0, 1.0)[int(rng.integers(0, 2))])
             sat = float(rng.uniform(0.7, 1.3))

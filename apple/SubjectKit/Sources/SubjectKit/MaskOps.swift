@@ -83,6 +83,105 @@ public enum MaskOps {
         return out
     }
 
+    /// Dilatación binaria con un cuadrado de lado 2·radius + 1 (distancia de Chebyshev):
+    /// 255 donde algún píxel > 0 de `mask` está a <= radius, 0 en el resto. Dos pasadas
+    /// separables (filas y columnas) con recuentos por ventana: O(width·height).
+    public static func dilate(_ mask: [UInt8], width: Int, height: Int, radius: Int) -> [UInt8] {
+        let count = width * height
+        guard width >= 1, height >= 1, mask.count >= count else { return [UInt8](repeating: 0, count: max(0, count)) }
+        var out = [UInt8](repeating: 0, count: count)
+        for i in 0..<count where mask[i] != 0 { out[i] = 255 }
+        let r = max(0, radius)
+        guard r > 0 else { return out }
+        var tmp = [UInt8](repeating: 0, count: count)
+        // Filas.
+        for y in 0..<height {
+            let row = y * width
+            var inWindow = 0
+            for x in 0..<min(width, r + 1) where out[row + x] != 0 { inWindow += 1 }
+            for x in 0..<width {
+                if inWindow > 0 { tmp[row + x] = 255 }
+                let add = x + r + 1, drop = x - r
+                if add < width, out[row + add] != 0 { inWindow += 1 }
+                if drop >= 0, out[row + drop] != 0 { inWindow -= 1 }
+            }
+        }
+        // Columnas.
+        var result = [UInt8](repeating: 0, count: count)
+        for x in 0..<width {
+            var inWindow = 0
+            for y in 0..<min(height, r + 1) where tmp[y * width + x] != 0 { inWindow += 1 }
+            for y in 0..<height {
+                if inWindow > 0 { result[y * width + x] = 255 }
+                let add = y + r + 1, drop = y - r
+                if add < height, tmp[add * width + x] != 0 { inWindow += 1 }
+                if drop >= 0, tmp[drop * width + x] != 0 { inWindow -= 1 }
+            }
+        }
+        return result
+    }
+
+    /// Píxeles de `allowed` (!= 0) alcanzables desde `seeds` (!= 0) en a lo sumo `radius` pasos de
+    /// vecindad de 8 sin salir de `allowed` (los de `seeds` no se incluyen salvo que también estén
+    /// en `allowed` y se alcancen desde otra semilla; en la cadena son disjuntos). 255 = alcanzado.
+    /// Recorrido en anchura por capas en orden de índice: resultado determinista.
+    public static func geodesicGrow(seeds: [UInt8], allowed: [UInt8], width: Int, height: Int, radius: Int) -> [UInt8] {
+        let count = width * height
+        guard width >= 1, height >= 1, seeds.count >= count, allowed.count >= count else {
+            return [UInt8](repeating: 0, count: max(0, count))
+        }
+        var out = [UInt8](repeating: 0, count: count)
+        guard radius > 0 else { return out }
+        var visited = [Bool](repeating: false, count: count)
+        var frontier: [Int] = []
+        for i in 0..<count where seeds[i] != 0 {
+            visited[i] = true
+            frontier.append(i)
+        }
+        var step = 0
+        while !frontier.isEmpty, step < radius {
+            var next: [Int] = []
+            for i in frontier {
+                let x = i % width, y = i / width
+                for dy in -1...1 {
+                    let yy = y + dy
+                    guard yy >= 0, yy < height else { continue }
+                    for dx in -1...1 where dx != 0 || dy != 0 {
+                        let xx = x + dx
+                        guard xx >= 0, xx < width else { continue }
+                        let j = yy * width + xx
+                        if !visited[j] && allowed[j] != 0 {
+                            visited[j] = true
+                            out[j] = 255
+                            next.append(j)
+                        }
+                    }
+                }
+            }
+            frontier = next
+            step += 1
+        }
+        return out
+    }
+
+
+    /// Halo de la piel: pone a 0 los píxeles de `mask` a distancia de Chebyshev <= radius de
+    /// algún píxel > 0 de `around` (la piel quitada). Devuelve la máscara y cuántos píxeles
+    /// > 0 pasaron a 0. radius <= 0 o `around` vacío: sin cambios.
+    public static func removeHalo(_ mask: [UInt8], around: [UInt8], width: Int, height: Int,
+                                  radius: Int) -> (mask: [UInt8], removed: Int) {
+        guard radius > 0, nonZero(around) > 0 else { return (mask, 0) }
+        let grown = dilate(around, width: width, height: height, radius: radius)
+        var out = mask
+        var removed = 0
+        let n = min(out.count, grown.count)
+        for i in 0..<n where grown[i] != 0 && out[i] != 0 {
+            out[i] = 0
+            removed += 1
+        }
+        return (out, removed)
+    }
+
     /// Mapa de instancias: en cada píxel, el id (acotado a 1...255) de la persona
     /// con mayor valor >= 128; 0 = fondo. `people` en orden de prioridad de desempate.
     public static func instanceOverlay(_ people: [PersonInstance], width: Int, height: Int) -> [UInt8] {

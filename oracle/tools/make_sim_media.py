@@ -11,7 +11,9 @@ Escribe en ``ios/ColorsAppTests/Fixtures/sim_media/``:
   3 y 6 de 4). Es la misma construcción que el test de recall exacto de ``test_match.c``.
 - ``expected_sim_media.json``: por fixture, los colores de la combinación (índice, nombre,
   hex, rgb), el color medio de la imagen y el resultado de ``build/tools/ce match --json
-  --top 3 --illuminant-search 0`` (la política de match de la app: EngineBridge.appMatchOptions) sobre los mismos píxeles: hits (id + score),
+  --top 3`` con las opciones por defecto del motor (desde ADR-009 sin hipótesis de iluminante: son la
+  política de match de la app, ``EngineBridge.appMatchOptions`` == ``MatchOptions.default``) sobre los
+  mismos píxeles: hits (id + score),
   ``ambiguous`` y swatches. El test de la app empareja cada scan con su fixture por la
   paleta (todos los colores de la combinación a ΔE00 ≤ 3 de un swatch) y exige que el
   top-1 del motor en el iPhone coincida con ``hits[0].id``.
@@ -88,7 +90,7 @@ def ensure_cli() -> Path:
 def ce_match(cli: Path, img: Image.Image, tmpdir: Path, name: str) -> dict:
     ppm = tmpdir / f"{name}.ppm"
     ppm.write_bytes(ppm_bytes(img))
-    out = subprocess.run([str(cli), "match", str(ppm), "--json", "--top", "3", "--illuminant-search", "0"],
+    out = subprocess.run([str(cli), "match", str(ppm), "--json", "--top", "3"],
                          check=True, capture_output=True, text=True).stdout
     return json.loads(out)
 

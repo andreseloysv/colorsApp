@@ -46,7 +46,55 @@
      "hex": "#e8e8e6",
      "name": "reja y pared"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#b6a193",
+     "name": "cara x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#8f7e72",
+     "name": "cara x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#6e6158",
+     "name": "cara x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#836253",
+     "name": "mano derecha x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#664b3f",
+     "name": "mano derecha x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#4e392f",
+     "name": "mano derecha x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#a88574",
+     "name": "mano izquierda x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#83685a",
+     "name": "mano izquierda x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#654f44",
+     "name": "mano izquierda x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   },
   "02_single_dress_umbrella.png": {
    "sha256": "69d059dc22b178769901d118446950f42cffc1d7dcf474bbccb658429b2330ca",
@@ -101,6 +149,76 @@
      "hex": "#06070b",
      "name": "paraguas negro"
     }
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#ad7354",
+     "name": "muslo x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#875940",
+     "name": "muslo x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#684330",
+     "name": "muslo x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#b6906e",
+     "name": "espinilla x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#8f7155",
+     "name": "espinilla x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#6e5640",
+     "name": "espinilla x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#a9835c",
+     "name": "antebrazo x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#846647",
+     "name": "antebrazo x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#664e35",
+     "name": "antebrazo x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#bb9778",
+     "name": "escote x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#93765d",
+     "name": "escote x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#715a47",
+     "name": "escote x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": [
+    [
+     388,
+     330,
+     455,
+     520
+    ]
    ]
   },
   "03_couple_denim_street.png": {
@@ -144,6 +262,61 @@
      "hex": "#485857",
      "name": "fachada"
     }
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#b29a91",
+     "name": "brazo del hombre x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#8c7871",
+     "name": "brazo del hombre x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#6c5c57",
+     "name": "brazo del hombre x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#ae9992",
+     "name": "antebrazo del hombre x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#887872",
+     "name": "antebrazo del hombre x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#695c57",
+     "name": "antebrazo del hombre x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#b6a398",
+     "name": "nuca del hombre x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#8e7f76",
+     "name": "nuca del hombre x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#6e625b",
+     "name": "nuca del hombre x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": [
+    [
+     170,
+     335,
+     310,
+     580
+    ]
    ]
   },
   "04_two_women_backlit.png": {
@@ -175,7 +348,25 @@
      "hex": "#d8dbe0",
      "name": "manta blanca"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#997b66",
+     "name": "cintura de la derecha x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#77604e",
+     "name": "cintura de la derecha x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#5b493b",
+     "name": "cintura de la derecha x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   },
   "05_three_friends_closeup.png": {
    "sha256": "39c1b8d4e3eb0ab667c38da3849ec04615719a320f983f22e1a77a9f9d3666f2",
@@ -218,7 +409,70 @@
      "hex": "#c7c3c3",
      "name": "revestimiento beige 2"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#c39790",
+     "name": "dorso de la mano x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#997670",
+     "name": "dorso de la mano x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#765a56",
+     "name": "dorso de la mano x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#c2a594",
+     "name": "antebrazo x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#988174",
+     "name": "antebrazo x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#756359",
+     "name": "antebrazo x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#8e6a67",
+     "name": "mejilla izquierda x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#6f5250",
+     "name": "mejilla izquierda x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#553e3c",
+     "name": "mejilla izquierda x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#9d6a61",
+     "name": "mejilla derecha x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#7a524a",
+     "name": "mejilla derecha x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#5e3e38",
+     "name": "mejilla derecha x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   },
   "06_group_courier_street.png": {
    "sha256": "78e6311982bfbdc335f5d72aff193c929469c63022f32d4a3c120ecde8619342",
@@ -273,7 +527,55 @@
      "hex": "#ede6e0",
      "name": "fachada"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#a17f7b",
+     "name": "mano de la mujer x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#7d635f",
+     "name": "mano de la mujer x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#604b48",
+     "name": "mano de la mujer x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#9d8982",
+     "name": "cabeza del hombre calvo x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#7a6b65",
+     "name": "cabeza del hombre calvo x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#5e524d",
+     "name": "cabeza del hombre calvo x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#ac887a",
+     "name": "mejilla del hombre mayor x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#87695e",
+     "name": "mejilla del hombre mayor x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#685148",
+     "name": "mejilla del hombre mayor x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   },
   "07_group_mural_white_outfits.png": {
    "sha256": "be9339e10c9559517549b8970d7f403cb0f2e0d58b428e359cd4cfe323f69139",
@@ -334,7 +636,85 @@
      "hex": "#483828",
      "name": "suelo mojado"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#502f2b",
+     "name": "brazo izquierda x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#3d231f",
+     "name": "brazo izquierda x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#2d1916",
+     "name": "brazo izquierda x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#784319",
+     "name": "brazo de la sentada x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#5d3311",
+     "name": "brazo de la sentada x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#47250b",
+     "name": "brazo de la sentada x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#b4835c",
+     "name": "cara de la sentada x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#8d6647",
+     "name": "cara de la sentada x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#6d4e35",
+     "name": "cara de la sentada x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#411e13",
+     "name": "pierna x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#31160c",
+     "name": "pierna x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#240e07",
+     "name": "pierna x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#8f5538",
+     "name": "cara x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#6f412a",
+     "name": "cara x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#55311e",
+     "name": "cara x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   },
   "08_artist_colorful_mural.png": {
    "sha256": "bb096c840a2c7e5dce037a07c24a98be04c5f2ebbaf2a1633084d2bd0c11bf6f",
@@ -383,7 +763,60 @@
      "hex": "#1e2c5c",
      "name": "mural azul"
     }
-   ]
+   ],
+   "skin_shaded": [
+    {
+     "hex": "#624d49",
+     "name": "antebrazo x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#4b3a38",
+     "name": "antebrazo x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#392b29",
+     "name": "antebrazo x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#261816",
+     "name": "mano x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#1b100e",
+     "name": "mano x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#130a09",
+     "name": "mano x0.2",
+     "k": 0.2
+    },
+    {
+     "hex": "#6f5344",
+     "name": "cuello x0.6",
+     "k": 0.6
+    },
+    {
+     "hex": "#563f34",
+     "name": "cuello x0.35",
+     "k": 0.35
+    },
+    {
+     "hex": "#412f26",
+     "name": "cuello x0.2",
+     "k": 0.2
+    }
+   ],
+   "hair_zones": []
   }
- }
+ },
+ "skin_shades": [
+  0.6,
+  0.35,
+  0.2
+ ]
 }

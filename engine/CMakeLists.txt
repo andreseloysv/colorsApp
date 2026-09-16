@@ -40,6 +40,7 @@ add_library(colorengine STATIC
   Sources/CColorEngine/ce_palette.c
   Sources/CColorEngine/ce_match.c
   Sources/CColorEngine/ce_mask.c
+  Sources/CColorEngine/ce_garment.c
   Sources/CColorEngine/ce_debug.c)
 target_include_directories(colorengine PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CColorEngine/include>)
@@ -174,6 +175,23 @@ if(CE_BUILD_TESTS)
   endif()
   set_tests_properties(test_mask PROPERTIES TIMEOUT 300 FIXTURES_SETUP mask_fixtures)
 
+  # ---- paleta por prenda ----------------------------------------------------
+  # Pantalón rosa sombreado (2 swatches), rayas (2 arriba), vestido (región 3),
+  # regiones sin peso, determinismo, geometría de ce_mask_garment_regions,
+  # errores, capas y hash de paridad GARMENT_HASH. Escribe los fixtures garment_*
+  # de los tests del CLI.
+  add_executable(test_garment tests/test_garment.c)
+  target_link_libraries(test_garment PRIVATE colorengine unity)
+  target_compile_options(test_garment PRIVATE ${CE_STRICT_FLAGS})
+  target_compile_definitions(test_garment PRIVATE CE_TEST_OUT_DIR="${CE_TEST_OUT_DIR}")
+  if(EMSCRIPTEN)
+    target_link_options(test_garment PRIVATE -sNODERAWFS=1 -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1)
+    add_test(NAME test_garment COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:test_garment>)
+  else()
+    add_test(NAME test_garment COMMAND test_garment)
+  endif()
+  set_tests_properties(test_garment PROPERTIES TIMEOUT 300 FIXTURES_SETUP garment_fixtures)
+
   # ---- capas de depuración ------------------------------------------------
   # Label map, weight map, destino de clusters (fusión/descarte/recorte),
   # ce_match_explain_combo bit a bit con ce_match y hash de paridad de las capas.
@@ -248,8 +266,19 @@ if(CE_BUILD_TESTS)
       COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> skin --image ${CE_TEST_OUT_DIR}/mask_person.ppm --sample ${CE_TEST_OUT_DIR}/mask_face.pgm --mask ${CE_TEST_OUT_DIR}/mask_clothes.pgm --out ${CE_TEST_OUT_DIR}/cli_skin.pgm | grep -q '^{\"excluded\": 4800, \"guard\": 0, \"mask_pixels\": 20800' && cmp ${CE_TEST_OUT_DIR}/cli_skin.pgm ${CE_TEST_OUT_DIR}/mask_expected_skin.pgm")
     add_test(NAME cli_debug_dir
       COMMAND sh -c "rm -rf ${CE_TEST_OUT_DIR}/cli_debug_dir && ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> match ${CE_TEST_OUT_DIR}/mask_person.ppm --mask ${CE_TEST_OUT_DIR}/mask_clothes.pgm --json --debug-dir ${CE_TEST_OUT_DIR}/cli_debug_dir > /dev/null && for f in reduced.ppm weights.pgm labels.pgm labels.ppm clusters.pgm clusters.ppm swatch_0.pgm mask.pgm debug.json; do test -s ${CE_TEST_OUT_DIR}/cli_debug_dir/$f || exit 1; done && grep -q '\"score_equals_match\": true' ${CE_TEST_OUT_DIR}/cli_debug_dir/debug.json")
-    set_tests_properties(cli_batch_masks cli_regions cli_skin cli_debug_dir PROPERTIES
+    add_test(NAME cli_split
+      COMMAND sh -c "rm -f ${CE_TEST_OUT_DIR}/cli_split.pgm ${CE_TEST_OUT_DIR}/cli_split_bad.pgm && ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> split --mask ${CE_TEST_OUT_DIR}/split_mask.pgm --seeds ${CE_TEST_OUT_DIR}/split_seeds.txt --out ${CE_TEST_OUT_DIR}/cli_split.pgm > ${CE_TEST_OUT_DIR}/cli_split.json && cmp ${CE_TEST_OUT_DIR}/cli_split.json ${CE_TEST_OUT_DIR}/split_expected.json && cmp ${CE_TEST_OUT_DIR}/cli_split.pgm ${CE_TEST_OUT_DIR}/split_expected_labels.pgm && { ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> split --mask ${CE_TEST_OUT_DIR}/split_mask.pgm --seeds ${CE_TEST_OUT_DIR}/split_seeds_bad.txt --out ${CE_TEST_OUT_DIR}/cli_split_bad.pgm >/dev/null 2>&1; test $? -eq 1; } && test ! -e ${CE_TEST_OUT_DIR}/cli_split_bad.pgm")
+    set_tests_properties(cli_batch_masks cli_regions cli_skin cli_debug_dir cli_split PROPERTIES
       FIXTURES_REQUIRED mask_fixtures TIMEOUT 60)
+
+    # Paleta por prenda (sh + grep): `ce garments --regions --json` con 2 swatches
+    # de prenda (arriba y abajo) y hash, y `ce garment-regions` == API byte a byte.
+    add_test(NAME cli_garments_json
+      COMMAND sh -c "${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> garments ${CE_TEST_OUT_DIR}/garment_pants.ppm --regions ${CE_TEST_OUT_DIR}/garment_regions.pgm --json > ${CE_TEST_OUT_DIR}/cli_garments.json && test $(grep -c '\"region_name\"' ${CE_TEST_OUT_DIR}/cli_garments.json) -eq 2 && grep -q '\"region_name\": \"lower\"' ${CE_TEST_OUT_DIR}/cli_garments.json && grep -Eq '\"hash\": \"[0-9a-f]{16}\"' ${CE_TEST_OUT_DIR}/cli_garments.json")
+    add_test(NAME cli_garment_regions
+      COMMAND sh -c "rm -f ${CE_TEST_OUT_DIR}/cli_garment_regions.pgm && ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce> garment-regions --size 200x400 --mask ${CE_TEST_OUT_DIR}/garment_person.pgm --pose ${CE_TEST_OUT_DIR}/garment_pose.txt --out ${CE_TEST_OUT_DIR}/cli_garment_regions.pgm | grep -q '\"upper\": ' && cmp ${CE_TEST_OUT_DIR}/cli_garment_regions.pgm ${CE_TEST_OUT_DIR}/garment_expected_regions.pgm")
+    set_tests_properties(cli_garments_json cli_garment_regions PROPERTIES
+      FIXTURES_REQUIRED garment_fixtures TIMEOUT 60)
 
     # Validación completa del contrato JSON (claves, tipos, orden, exit codes,
     # JSONL del batch) con node, si está en el PATH (make doctor lo exige; en
@@ -267,6 +296,12 @@ if(CE_BUILD_TESTS)
                 ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce>)
       set_tests_properties(cli_mask_contract PROPERTIES
         FIXTURES_REQUIRED "mask_fixtures;match_fixtures" TIMEOUT 300)
+      # Paleta por prenda de extremo a extremo (contra los hashes de la API).
+      add_test(NAME cli_garment_contract
+        COMMAND ${CE_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/cli_garment_check.js ${CE_TEST_OUT_DIR}
+                ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:ce>)
+      set_tests_properties(cli_garment_contract PROPERTIES
+        FIXTURES_REQUIRED "garment_fixtures;mask_fixtures" TIMEOUT 300)
     else()
       message(WARNING "node no encontrado: se omite el test cli_match_contract")
     endif()

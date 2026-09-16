@@ -8,7 +8,8 @@
 //             `feed-empty`          Feed vacío (base de datos en memoria)
 //   Extraer   `extraer`, `result-demo` (imagen sintética de la combinación 12), `result-people`,
 //             `result-people-mask`, `result-demo-person`, `result-demo-people`,
-//             `result-demo-people-mask`, `layers-demo`, `layers-people` (con `-uiLayer <n>`, 1...11)
+//             `result-demo-people-mask`, `layers-demo`, `layers-people` (con `-uiLayer <n>`, 1...12;
+//             la 8 es «Prendas»)
 //   Rejilla   `rejilla`, `rejilla-demo`, `explorar-<id>` (detalle de esa combinación; alias histórico)
 //   Jardín    `jardin`, `jardin-demo`, `ajustes` (Jardín › Ajustes)
 // Otros valores con prefijo de pestaña («rejilla-…», «jardin-…», «extraer-…», «feed-…») abren
@@ -69,7 +70,7 @@ enum DebugLaunch {
         return nil
     }
 
-    /// Capa inicial del inspector (`-uiLayer n`, 1...11).
+    /// Capa inicial del inspector (`-uiLayer n`, 1...12; el rango sale de `InspectorLayer.Kind`).
     static func layer(from arguments: [String]) -> Int? {
         guard let i = arguments.firstIndex(of: layerArgument), i + 1 < arguments.count,
               let n = Int(arguments[i + 1]), (1...InspectorLayer.Kind.allCases.count).contains(n) else { return nil }

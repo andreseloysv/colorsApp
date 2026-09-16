@@ -1,0 +1,53 @@
+{
+  "note": "sha256 de los píxeles RGB de cada imagen (no del PNG)",
+  "images": [
+    {
+      "file": "poster_alone.png",
+      "width": 390,
+      "height": 682,
+      "sha256_pixels": "526a14a5f5ea60299b6d78501cbe102c9c05c0efc7adb93cde031a23b53bbeb5"
+    },
+    {
+      "file": "poster_behind.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "dd117dbe89de0427a99c6fd2cc0c0c0b071e9de7d5f8ea93ff2f857cbb0624ea"
+    },
+    {
+      "file": "poster_on_torso.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "1a9546225974db95ffdc5d6a8e2dbe27115cee1476f4a453d061a98213366df4"
+    },
+    {
+      "file": "poster_touching.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "deeca3a3e805c62ab9279a8a3bb1054c280e5c6f72106c944aa273c26a65fcc3"
+    },
+    {
+      "file": "screen_alone.png",
+      "width": 390,
+      "height": 682,
+      "sha256_pixels": "e08a9b9c375e2cb5e98aad06b6800411fae5dae188dc50602a7b0271ca1c9416"
+    },
+    {
+      "file": "screen_behind.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "fb3e909e4a0d647b15969ae33586b129ba9d344246c1ada29aba77fcad5fa3c2"
+    },
+    {
+      "file": "screen_on_torso.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "01e4f8f924c7b0c9631864e9477965a6bf20afc08e594dd48565a804d9793d80"
+    },
+    {
+      "file": "screen_touching.png",
+      "width": 1024,
+      "height": 682,
+      "sha256_pixels": "12d53800950f96421e1d4fafda1d86bced981519e4ccbbe693103ccb3c4d33a2"
+    }
+  ]
+}

@@ -6,12 +6,15 @@ import SwiftUI
 
 // MARK: - Prenda (Extraer)
 
-/// Tarjeta de un color de la ropa (§4 n.º 17): bloque plano de 64 pt, «01 · 39 %»,
+/// Tarjeta de un color de la ropa (§4 n.º 17): bloque plano de 64 pt, «01 · 39 %», la etiqueta
+/// de la prenda cuando la hay («Parte de arriba» / «Parte de abajo» / «Prenda entera», ADR-011),
 /// nombre de Wada más cercano, hex y «ΔE 2,3». La tarjeta entera es un pocillo.
 struct GarmentCard: View {
     /// Posición 1-based en la paleta.
     let index: Int
     let color: PaletteColor
+    /// Región de prenda; nil = camino clásico (sin pose), la tarjeta queda como antes.
+    var region: String? = nil
     var isSelected: Bool = false
     var isCopied: Bool = false
     var onTap: (() -> Void)?
@@ -37,6 +40,19 @@ struct GarmentCard: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.wellTextSecondary)
                         .accessibilityHidden(true)
+                }
+                if let region {
+                    Text(region)
+                        .textRole(.labelSM)
+                        .foregroundStyle(Theme.wellText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: Radius.tag, style: .continuous).fill(Theme.wellFillAlt))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
+                            .strokeBorder(Theme.wellEdge, lineWidth: 1 / max(displayScale, 1)))
+                        .padding(.top, 1)
                 }
                 Text(color.name ?? color.hex)
                     .textRole(.headlineSM)
@@ -519,6 +535,9 @@ struct FeedPostContent {
     /// Aviso del recorte («Solo ropa», «Todas las personas (3)», «Foto completa»).
     var cropNotice: String?
     var cropNoticeIsFallback: Bool = false
+    /// Marca de análisis antiguo («Análisis antiguo»): el scan se calculó con otra versión del
+    /// motor o de la política y se re-analiza al abrirlo (ADR-011, CONTEXT §13). nil = al día.
+    var outdatedNotice: String?
     /// «PALETA DE LA ROPA» o «PALETA DE LA FOTO».
     var paletteTitle: String = "Paleta de la ropa"
     var palette: [PaletteColor]
@@ -542,6 +561,28 @@ struct FeedPostActions {
     var onOpenCombo: (() -> Void)?
     var menu: [PostMenuItem] = []
     var share: ShareAction = .none
+}
+
+/// Marca discreta de «Análisis antiguo» en la cabecera de una publicación: el scan se guardó
+/// con otra versión del motor, del diccionario o de la política de análisis. Al abrirlo en
+/// Extraer la app lo vuelve a analizar y la marca desaparece (CONTEXT §13, caso del Nº 067).
+struct OutdatedScanChip: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 10, weight: .semibold))
+                .accessibilityHidden(true)
+            Text(title).textRole(.labelSM).lineLimit(1)
+        }
+        .foregroundStyle(Theme.onSurfaceVariant)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(Theme.container))
+        .padding(.top, 2)
+        .accessibilityIdentifier("feed.post.outdated")
+    }
 }
 
 /// Publicación del Feed (§4 n.º 11): cabecera, foto a sangre, paleta en pocillo, pie con la
@@ -598,6 +639,9 @@ struct FeedPostCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(content.source.title).textRole(.labelLG).foregroundStyle(Theme.onSurface)
                 Text(content.metadata).textRole(.bodySM).foregroundStyle(Theme.onSurfaceVariant).lineLimit(2)
+                if let outdated = content.outdatedNotice {
+                    OutdatedScanChip(title: outdated)
+                }
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: Spacing.sm)

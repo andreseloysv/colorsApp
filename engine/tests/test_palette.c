@@ -761,6 +761,66 @@ static void test_merge_and_discard(void)
     free(mem);
 }
 
+/* Fusión de sombras (merge_light_de, experimento apagado por defecto): cuatro
+ * tonos de un rosa palo que difieren sobre todo en L* (ΔE00 > 5 entre
+ * vecinos, así que la fusión normal no los junta) + negro. Con
+ * merge_light_de = 0 el resultado es bit a bit el de las opciones por
+ * defecto; con 6 los rosas pasan a un swatch y el negro no se toca; un
+ * azul con la misma L* que un rosa nunca se fusiona. */
+static void test_merge_light_shades(void)
+{
+    const block_spec blocks[5] = {
+        {{34, 37, 36}, 0.394}, {{180, 154, 162}, 0.227}, {{145, 122, 126}, 0.162},
+        {{213, 184, 192}, 0.134}, {{107, 90, 87}, 0.083}
+    };
+    const block_spec blue_pink[2] = {{{180, 154, 162}, 0.5}, {{140, 160, 190}, 0.5}};
+    const int w = 100, h = 500;
+    uint8_t *px = (uint8_t *)malloc((size_t)w * 3 * (size_t)h);
+    void *mem;
+    ce_ctx *ctx = ctx_new(&mem);
+    ce_swatch base[8], off[8], on[8];
+    ce_image img;
+    ce_palette_opts o = uniform_opts();
+    const ce_lab black = ce_srgb8_to_lab(34, 37, 36);
+    int nb, noff, non, i;
+
+    TEST_ASSERT_NOT_NULL(px);
+    /* Los rosas vecinos distan > 5 ΔE00 (la fusión normal no actúa). */
+    TEST_ASSERT_TRUE(ce_de2000(ce_srgb8_to_lab(180, 154, 162), ce_srgb8_to_lab(213, 184, 192)) > 5.0);
+    TEST_ASSERT_TRUE(ce_de2000_k(ce_srgb8_to_lab(180, 154, 162), ce_srgb8_to_lab(213, 184, 192),
+                                 CE_PALETTE_LIGHT_MERGE_KL, 1.0, 1.0) < 6.0);
+    fill_bands(px, w, h, w * 3, 3, blocks, 5);
+    img = make_image(px, w, h, w * 3, CE_RGB8, NULL);
+    nb = ce_palette_extract(ctx, &img, &o, base, 8);
+    o.merge_light_de = 0.0;
+    noff = ce_palette_extract(ctx, &img, &o, off, 8);
+    TEST_ASSERT_EQUAL_INT(5, nb);
+    TEST_ASSERT_EQUAL_INT(nb, noff);
+    TEST_ASSERT_EQUAL_HEX64(ce_swatch_hash(base, nb), ce_swatch_hash(off, noff));
+    o.merge_light_de = -3.0; /* <= 0 también apaga */
+    noff = ce_palette_extract(ctx, &img, &o, off, 8);
+    TEST_ASSERT_EQUAL_HEX64(ce_swatch_hash(base, nb), ce_swatch_hash(off, noff));
+
+    o.merge_light_de = 6.0;
+    non = ce_palette_extract(ctx, &img, &o, on, 8);
+    assert_palette_invariants(on, non, o.max_colors);
+    printf("fusion de sombras (merge_light_de 6): %d -> %d swatches:", nb, non);
+    for (i = 0; i < non; ++i) printf(" #%02x%02x%02x %.3f", on[i].rgb[0], on[i].rgb[1], on[i].rgb[2], on[i].weight);
+    printf("\nLIGHT_MERGE_HASH=%016" PRIx64 "\n", ce_swatch_hash(on, non));
+    /* Constante medida en nativo (Apple arm64): ASan y WASM (ce_libm.c) deben dar los mismos bits. */
+    TEST_ASSERT_EQUAL_HEX64(0x701eaabfb2c0bebaULL, ce_swatch_hash(on, non));
+    TEST_ASSERT_TRUE_MESSAGE(non >= 2 && non <= 3, "los rosas deben quedar en 1-2 swatches y el negro aparte");
+    TEST_ASSERT_TRUE(min_de_to_palette(black, on, non) < 1e-9);
+    TEST_ASSERT_TRUE(on[0].weight > 0.5); /* los rosas fusionados pesan más que el negro (39,4 %) */
+
+    /* Azul y rosa con L* parecida: croma/tono distintos, no se fusionan. */
+    fill_bands(px, w, h, w * 3, 3, blue_pink, 2);
+    non = ce_palette_extract(ctx, &img, &o, on, 8);
+    TEST_ASSERT_EQUAL_INT(2, non);
+    free(px);
+    free(mem);
+}
+
 /* Parser PNM: casos válidos (comentarios, espacios), y todos los rechazos. */
 static void test_pnm_parser(void)
 {
@@ -993,6 +1053,7 @@ int main(void)
     RUN_TEST(test_downscale_matches_reduced);
     RUN_TEST(test_skin_rule);
     RUN_TEST(test_merge_and_discard);
+    RUN_TEST(test_merge_light_shades);
     RUN_TEST(test_pnm_parser);
     RUN_TEST(test_write_fixtures_and_roundtrip);
     RUN_TEST(test_perf_1024);

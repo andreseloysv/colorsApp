@@ -113,9 +113,14 @@ public struct PaletteOptions: Equatable, Sendable {
     public var mergeDeltaE: Double
     public var minWeight: Double
     public var skinRule: Bool
+    /// EXPERIMENTO desactivado por defecto (0): fusión de sombras, ΔE00 con
+    /// kL = 3 (`CE_PALETTE_LIGHT_MERGE_KL`) < `mergeLightDeltaE` entre centros
+    /// tras la fusión normal (tonos de la misma prenda con luz y sombra). <= 0 = apagada.
+    public var mergeLightDeltaE: Double
 
     /// Valores de ce_palette_opts_default (k 6, 20 iteraciones, 5 colores,
-    /// lado 256, sigma 0.35, fusión ΔE00 < 5, descarte < 5 %, sin regla de piel).
+    /// lado 256, sigma 0.35, fusión ΔE00 < 5, descarte < 5 %, sin regla de piel,
+    /// sin fusión de sombras).
     public static var `default`: PaletteOptions {
         var o = ce_palette_opts()
         ce_palette_opts_default(&o)
@@ -123,7 +128,8 @@ public struct PaletteOptions: Equatable, Sendable {
     }
 
     public init(kInit: Int32, maxIters: Int32, maxColors: Int32, maxSide: Int32,
-                centerSigma: Double, mergeDeltaE: Double, minWeight: Double, skinRule: Bool) {
+                centerSigma: Double, mergeDeltaE: Double, minWeight: Double, skinRule: Bool,
+                mergeLightDeltaE: Double = 0.0) {
         self.kInit = kInit
         self.maxIters = maxIters
         self.maxColors = maxColors
@@ -132,18 +138,19 @@ public struct PaletteOptions: Equatable, Sendable {
         self.mergeDeltaE = mergeDeltaE
         self.minWeight = minWeight
         self.skinRule = skinRule
+        self.mergeLightDeltaE = mergeLightDeltaE
     }
 
     init(_ o: ce_palette_opts) {
         self.init(kInit: o.k_init, maxIters: o.max_iters, maxColors: o.max_colors, maxSide: o.max_side,
                   centerSigma: o.center_sigma, mergeDeltaE: o.merge_de, minWeight: o.min_weight,
-                  skinRule: o.skin_rule != 0)
+                  skinRule: o.skin_rule != 0, mergeLightDeltaE: o.merge_light_de)
     }
 
     var cValue: ce_palette_opts {
         ce_palette_opts(k_init: kInit, max_iters: maxIters, max_colors: maxColors, max_side: maxSide,
                         center_sigma: centerSigma, merge_de: mergeDeltaE, min_weight: minWeight,
-                        skin_rule: skinRule ? 1 : 0)
+                        skin_rule: skinRule ? 1 : 0, merge_light_de: mergeLightDeltaE)
     }
 }
 
@@ -293,12 +300,14 @@ public struct MatchOptions: Equatable, Sendable {
     public var exposureEVMax: Double
     public var exposurePenalty: Double
     /// Hipótesis de iluminante (A, D50, D75, F2 adaptados a D65 con Bradford) y su
-    /// penalización fija en ΔE.
+    /// penalización fija en ΔE. DESACTIVADA por defecto desde 2026-09-15 (ADR-009): las
+    /// fotos del teléfono ya llegan con balance de blancos y compensar una luz inexistente
+    /// giraba tonos (rosa palo + negro -> Nº 067 azul). Sigue disponible con `true`.
     public var illuminantSearch: Bool
     public var illuminantPenalty: Double
 
     /// Valores de ce_match_opts_default (kL 1, kC 1, kH 1, λ 1.0, gap 1.0,
-    /// exposición ±1 EV con penalización 2.0, iluminantes activados con penalización 2.0).
+    /// exposición ±1 EV con penalización 2.0, iluminantes desactivados; penalización 2.0).
     public static var `default`: MatchOptions {
         var o = ce_match_opts()
         ce_match_opts_default(&o)
@@ -307,7 +316,7 @@ public struct MatchOptions: Equatable, Sendable {
 
     public init(kL: Double, kC: Double, kH: Double, coverageLambda: Double, ambiguousGap: Double,
                 exposureEVMax: Double = 1.0, exposurePenalty: Double = 2.0,
-                illuminantSearch: Bool = true, illuminantPenalty: Double = 2.0) {
+                illuminantSearch: Bool = false, illuminantPenalty: Double = 2.0) {
         self.kL = kL
         self.kC = kC
         self.kH = kH
@@ -694,6 +703,67 @@ public func excludeSkin(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: In
     return (out, before - after, rc == CE_SKIN_GUARD)
 }
 
+// MARK: - Separación de instancias fusionadas
+
+/// Semillas máximas por instancia (`CE_SPLIT_MAX_SEEDS`).
+public let splitMaxSeeds = Int(CE_SPLIT_MAX_SEEDS)
+
+/// Semilla de una persona (`ce_person_seed`): eje del cuerpo en píxeles de la
+/// máscara, de arriba (`x0`, `y0`: cuello o base de la cara) a abajo (`x1`,
+/// `y1`: caderas o extrapolado), y semiancho del cuerpo (> 0, píxeles).
+public struct PersonSeed: Equatable, Hashable, Sendable {
+    public var x0: Double
+    public var y0: Double
+    public var x1: Double
+    public var y1: Double
+    public var halfWidth: Double
+
+    public init(x0: Double, y0: Double, x1: Double, y1: Double, halfWidth: Double) {
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+        self.halfWidth = halfWidth
+    }
+
+    var cValue: ce_person_seed {
+        ce_person_seed(x0: x0, y0: y0, x1: x1, y1: y1, half_width: halfWidth)
+    }
+}
+
+/// Separa una máscara de instancia que junta a varias personas
+/// (`ce_mask_split_instance`): cada píxel con máscara >= 128 recibe 1 + el
+/// índice de la semilla con menor distancia al eje / semiancho (empate: índice
+/// menor); el resto, 0. `count` = etiquetas con al menos un píxel. Lanza
+/// `.engine(code: CE_ERR_ARG)` con 0 o más de `splitMaxSeeds` semillas,
+/// dimensiones fuera de 1...CE_IMAGE_MAX_SIDE o semillas no finitas, fuera de
+/// ±CE_POSE_COORD_MAX o con semiancho <= 0, y `.maskTooSmall` si la máscara
+/// es corta.
+public func splitInstance(mask: [UInt8], width: Int, height: Int,
+                          seeds: [PersonSeed]) throws -> (labels: [UInt8], count: Int) {
+    guard maskDimsFit(width: width, height: height), seeds.count >= 1, seeds.count <= splitMaxSeeds else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    let count = width * height
+    guard mask.count >= count else {
+        throw ColorEngineError.maskTooSmall(required: count, actual: mask.count)
+    }
+    let cSeeds = seeds.map(\.cValue)
+    var labels = [UInt8](repeating: 0, count: count)
+    let rc = mask.withUnsafeBufferPointer { m in
+        cSeeds.withUnsafeBufferPointer { s in
+            labels.withUnsafeMutableBufferPointer { out in
+                ce_mask_split_instance(m.baseAddress, Int32(width), Int32(height), s.baseAddress,
+                                       Int32(s.count), out.baseAddress)
+            }
+        }
+    }
+    if rc < 0 {
+        throw ColorEngineError.engine(code: rc)
+    }
+    return (labels, Int(rc))
+}
+
 // MARK: - Capas de depuración
 
 /// Etiqueta de un píxel reducido con peso 0 en `PaletteDebugLayers.labelMap` y
@@ -954,4 +1024,323 @@ public func explainMatch(swatches: [Swatch], options: MatchOptions = .default,
         }
         return MatchExplanation(e)
     }
+}
+
+// MARK: - Paleta por prenda
+
+/// Región de un swatch de prenda (`CE_GARMENT_REGION_*`).
+public enum GarmentRegion: Int, Sendable {
+    /// Sin mapa de regiones (una sola región con toda la máscara).
+    case none = 0
+    /// Parte de arriba: torso y brazos superiores.
+    case upper = 1
+    /// Parte de abajo: caderas a tobillos.
+    case lower = 2
+    /// Prenda entera: arriba y abajo eran la misma prenda (vestido, mono).
+    case whole = 3
+}
+
+/// Opciones de la paleta por prenda (`ce_garment_opts`; rangos y semántica en ce.h).
+///
+/// La agrupación de tonos del mismo tejido con distinta luz (enlace COMPLETO, sombra neutra o
+/// cromática de exterior, veto de mezcla) y la regla del degradado son constantes del motor, no
+/// opciones: `CE_GARMENT_SHADE_S_MIN`, `CE_GARMENT_SHADE_LIT_DE`, `CE_GARMENT_SKY_W_MAX`,
+/// `CE_GARMENT_SKY_W_SLOPE` y `CE_GARMENT_GRADIENT_*` en ce.h, con sus límites conocidos.
+public struct GarmentOptions: Equatable, Sendable {
+    /// kL de ΔE00 al agrupar tonos del mismo color con distinta luz.
+    public var shadeKL: Double
+    /// Umbral de la agrupación de sombras; tonos iluminados de arriba y abajo con
+    /// ΔE00 (kL = 1) menor se fusionan en `.whole`. <= 0 = sin agrupar por sombra.
+    public var shadeMergeDeltaE: Double
+    /// Percentiles de L* (0...1) del tono iluminado de cada grupo.
+    public var litLowPercentile: Double
+    public var litHighPercentile: Double
+    /// Cuota mínima en su región de un segundo color (prenda bicolor). Un color que es el
+    /// EXTREMO DE UN DEGRADADO (tie-dye: hay tonos de mezcla entre los dos) se conserva con una
+    /// cuota menor, `CE_GARMENT_GRADIENT_MIN_SHARE` (ver ce.h).
+    public var secondaryMinShare: Double
+    /// Colores por región (1...8).
+    public var maxColorsPerRegion: Int32
+
+    /// Valores de `ce_garment_opts_default` (kL 3, umbral 6,5, percentiles 0,75-0,95,
+    /// segundo color >= 25 %, 2 colores por región).
+    public static var `default`: GarmentOptions {
+        var o = ce_garment_opts()
+        ce_garment_opts_default(&o)
+        return GarmentOptions(o)
+    }
+
+    public init(shadeKL: Double, shadeMergeDeltaE: Double, litLowPercentile: Double, litHighPercentile: Double,
+                secondaryMinShare: Double, maxColorsPerRegion: Int32) {
+        self.shadeKL = shadeKL
+        self.shadeMergeDeltaE = shadeMergeDeltaE
+        self.litLowPercentile = litLowPercentile
+        self.litHighPercentile = litHighPercentile
+        self.secondaryMinShare = secondaryMinShare
+        self.maxColorsPerRegion = maxColorsPerRegion
+    }
+
+    init(_ o: ce_garment_opts) {
+        self.init(shadeKL: o.shade_kL, shadeMergeDeltaE: o.shade_merge_de, litLowPercentile: o.lit_low_pct,
+                  litHighPercentile: o.lit_high_pct, secondaryMinShare: o.secondary_min_share,
+                  maxColorsPerRegion: o.max_colors_per_region)
+    }
+
+    var cValue: ce_garment_opts {
+        ce_garment_opts(shade_kL: shadeKL, shade_merge_de: shadeMergeDeltaE, lit_low_pct: litLowPercentile,
+                        lit_high_pct: litHighPercentile, secondary_min_share: secondaryMinShare,
+                        max_colors_per_region: maxColorsPerRegion)
+    }
+}
+
+/// Swatch de prenda (`ce_garment_swatch`): el color (tono iluminado del grupo) con su
+/// peso final, la región, `regionShare` (la cuota de esa región sobre el área que cubre
+/// el MAPA de regiones, no sobre la máscara: las cuotas de las regiones suman 1, así que
+/// coinciden con su cuota en la máscara solo cuando el mapa la cubre entera, como hace
+/// SubjectKit) y cuántos clusters de Lloyd (tonos de luz y sombra) se agruparon en él.
+public struct GarmentSwatch: Equatable, Sendable {
+    public var swatch: Swatch
+    public var region: GarmentRegion
+    public var regionShare: Double
+    public var mergedClusterCount: Int
+
+    public init(swatch: Swatch, region: GarmentRegion, regionShare: Double, mergedClusterCount: Int) {
+        self.swatch = swatch
+        self.region = region
+        self.regionShare = regionShare
+        self.mergedClusterCount = mergedClusterCount
+    }
+
+    init(_ g: ce_garment_swatch) {
+        self.init(swatch: Swatch(g.swatch), region: GarmentRegion(rawValue: Int(g.region)) ?? .none,
+                  regionShare: g.region_share, mergedClusterCount: Int(g.n_merged_clusters))
+    }
+
+    var cValue: ce_garment_swatch {
+        ce_garment_swatch(swatch: ce_swatch(lab: swatch.lab.cValue, rgb: (swatch.r, swatch.g, swatch.b),
+                                            weight: swatch.weight),
+                          region: Int32(region.rawValue), region_share: regionShare,
+                          n_merged_clusters: Int32(mergedClusterCount))
+    }
+}
+
+/// Máximo de regiones del mapa de prendas (`CE_GARMENT_MAX_REGIONS` = 2).
+public var garmentMaxRegions: Int {
+    Int(CE_GARMENT_MAX_REGIONS)
+}
+
+/// Mapa de regiones opcional: width * height bytes (0 fuera, 1 arriba, 2 abajo). Lanza
+/// `maskTooSmall` si es corto (el mismo error que la máscara: sin casos nuevos).
+private func validateRegions(_ regions: UnsafeBufferPointer<UInt8>?, width: Int, height: Int) throws -> UnsafePointer<UInt8>? {
+    try validateMask(regions, width: width, height: height)
+}
+
+/// FNV-1a de los swatches de prenda (`ce_garment_hash`): el "hash" de `ce garments --json`.
+public func garmentHash(_ garments: [GarmentSwatch]) -> UInt64 {
+    let cs = garments.map(\.cValue)
+    return cs.withUnsafeBufferPointer { ce_garment_hash($0.baseAddress, Int32($0.count)) }
+}
+
+/// Paleta por prenda (`ce_palette_extract_garments`) de un buffer RGBA8 sRGB como el de
+/// `extractPalette`: `mask` es la máscara del sujeto y `regions` el mapa de prendas de
+/// `garmentRegions` (width * height bytes; nil = una sola región con toda la máscara,
+/// swatches con región `.none`). `regionCount` en 1...`garmentMaxRegions` cuando hay mapa.
+/// Devuelve los swatches ordenados por peso (suma 1): un color por prenda lisa (tono
+/// iluminado), dos si es bicolor, `.whole` si arriba y abajo son la misma prenda.
+/// Lanza `.engine(code:)` con los errores del motor (`CE_ERR_ARG` con `regionCount`
+/// fuera de rango, `CE_ERR_OPTS` con opciones inválidas) y `bufferTooSmall` /
+/// `maskTooSmall` con buffers cortos.
+public func extractGarments(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                            paletteOptions: PaletteOptions = .default, garmentOptions: GarmentOptions = .default,
+                            mask: UnsafeBufferPointer<UInt8>? = nil, regions: UnsafeBufferPointer<UInt8>? = nil,
+                            regionCount: Int = 2) throws -> [GarmentSwatch] {
+    let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let maskBase = try validateMask(mask, width: width, height: height)
+    let regionsBase = try validateRegions(regions, width: width, height: height)
+    guard regionCount >= Int(Int32.min), regionCount <= Int(Int32.max) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    return try withEngineContext { ctx in
+        var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
+                           stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: maskBase)
+        var po = paletteOptions.cValue
+        var go = garmentOptions.cValue
+        var out = [ce_garment_swatch](repeating: ce_garment_swatch(), count: Int(CE_PALETTE_MAX_COLORS))
+        let n = out.withUnsafeMutableBufferPointer { buf -> Int32 in
+            ce_palette_extract_garments(ctx, &img, regionsBase, Int32(regionCount), &po, &go, buf.baseAddress,
+                                        Int32(buf.count))
+        }
+        if n < 0 {
+            throw ColorEngineError.engine(code: n)
+        }
+        return out.prefix(Int(n)).map(GarmentSwatch.init)
+    }
+}
+
+/// Resultado de `analyzeGarments`: el análisis (swatches de prenda como paleta, hits,
+/// `ambiguous` y hash de `ce_result_hash`, igual que `result_hash` de
+/// `ce garments --match --top K`) y los swatches con su región.
+public struct GarmentAnalysisResult: Equatable, Sendable {
+    public var analysis: AnalysisResult
+    public var garments: [GarmentSwatch]
+
+    public init(analysis: AnalysisResult, garments: [GarmentSwatch]) {
+        self.analysis = analysis
+        self.garments = garments
+    }
+}
+
+/// Paleta por prenda + match contra el diccionario (`ce_analyze_garments`; el match no
+/// cambia, recibe los swatches de prenda). Argumentos y errores como `extractGarments`
+/// y `analyze` (`topK` en 1...10).
+public func analyzeGarments(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                            paletteOptions: PaletteOptions = .default, garmentOptions: GarmentOptions = .default,
+                            matchOptions: MatchOptions = .default, topK: Int = 3,
+                            mask: UnsafeBufferPointer<UInt8>? = nil, regions: UnsafeBufferPointer<UInt8>? = nil,
+                            regionCount: Int = 2) throws -> GarmentAnalysisResult {
+    try garmentAnalysis(rgba: rgba, width: width, height: height, stride: stride, paletteOptions: paletteOptions,
+                        garmentOptions: garmentOptions, matchOptions: matchOptions, topK: topK, mask: mask,
+                        regions: regions, regionCount: regionCount) { _, result, _ in result }
+}
+
+/// Todas las capas de un análisis por prendas en el mismo contexto: las de
+/// `PaletteDebugLayers` (con los swatches de prenda como paleta; `labelMap` y
+/// `clusterMap` se refieren a ellos) más la capa "Prendas": `garmentMap` (swatch de
+/// prenda por píxel reducido o `paletteLabelNone`) y `regionMap` (región por píxel
+/// reducido: 1 arriba, 2 abajo, 3 prenda entera, 0 sin mapa, `paletteLabelNone` fuera).
+/// Los clusters de `layers.debug` llevan su grupo de tonos en `groupHead`.
+public struct GarmentDebugLayers: Sendable {
+    public var result: GarmentAnalysisResult
+    public var layers: PaletteDebugLayers
+    public var garmentMap: [UInt8]
+    public var regionMap: [UInt8]
+}
+
+/// `analyzeGarments` + capas de depuración (mismos argumentos y errores; el resultado
+/// es idéntico al de `analyzeGarments`).
+public func garmentDebugLayers(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                               paletteOptions: PaletteOptions = .default, garmentOptions: GarmentOptions = .default,
+                               matchOptions: MatchOptions = .default, topK: Int = 3,
+                               mask: UnsafeBufferPointer<UInt8>? = nil, regions: UnsafeBufferPointer<UInt8>? = nil,
+                               regionCount: Int = 2) throws -> GarmentDebugLayers {
+    try garmentAnalysis(rgba: rgba, width: width, height: height, stride: stride, paletteOptions: paletteOptions,
+                        garmentOptions: garmentOptions, matchOptions: matchOptions, topK: topK, mask: mask,
+                        regions: regions, regionCount: regionCount) { ctx, result, cResult in
+        var res = cResult
+        var mo = matchOptions.cValue
+        var info = ce_palette_debug()
+        let irc = ce_palette_debug_info(ctx, &info)
+        if irc != 0 {
+            throw ColorEngineError.engine(code: irc)
+        }
+        let rw = Int(info.reduced_width), rh = Int(info.reduced_height)
+        let clusters: [ClusterDebug] = withUnsafeBytes(of: &info.clusters) { raw in
+            raw.bindMemory(to: ce_cluster_debug.self).prefix(Int(info.n_clusters)).map(ClusterDebug.init)
+        }
+        let debug = PaletteDebug(reducedWidth: rw, reducedHeight: rh, clusters: clusters,
+                                 lloydIterations: Int(info.lloyd_iterations), totalWeight: info.total_weight,
+                                 zeroWeightFraction: info.zero_weight_fraction,
+                                 centerSigmaPx: info.center_sigma_px, swatchCount: Int(info.n_swatches))
+        func layer(_ bytesPerPixel: Int, _ fn: (OpaquePointer, UnsafeMutablePointer<UInt8>?, Int) -> Int32) throws -> [UInt8] {
+            var buf = [UInt8](repeating: 0, count: rw * rh * bytesPerPixel)
+            let n = buf.withUnsafeMutableBufferPointer { fn(ctx, $0.baseAddress, $0.count) }
+            if n < 0 {
+                throw ColorEngineError.engine(code: n)
+            }
+            return buf
+        }
+        let reduced = try layer(3) { ce_debug_reduced_rgb($0, $1, $2) }
+        let weights = try layer(1) { ce_debug_weight_map($0, $1, $2) }
+        let labels = try layer(1) { ce_debug_label_map($0, $1, $2) }
+        let clusterMap = try layer(1) { ce_debug_cluster_map($0, $1, $2) }
+        let garmentMap = try layer(1) { ce_debug_garment_map($0, $1, $2) }
+        let regionMap = try layer(1) { ce_debug_region_map($0, $1, $2) }
+        var explanations: [MatchExplanation] = []
+        let nSwatches = res.n_swatches
+        for hit in result.analysis.hits {
+            var e = ce_match_explain()
+            let erc = withUnsafePointer(to: &res.swatches) { p in
+                p.withMemoryRebound(to: ce_swatch.self, capacity: Int(CE_PALETTE_MAX_COLORS)) { q in
+                    ce_match_explain_combo(ctx, q, nSwatches, &mo, Int32(hit.comboId), &e)
+                }
+            }
+            if erc != 0 {
+                throw ColorEngineError.engine(code: erc)
+            }
+            explanations.append(MatchExplanation(e))
+        }
+        let layers = PaletteDebugLayers(analysis: result.analysis, debug: debug, reducedRGB: reduced,
+                                        weightMap: weights, labelMap: labels, clusterMap: clusterMap,
+                                        explanations: explanations)
+        return GarmentDebugLayers(result: result, layers: layers, garmentMap: garmentMap, regionMap: regionMap)
+    }
+}
+
+/// Núcleo común de `analyzeGarments` y `garmentDebugLayers`: valida, reserva el
+/// contexto, llama a `ce_analyze_garments` y pasa a `body` el contexto aún vivo.
+private func garmentAnalysis<T>(rgba: UnsafeBufferPointer<UInt8>, width: Int, height: Int, stride: Int,
+                                paletteOptions: PaletteOptions, garmentOptions: GarmentOptions,
+                                matchOptions: MatchOptions, topK: Int, mask: UnsafeBufferPointer<UInt8>?,
+                                regions: UnsafeBufferPointer<UInt8>?, regionCount: Int,
+                                body: (OpaquePointer, GarmentAnalysisResult, ce_result) throws -> T) throws -> T {
+    guard topK >= 1, topK <= Int(CE_MATCH_MAX_HITS), regionCount >= Int(Int32.min), regionCount <= Int(Int32.max) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    let base = try validateRGBA(rgba, width: width, height: height, stride: stride)
+    let maskBase = try validateMask(mask, width: width, height: height)
+    let regionsBase = try validateRegions(regions, width: width, height: height)
+    return try withEngineContext { ctx in
+        var img = ce_image(pixels: base, width: Int32(width), height: Int32(height),
+                           stride_bytes: Int32(stride), fmt: CE_RGBA8, mask: maskBase)
+        var po = paletteOptions.cValue
+        var go = garmentOptions.cValue
+        var mo = matchOptions.cValue
+        var res = ce_result()
+        var out = [ce_garment_swatch](repeating: ce_garment_swatch(), count: Int(CE_PALETTE_MAX_COLORS))
+        let rc = out.withUnsafeMutableBufferPointer { buf -> Int32 in
+            ce_analyze_garments(ctx, &img, regionsBase, Int32(regionCount), &po, &go, &mo, &res, buf.baseAddress,
+                                Int32(buf.count))
+        }
+        if rc < 0 {
+            throw ColorEngineError.engine(code: rc)
+        }
+        let full = res
+        let garments = out.prefix(Int(res.n_swatches)).map(GarmentSwatch.init)
+        let analysis = analysisResult(from: &res, topK: topK)
+        return try body(ctx, GarmentAnalysisResult(analysis: analysis, garments: garments), full)
+    }
+}
+
+/// Regiones de prenda de una persona (`ce_mask_garment_regions`): para cada píxel de
+/// `personMask` (> 0) dentro de la región de ropa de la pose, 1 (arriba: torso y brazos
+/// superiores) o 2 (abajo: caderas a tobillos); 0 fuera. Los píxeles > 0 son
+/// exactamente los que conserva `clothingRegions` con la misma máscara. Devuelve el mapa
+/// (width * height bytes) y los píxeles etiquetados. Errores como `clothingRegions`.
+public func garmentRegions(pose: Pose, options: RegionOptions = .default, personMask: [UInt8], width: Int,
+                           height: Int) throws -> (regions: [UInt8], pixels: Int) {
+    guard pose.joints.count == Int(CE_JOINT_COUNT.rawValue), maskDimsFit(width: width, height: height) else {
+        throw ColorEngineError.engine(code: CE_ERR_ARG.rawValue)
+    }
+    let count = width * height
+    guard personMask.count >= count else {
+        throw ColorEngineError.maskTooSmall(required: count, actual: personMask.count)
+    }
+    var cPose = ce_pose()
+    withUnsafeMutableBytes(of: &cPose.k) { raw in
+        let kp = raw.bindMemory(to: ce_keypoint.self)
+        for (i, j) in pose.joints.enumerated() {
+            kp[i] = ce_keypoint(x: j.x, y: j.y, confidence: j.confidence)
+        }
+    }
+    var opts = options.cValue
+    var out = [UInt8](repeating: 0, count: count)
+    let rc = personMask.withUnsafeBufferPointer { src in
+        out.withUnsafeMutableBufferPointer { dst in
+            ce_mask_garment_regions(&cPose, &opts, src.baseAddress, Int32(width), Int32(height), dst.baseAddress)
+        }
+    }
+    if rc < 0 {
+        throw ColorEngineError.engine(code: rc)
+    }
+    return (out, Int(rc))
 }

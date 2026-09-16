@@ -133,6 +133,82 @@ void ce_image_reduce(ce_ctx *ctx, const ce_image *img, int max_side)
     }
 }
 
+void ce_image_reduce_regions(ce_ctx *ctx, const ce_image *img, const uint8_t *region_map, int n_regions,
+                             int max_side)
+{
+    const int bpp = ce_image_bpp(img->fmt);
+    const int w = img->width;
+    const int h = img->height;
+    const size_t stride = (size_t)img->stride_bytes;
+    int rw = 0, rh = 0, f, ry, rx;
+
+    if (region_map == NULL) {
+        size_t i, n;
+        ce_image_reduce(ctx, img, max_side);
+        n = (size_t)ctx->reduced_w * (size_t)ctx->reduced_h;
+        for (i = 0; i < n; ++i) {
+            ctx->region_label[i] = 1;
+        }
+        return;
+    }
+    if (max_side > CE_CTX_MAX_SIDE) {
+        max_side = CE_CTX_MAX_SIDE;
+    }
+    if (n_regions < 1) {
+        n_regions = 1;
+    }
+    if (n_regions > CE_GARMENT_MAX_REGIONS) {
+        n_regions = CE_GARMENT_MAX_REGIONS;
+    }
+    (void)ce_reduced_dims(w, h, max_side, &rw, &rh);
+    f = ((w > h ? w : h) + max_side - 1) / max_side;
+    ctx->reduced_w = rw;
+    ctx->reduced_h = rh;
+
+    for (ry = 0; ry < rh; ++ry) {
+        const int y0 = ry * f;
+        const int y1 = (y0 + f < h) ? y0 + f : h;
+        for (rx = 0; rx < rw; ++rx) {
+            const int x0 = rx * f;
+            const int x1 = (x0 + f < w) ? x0 + f : w;
+            const size_t o = (size_t)ry * (size_t)rw + (size_t)rx;
+            uint64_t sr = 0, sg = 0, sb = 0, sm = 0;
+            uint64_t per_label[CE_GARMENT_MAX_REGIONS + 1] = {0};
+            uint64_t best_sum = 0;
+            const uint64_t n = (uint64_t)(y1 - y0) * (uint64_t)(x1 - x0);
+            int x, y, k, best = 0;
+            for (y = y0; y < y1; ++y) {
+                const uint8_t *row = img->pixels + (size_t)y * stride;
+                const uint8_t *lrow = region_map + (size_t)y * (size_t)w;
+                const uint8_t *mrow = (img->mask != NULL) ? img->mask + (size_t)y * (size_t)w : NULL;
+                for (x = x0; x < x1; ++x) {
+                    const uint8_t *p = row + (size_t)x * (size_t)bpp;
+                    const int label = lrow[x];
+                    sr += p[0];
+                    sg += p[1];
+                    sb += p[2];
+                    if (label >= 1 && label <= n_regions) {
+                        const uint64_t em = (mrow != NULL) ? (uint64_t)mrow[x] : 255u;
+                        sm += em;
+                        per_label[label] += em;
+                    }
+                }
+            }
+            for (k = 1; k <= n_regions; ++k) {
+                if (per_label[k] > best_sum) { /* estricto: en empate gana la menor */
+                    best_sum = per_label[k];
+                    best = k;
+                }
+            }
+            ctx->reduced[o * 3 + 0] = ce_round_div(sr, n);
+            ctx->reduced[o * 3 + 1] = ce_round_div(sg, n);
+            ctx->reduced[o * 3 + 2] = ce_round_div(sb, n);
+            ctx->weights[o] = (double)ce_round_div(sm, n);
+            ctx->region_label[o] = (uint8_t)best;
+        }
+    }
+}
+
 void ce_image_apply_center_weight(ce_ctx *ctx, double sigma_px)
 {
     const int rw = ctx->reduced_w;

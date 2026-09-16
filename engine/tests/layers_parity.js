@@ -10,8 +10,11 @@
 // swatch_<k>.pgm, debug.json con la explicación del top-K) sean byte a byte
 // idénticos, y que stdout también lo sea. Además genera entradas sintéticas
 // deterministas (máscara de persona, pose, muestra de piel) y compara
-// `ce regions`, `ce skin`, `ce cut-head` y `ce match --mask --debug-dir` entre
-// las dos plataformas. Salida: 0 todo idéntico, 1 alguna diferencia, 2 uso.
+// `ce regions`, `ce skin`, `ce cut-head`, `ce split` y `ce match --mask --debug-dir` entre
+// las dos plataformas. Paleta por prenda: `ce garments --match --debug-dir` sin
+// mapa en cada fixture y, en la sintética, con mapa de regiones (mitades y el de
+// `ce garment-regions` de la pose), con máscara, más `ce garment-regions` y
+// `ce batch --garments`. Salida: 0 todo idéntico, 1 alguna diferencia, 2 uso.
 'use strict';
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -92,6 +95,15 @@ for (const e of manifest.entries) {
   }
   sameDir(dir('native'), dir('wasm'), e.file);
   nLayers++;
+  // Paleta por prenda sin mapa (una región) con sus capas.
+  const gdir = (side) => path.join(out, side, base + '_garments');
+  const [rg] = both(e.file + ' garments', (side) => ['garments', ppm, '--match', '--json', '--top', '3', '--debug-dir', gdir(side)]);
+  if (rg.status !== 0) {
+    console.error('ce garments falló en ' + e.file + ': ' + rg.stderr.toString());
+    failures++;
+    continue;
+  }
+  sameDir(gdir('native'), gdir('wasm'), e.file + ' garments');
 }
 
 // Entradas sintéticas de máscaras sobre la primera fixture no uniforme.
@@ -123,7 +135,37 @@ both('regions', (side) => ['regions', '--size', W + 'x' + H, '--mask', person, '
 both('skin', (side) => ['skin', '--image', img, '--sample', sample, '--mask', full, '--out', o(side, 'skin.pgm'), '--max-excluded', '1', '--max-mahalanobis', '3']);
 both('cut-head', (side) => ['cut-head', '--mask', person, '--fraction', '0.3', '--out', o(side, 'cut.pgm')]);
 both('match --mask --debug-dir', (side) => ['match', img, '--mask', person, '--json', '--debug-dir', o(side, 'dbg')]);
-for (const name of ['regions.pgm', 'skin.pgm', 'cut.pgm']) {
+// Paleta por prenda con regiones: mitades (arriba 1 / abajo 2) y las de la pose.
+const halves = pgm('halves.pgm', (x, y) => (y * 2 < H ? 1 : 2));
+both('garment-regions', (side) => ['garment-regions', '--size', W + 'x' + H, '--mask', person, '--pose', pose, '--out',
+  o(side, 'garment_regions.pgm'), '--torso-margin', '0.35', '--limb-width', '1.0', '--forearms', '1']);
+both('garments --regions --mask --debug-dir', (side) => ['garments', img, '--mask', person, '--regions', halves, '--match',
+  '--json', '--debug-dir', o(side, 'gdbg')]);
+both('garments --regions (pose) --debug-dir', (side) => ['garments', img, '--regions', o('native', 'garment_regions.pgm'),
+  '--n-regions', '2', '--shade-kl', '2.5', '--lit-low', '0.3', '--json', '--debug-dir', o(side, 'gdbg_pose')]);
+const glist = path.join(syn, 'garments_list.txt');
+fs.writeFileSync(glist, img + ' - ' + halves + '\n' + img + ' ' + person + ' ' + halves + '\n' + img + '\n');
+both('batch --garments', () => ['batch', glist, '--garments', '--json']);
+for (const name of ['garment_regions.pgm']) {
+  compared++;
+  const a = o('native', name);
+  const b = o('wasm', name);
+  if (!fs.existsSync(a) || !fs.existsSync(b) || Buffer.compare(fs.readFileSync(a), fs.readFileSync(b)) !== 0) {
+    console.error('DIFIERE sintético: ' + name);
+    failures++;
+  }
+}
+sameDir(o('native', 'gdbg'), o('wasm', 'gdbg'), 'garments --regions --mask --debug-dir');
+sameDir(o('native', 'gdbg_pose'), o('wasm', 'gdbg_pose'), 'garments --regions (pose) --debug-dir');
+// Separación de una instancia con 3 semillas no diádicas (tercios, semiancho irracional).
+const seeds = path.join(syn, 'seeds.txt');
+fs.writeFileSync(seeds, [
+  [W / 3, H / 7, W / 3 + 0.1, H * 5 / 7, Math.SQRT2 * W / 11],
+  [W * 2 / 3, H / 9, W * 0.61, H * 6 / 7, W / 7.3],
+  [W / 2, H * 0.4, W / 2, H * 0.4, W / 13],
+].map((v) => v.map((x) => x.toString()).join(' ')).join('\n') + '\n');
+both('split', (side) => ['split', '--mask', person, '--seeds', seeds, '--out', o(side, 'split.pgm')]);
+for (const name of ['regions.pgm', 'skin.pgm', 'cut.pgm', 'split.pgm']) {
   compared++;
   const a = o('native', name);
   const b = o('wasm', name);
@@ -138,5 +180,6 @@ if (failures > 0) {
   console.error('layers_parity: ' + failures + ' diferencias (' + compared + ' comparaciones)');
   process.exit(1);
 }
-console.log('layers_parity OK: ' + nLayers + ' fixtures con capas + regions/skin/cut-head/match --mask sintéticos, ' +
+console.log('layers_parity OK: ' + nLayers + ' fixtures con capas + regions/skin/cut-head/split/match --mask sintéticos, ' +
+  'garment-regions/garments --regions/batch --garments sintéticos, ' +
   compared + ' ficheros/salidas byte a byte idénticos nativo vs WASM');
