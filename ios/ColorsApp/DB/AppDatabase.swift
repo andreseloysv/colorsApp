@@ -1,14 +1,18 @@
 // Base de datos GRDB de la app: DatabasePool (WAL) en Application Support/
 // ColorsApp/colors.sqlite, migración v1 con las cuatro tablas sync-ready
-// (PLAN §7) y v2 con los datos del recorte de sujeto en `scans` (SubjectKit) y
-// la conversión del ajuste heredado `person_mask`. Reinstalar sobre el mismo
-// bundle ID conserva el contenedor (es lo que mide LaunchCounter); los tests
-// usan `inMemory()` o un directorio temporal.
+// (PLAN §7), v2 con los datos del recorte de sujeto en `scans` (SubjectKit),
+// la conversión del ajuste heredado `person_mask`, v3, que corrige esa
+// conversión (`person_mask` = true acaba en los valores por defecto nuevos), y
+// v4, que añade la paleta por prenda y la versión de la política de análisis
+// (`AnalysisPolicy`) para saber qué scans hay que volver a analizar.
+// Reinstalar sobre el mismo bundle ID conserva el contenedor (es lo que mide
+// LaunchCounter); los tests usan `inMemory()` o un directorio temporal.
 //
 // Las migraciones ya publicadas NO se editan: el iPhone del usuario tiene una
-// base de datos creada por v1 (build Debug). Cada cambio de esquema es una
-// migración nueva, probada con una base de datos creada solo con v1
-// (DatabaseTests.testMigrationV1ToV2KeepsUnlocksAndFeedback).
+// base de datos creada por v1 (build Debug) y la copia preliminar trae v2. Cada
+// cambio de esquema o de datos es una migración nueva, probada con una base de
+// datos creada solo con v1 (SubjectDatabaseTests) y con una creada con v1 + v2
+// (DatabaseTests, migración v3).
 import Foundation
 import GRDB
 
@@ -110,6 +114,12 @@ final class AppDatabase: Sendable {
         migrator.registerMigration("v2") { db in
             try migrateV2(db, now: Date())
         }
+        migrator.registerMigration("v3") { db in
+            try migrateV3(db, now: Date())
+        }
+        migrator.registerMigration("v4") { db in
+            try migrateV4(db)
+        }
         return migrator
     }
 
@@ -123,7 +133,7 @@ final class AppDatabase: Sendable {
     ///   scans anteriores a v2.
     /// - `person_mask` = "true" (máscara de persona de Vision de F6) pasa a
     ///   `subject_mode` = allPeople + `region_mode` = wholePerson, lo más parecido
-    ///   a lo que hacía; "false" o ausente deja los nuevos valores por defecto
+    ///   a lo que hacía (v3 lo corrige: acaba en los valores por defecto nuevos); "false" o ausente deja los nuevos valores por defecto
     ///   (sin filas: persona más grande + solo ropa + piel adaptativa). La clave
     ///   heredada se marca borrada (borrado suave, rev + 1, dirty).
     static func migrateV2(_ db: Database, now: Date) throws {
@@ -154,6 +164,52 @@ final class AppDatabase: Sendable {
         try db.execute(sql: """
             UPDATE settings SET deleted_at = ?, updated_at = ?, rev = rev + 1, dirty = 1 WHERE key = 'person_mask'
             """, arguments: [now, now])
+    }
+
+    /// v3: `person_mask` = true debe acabar en los valores por defecto nuevos (persona
+    /// principal + solo ropa + piel adaptativa, decisión del usuario, CONTEXT §10), no en
+    /// allPeople + wholePerson como hizo v2 (issue minor de la verificación de 2026-09-15).
+    ///
+    /// v2 ya está publicada (la copia preliminar del iPhone la trae), así que no se edita:
+    /// v3 borra (borrado suave, rev + 1, dirty) las filas `subject_mode` = allPeople y
+    /// `region_mode` = wholePerson que escribió la conversión de v2, reconocibles porque su
+    /// `updated_at` es exactamente el `deleted_at` de `person_mask` (el mismo `now` de v2) y
+    /// no han cambiado desde entonces. Si el usuario eligió después esos modos en Ajustes,
+    /// `updated_at` es otro y se respetan. `adaptive_skin` no lo tocó v2 y no se toca.
+    /// Una base creada sin v2 (v1 -> v2 -> v3 en la misma apertura) acaba igual.
+    static func migrateV3(_ db: Database, now: Date) throws {
+        try db.execute(sql: """
+            UPDATE settings
+            SET deleted_at = ?, updated_at = ?, rev = rev + 1, dirty = 1
+            WHERE deleted_at IS NULL
+              AND ((key = 'subject_mode' AND value = 'allPeople') OR (key = 'region_mode' AND value = 'wholePerson'))
+              AND updated_at = (SELECT pm.deleted_at FROM settings pm
+                                WHERE pm.key = 'person_mask' AND pm.deleted_at IS NOT NULL
+                                  AND pm.value IN ('true', '1'))
+            """, arguments: [now, now])
+    }
+
+    /// v4 (aditiva): paleta por prenda (ADR-011, CONTEXT §13) y versión de la política de análisis.
+    ///
+    /// `scans` gana tres columnas, todas NULL en los scans anteriores (nada se reescribe):
+    /// - `garments_json`: JSON `[GarmentEntry]` con el color de cada prenda (región 1 arriba,
+    ///   2 abajo, 3 prenda entera), su peso, la cuota de su región y los clusters agrupados;
+    ///   NULL = el scan salió del camino clásico (sin pose, sin mapa de regiones).
+    /// - `garment_regions`: número de regiones del mapa que recibió el motor (2 con pose;
+    ///   NULL sin mapa). No se guarda el mapa de píxeles: se recalcula desde la foto.
+    /// - `engine_policy_version`: `AnalysisPolicy.current` cuando se analizó (NULL = anterior a
+    ///   v4). La app compara ese número, `engine_version` y `dict_version` con los actuales
+    ///   (`AnalysisPolicy.needsReanalysis`) para volver a analizar los scans viejos al abrirlos;
+    ///   la lógica de re-análisis en las vistas la hace el equipo de interfaz.
+    ///
+    /// Las migraciones publicadas (v1, v2 y v3) no se tocan: los datos que escribieron se
+    /// conservan tal cual (lo comprueba GarmentDatabaseTests con bases creadas en v1, v2 y v3).
+    static func migrateV4(_ db: Database) throws {
+        try db.alter(table: "scans") { t in
+            t.add(column: "garments_json", .text)
+            t.add(column: "garment_regions", .integer)
+            t.add(column: "engine_policy_version", .integer)
+        }
     }
 
     /// Identificadores de migración aplicados (para Ajustes/diagnóstico).

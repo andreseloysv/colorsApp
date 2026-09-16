@@ -19,6 +19,7 @@ import ImageIO
 import SwiftUI
 import UIKit
 import ColorEngine
+import SubjectKit
 @testable import ColorsApp
 
 final class DayZeroScanTests: XCTestCase {
@@ -303,6 +304,17 @@ final class DayZeroScanTests: XCTestCase {
     }
 
     // MARK: Regla de desbloqueo y acceso limitado
+
+    func testStepsTextCountsRejectedPhantoms() {
+        // Resumen del log del escaneo: las fotos sin nadie con una persona fantasma descartada
+        // cuentan en rejectedPhantom y en noPeople (foto completa).
+        let steps: [[MaskFallback]] = [[.rejectedPhantom, .noPeople], [.noPeople], [.poseRegions, .skinExcluded],
+                                       [.rejectedPhantom, .noPeople]]
+        var counts: [String: Int] = [:]
+        for s in steps { for step in s { counts[step.rawValue, default: 0] += 1 } }
+        XCTAssertEqual(PhotoKitScanRunner.stepsText(counts), "noPeople 3, poseRegions 1, rejectedPhantom 2, skinExcluded 1")
+        XCTAssertEqual(MaskFallback(rawValue: "rejectedPhantom"), .rejectedPhantom)
+    }
 
     func testUnlockRule() {
         let policy = ScanPolicy.default

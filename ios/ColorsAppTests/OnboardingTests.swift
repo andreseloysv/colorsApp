@@ -1,4 +1,4 @@
-// Pendientes de F6/F7: el arranque instala PhotoKitScanRunner, Hoy presenta el
+// Pendientes de F6/F7: el arranque instala PhotoKitScanRunner, el Feed presenta el
 // escaneo del carrete la primera vez (sin escaneo inicial ni salto previo, nunca
 // con un atajo de depuración ni en XCTest) con "Ahora no", y la hoja de la
 // Rejilla reutiliza ComboDetailView.
@@ -17,34 +17,34 @@ final class OnboardingTests: XCTestCase {
     }
 
     func testPresentationRule() {
-        XCTAssertTrue(HoyView.shouldPresentOnboarding(initialScanDone: false, skipped: false, debugScreen: false, runningTests: false))
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: true, skipped: false, debugScreen: false, runningTests: false))
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: false, skipped: true, debugScreen: false, runningTests: false))
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: false, skipped: false, debugScreen: true, runningTests: false))
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: false, skipped: false, debugScreen: false, runningTests: true))
+        XCTAssertTrue(FeedOnboarding.shouldPresent(initialScanDone: false, skipped: false, debugScreen: false, runningTests: false))
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: true, skipped: false, debugScreen: false, runningTests: false))
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: false, skipped: true, debugScreen: false, runningTests: false))
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: false, skipped: false, debugScreen: true, runningTests: false))
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: false, skipped: false, debugScreen: false, runningTests: true))
     }
 
     func testSkipFlowPersistsAndDoesNotPresentAgain() async throws {
         let env = try AppEnvironment.forTesting(bundle: Bundle(for: AppDatabase.self))
         var done = try await env.settings.bool(.initialScanDone)
         var skipped = try await env.settings.bool(.scanOnboardingSkipped)
-        XCTAssertTrue(HoyView.shouldPresentOnboarding(initialScanDone: done, skipped: skipped, debugScreen: false, runningTests: false),
+        XCTAssertTrue(FeedOnboarding.shouldPresent(initialScanDone: done, skipped: skipped, debugScreen: false, runningTests: false),
                       "primera vez: se presenta")
         // "Ahora no" / cerrar la hoja sin escanear.
-        await HoyOnboarding.markDismissed(settings: env.settings)
+        await FeedOnboarding.markDismissed(settings: env.settings)
         skipped = try await env.settings.bool(.scanOnboardingSkipped)
         XCTAssertTrue(skipped)
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: done, skipped: skipped, debugScreen: false, runningTests: false),
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: done, skipped: skipped, debugScreen: false, runningTests: false),
                        "saltado: no se vuelve a presentar")
 
         // Con el escaneo hecho, cerrar no marca el salto.
         let other = try AppEnvironment.forTesting(bundle: Bundle(for: AppDatabase.self))
         try await other.settings.setBool(.initialScanDone, true)
-        await HoyOnboarding.markDismissed(settings: other.settings)
+        await FeedOnboarding.markDismissed(settings: other.settings)
         let otherSkipped = try await other.settings.bool(.scanOnboardingSkipped)
         XCTAssertFalse(otherSkipped)
         done = try await other.settings.bool(.initialScanDone)
-        XCTAssertFalse(HoyView.shouldPresentOnboarding(initialScanDone: done, skipped: otherSkipped, debugScreen: false, runningTests: false))
+        XCTAssertFalse(FeedOnboarding.shouldPresent(initialScanDone: done, skipped: otherSkipped, debugScreen: false, runningTests: false))
 
         // La hoja con "Ahora no" y el detalle de la Rejilla se construyen.
         // (UIHostingController: ImageRenderer aborta al liberar vistas con .onAppear/.task en NavigationStack, iOS 27.)

@@ -163,6 +163,8 @@ enum MaskStepsText {
         case .skinExcluded: "Piel excluida"
         case .skinGuard: "Salvaguarda de piel"
         case .visionUnavailable: "Vision no disponible"
+        case .rejectedPhantom: "Persona fantasma descartada"
+        case .garmentRegions: "Regiones de prenda (arriba / abajo)"
         }
     }
 

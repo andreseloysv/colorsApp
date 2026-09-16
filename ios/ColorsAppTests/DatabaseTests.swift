@@ -1,10 +1,12 @@
-// GRDB: migraciones v1 + v2 (tablas, columnas sync-ready y del recorte, WAL),
+// GRDB: migraciones v1 + v2 + v3 (tablas, columnas sync-ready y del recorte, WAL),
 // inserción de scan + unlock + feedback, observación de unlocks y UUIDv7
-// monotónico. La migración v1 -> v2 sobre una base creada solo con v1 está en
-// SubjectDatabaseTests.
+// monotónico. La migración v1 -> v2 -> v3 sobre una base creada solo con v1 está en
+// SubjectDatabaseTests; aquí, v3 sobre bases creadas con v1 + v2 (la copia
+// preliminar del iPhone): `person_mask` = true acaba en los valores por defecto nuevos.
 import XCTest
 import GRDB
 import ColorEngine
+import SubjectKit
 @testable import ColorsApp
 
 final class DatabaseTests: XCTestCase {
@@ -28,7 +30,7 @@ final class DatabaseTests: XCTestCase {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let db = try AppDatabase.open(at: dir.appendingPathComponent("colors.sqlite"))
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
         try db.writer.read { db in
             for table in ["scans", "unlocks", "feedback", "settings"] {
                 XCTAssertTrue(try db.tableExists(table), table)
@@ -143,6 +145,153 @@ final class DatabaseTests: XCTestCase {
         try await unlocks.deleteAll()
         let afterAll = try await unlocks.count()
         XCTAssertEqual(afterAll, 0)
+    }
+
+    // MARK: Migración v3 (person_mask = true -> valores por defecto nuevos)
+
+    /// Base creada con v1 (+ `person_mask` y datos de usuario) y migrada hasta `upTo`,
+    /// como la dejaría la build correspondiente. `afterV2` corre sobre la base ya en v2
+    /// (p. ej. el usuario cambia Ajustes con la build de v2).
+    private func makeDatabase(personMask: String?, upTo: String, dir: URL,
+                              afterV2: ((Database) throws -> Void)? = nil) throws -> URL {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("colors.sqlite")
+        var config = Configuration()
+        config.journalMode = .wal
+        let pool = try DatabasePool(path: url.path, configuration: config)
+        try AppDatabase.migrator.migrate(pool, upTo: "v1")
+        try pool.write { db in
+            let t = "2026-09-10 10:00:00.000"
+            try db.execute(sql: """
+                INSERT INTO unlocks (combo_id, first_seen_at, source, asset_local_id, scan_id, updated_at, deleted_at, rev, dirty)
+                VALUES (12, ?, 'camera', NULL, NULL, ?, NULL, 1, 1), (348, ?, 'library', NULL, NULL, ?, NULL, 1, 1)
+                """, arguments: [t, t, t, t])
+            try db.execute(sql: """
+                INSERT INTO feedback (id, scan_id, verdict, created_at, updated_at, deleted_at, rev, dirty)
+                VALUES ('0190a000-0000-7000-8000-0000000000f1', 'scan-1', 'no', ?, ?, NULL, 1, 1)
+                """, arguments: [t, t])
+            if let personMask {
+                try db.execute(sql: """
+                    INSERT INTO settings (key, value, updated_at, deleted_at, rev, dirty)
+                    VALUES ('person_mask', ?, ?, NULL, 2, 0)
+                    """, arguments: [personMask, t])
+            }
+        }
+        if upTo != "v1" {
+            try AppDatabase.migrator.migrate(pool, upTo: upTo)
+        }
+        if let afterV2 { try pool.write(afterV2) }
+        XCTAssertEqual(try pool.read { db in try AppDatabase.migrator.appliedIdentifiers(db).sorted() },
+                       upTo == "v1" ? ["v1"] : ["v1", "v2"])
+        try pool.close()
+        return url
+    }
+
+    private struct SettingsRow: Equatable {
+        let value: String
+        let deleted: Bool
+        let rev: Int
+        let dirty: Int
+    }
+
+    private func settingsRows(_ db: AppDatabase) throws -> [String: SettingsRow] {
+        try db.writer.read { db in
+            var out: [String: SettingsRow] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT key, value, deleted_at, rev, dirty FROM settings") {
+                out[row["key"]] = SettingsRow(value: row["value"], deleted: (row["deleted_at"] as String?) != nil,
+                                              rev: row["rev"], dirty: row["dirty"])
+            }
+            return out
+        }
+    }
+
+    func testMigrationV3PersonMaskTrueFromV2DatabaseUsesNewDefaults() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = try makeDatabase(personMask: "true", upTo: "v2", dir: dir)
+        // Estado que dejó la build de v2: allPeople + wholePerson.
+        let v2 = try DatabaseQueue(path: url.path)
+        let v2Mode = try await v2.read { db in
+            try String.fetchOne(db, sql: "SELECT value FROM settings WHERE key = 'subject_mode' AND deleted_at IS NULL")
+        }
+        XCTAssertEqual(v2Mode, "allPeople")
+        try v2.close()
+
+        let db = try AppDatabase.open(at: url)
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
+        let settings = SettingsRepository(db)
+        let subject = try await settings.subjectSettings()
+        XCTAssertEqual(subject, .default, "persona principal + solo ropa + piel adaptativa")
+        XCTAssertEqual(subject.mode, .largestPerson)
+        XCTAssertEqual(subject.region, .clothing)
+        XCTAssertTrue(subject.adaptiveSkin)
+        XCTAssertEqual(subject.subjectOptions, SubjectOptions.default)
+        let rows = try settingsRows(db)
+        XCTAssertEqual(rows["subject_mode"], SettingsRow(value: "allPeople", deleted: true, rev: 2, dirty: 1))
+        XCTAssertEqual(rows["region_mode"], SettingsRow(value: "wholePerson", deleted: true, rev: 2, dirty: 1))
+        XCTAssertEqual(rows["person_mask"]?.deleted, true)
+        XCTAssertNil(rows["adaptive_skin"])
+        let unlocked = try await UnlockRepository(db).unlockedIds()
+        XCTAssertEqual(unlocked, [12, 348], "los desbloqueos se conservan")
+        let counts = try await FeedbackRepository(db).counts()
+        XCTAssertEqual(counts.no, 1)
+        // Reabrir no vuelve a migrar.
+        let again = try AppDatabase.open(at: url)
+        XCTAssertEqual(try again.appliedMigrations(), ["v1", "v2", "v3", "v4"])
+        XCTAssertEqual(try settingsRows(again), rows)
+        print("MIGRACION | v1+v2 (person_mask=true) -> v3 | subject_mode \(subject.mode.rawValue) | region_mode \(subject.region.rawValue) | piel \(subject.adaptiveSkin) | unlocks \(unlocked.count) | feedback \(counts.no + counts.yes)")
+    }
+
+    func testMigrationV3KeepsSettingsChosenAfterV2() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Con la build de v2 el usuario volvió a elegir «Todas las personas» en Ajustes (otra fecha)
+        // y no tocó la región: v3 respeta su elección y solo corrige lo que escribió v2.
+        let url = try makeDatabase(personMask: "true", upTo: "v2", dir: dir) { db in
+            try db.execute(sql: """
+                UPDATE settings SET value = 'allPeople', updated_at = '2026-09-16 09:30:00.000', rev = rev + 1, dirty = 1
+                WHERE key = 'subject_mode'
+                """)
+        }
+        let db = try AppDatabase.open(at: url)
+        let subject = try await SettingsRepository(db).subjectSettings()
+        XCTAssertEqual(subject.mode, .allPeople, "elección del usuario posterior a v2")
+        XCTAssertEqual(subject.region, .clothing, "la región que escribió v2 vuelve al defecto")
+        XCTAssertTrue(subject.adaptiveSkin)
+        let rows = try settingsRows(db)
+        XCTAssertEqual(rows["subject_mode"], SettingsRow(value: "allPeople", deleted: false, rev: 2, dirty: 1))
+        XCTAssertEqual(rows["region_mode"]?.deleted, true)
+        print("MIGRACION | v1+v2 (person_mask=true) + Ajustes allPeople -> v3 | subject_mode \(subject.mode.rawValue) | region_mode \(subject.region.rawValue) | piel \(subject.adaptiveSkin)")
+    }
+
+    func testMigrationV3CasesTable() async throws {
+        // Todas las combinaciones de origen: v1 -> (v2 ->) v3 con person_mask true / false / ausente
+        // y v1 + v2 con elecciones explícitas del usuario, que v3 no toca.
+        var lines = ["MIGRACION | origen | person_mask | subject_mode | region_mode | adaptive_skin | migraciones"]
+        for (upTo, mask) in [("v1", "true"), ("v1", "false"), ("v1", nil), ("v2", "true"), ("v2", "1"), ("v2", "false"), ("v2", nil)] as [(String, String?)] {
+            let dir = tempDirectory()
+            defer { try? FileManager.default.removeItem(at: dir) }
+            let url = try makeDatabase(personMask: mask, upTo: upTo, dir: dir)
+            let db = try AppDatabase.open(at: url)
+            let subject = try await SettingsRepository(db).subjectSettings()
+            XCTAssertEqual(subject, .default, "\(upTo) person_mask=\(mask ?? "ausente")")
+            lines.append("MIGRACION | \(upTo) | \(mask ?? "ausente") | \(subject.mode.rawValue) | \(subject.region.rawValue) | \(subject.adaptiveSkin) | \(try db.appliedMigrations().joined(separator: ","))")
+        }
+        // Una base v2 sin person_mask en la que el usuario eligió allPeople + wholePerson: intacta.
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = try makeDatabase(personMask: nil, upTo: "v2", dir: dir) { db in
+            for (key, value) in [("subject_mode", "allPeople"), ("region_mode", "wholePerson")] {
+                try db.execute(sql: "INSERT INTO settings (key, value, updated_at, deleted_at, rev, dirty) VALUES (?, ?, '2026-09-16 08:00:00.000', NULL, 1, 1)",
+                               arguments: [key, value])
+            }
+        }
+        let db = try AppDatabase.open(at: url)
+        let chosen = try await SettingsRepository(db).subjectSettings()
+        XCTAssertEqual(chosen.mode, .allPeople)
+        XCTAssertEqual(chosen.region, .wholePerson)
+        lines.append("MIGRACION | v2 + Ajustes (sin person_mask) | ausente | \(chosen.mode.rawValue) | \(chosen.region.rawValue) | \(chosen.adaptiveSkin) | \(try db.appliedMigrations().joined(separator: ","))")
+        print(lines.joined(separator: "\n"))
     }
 
     func testUnlockObservationEmitsChanges() async throws {

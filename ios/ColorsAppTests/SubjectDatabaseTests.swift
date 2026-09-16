@@ -1,8 +1,9 @@
-// Migración v2 sobre una base de datos creada SOLO con v1 (la del iPhone del
-// usuario, build Debug): conserva unlocks, feedback, scans y ajustes; añade las
-// columnas del recorte; convierte `person_mask` (true -> allPeople +
-// wholePerson; false o ausente -> nuevos defectos) y los ajustes del recorte y
-// del umbral de desbloqueo se leen y escriben con sus valores por defecto.
+// Migraciones v2 + v3 sobre una base de datos creada SOLO con v1 (la del iPhone del
+// usuario, build Debug): conservan unlocks, feedback, scans y ajustes; añaden las
+// columnas del recorte; convierten `person_mask` (true, false o ausente -> nuevos
+// defectos: persona principal + solo ropa + piel; v2 lo pasaba a allPeople +
+// wholePerson y v3 lo corrige) y los ajustes del recorte y del umbral de
+// desbloqueo se leen y escriben con sus valores por defecto.
 import XCTest
 import GRDB
 import ColorEngine
@@ -67,7 +68,7 @@ final class SubjectDatabaseTests: XCTestCase {
     func testMigrationV1ToV2KeepsUnlocksAndFeedback() async throws {
         let url = try makeV1Database(personMask: nil)
         let db = try AppDatabase.open(at: url)
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
 
         let unlocks = UnlockRepository(db)
         let ids = try await unlocks.unlockedIds()
@@ -123,18 +124,18 @@ final class SubjectDatabaseTests: XCTestCase {
 
         // Reabrir no vuelve a migrar ni borra nada (eraseDatabaseOnSchemaChange = false).
         let again = try AppDatabase.open(at: url)
-        XCTAssertEqual(try again.appliedMigrations(), ["v1", "v2"])
+        XCTAssertEqual(try again.appliedMigrations(), ["v1", "v2", "v3", "v4"])
         let againCount = try await UnlockRepository(again).count()
         XCTAssertEqual(againCount, 2)
         XCTAssertFalse(AppDatabase.migrator.eraseDatabaseOnSchemaChange)
     }
 
-    func testPersonMaskTrueMigratesToAllPeopleWholePerson() async throws {
+    func testPersonMaskTrueMigratesToNewDefaults() async throws {
         let db = try AppDatabase.open(at: try makeV1Database(personMask: "true"))
         let settings = SettingsRepository(db)
         let subject = try await settings.subjectSettings()
-        XCTAssertEqual(subject.mode, .allPeople)
-        XCTAssertEqual(subject.region, .wholePerson)
+        XCTAssertEqual(subject.mode, .largestPerson, "v3: persona principal, no allPeople")
+        XCTAssertEqual(subject.region, .clothing, "v3: solo ropa, no wholePerson")
         XCTAssertTrue(subject.adaptiveSkin, "la piel adaptativa conserva su defecto")
         XCTAssertEqual(subject.unlockMaxScore, 12.0)
         let legacy = try await settings.get(.personMask)
@@ -145,7 +146,7 @@ final class SubjectDatabaseTests: XCTestCase {
             XCTAssertEqual(row["rev"] as Int, 4)
             XCTAssertEqual(row["dirty"] as Int, 1)
             let mode = try String.fetchOne(db, sql: "SELECT value FROM settings WHERE key = 'subject_mode' AND deleted_at IS NULL")
-            XCTAssertEqual(mode, "allPeople")
+            XCTAssertNil(mode, "v3 borra (suave) el allPeople que escribió v2")
         }
     }
 

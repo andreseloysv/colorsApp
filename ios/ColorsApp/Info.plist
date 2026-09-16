@@ -30,5 +30,10 @@
 	<string>ColorsApp usa la cámara para fotografiar una prenda o escena y buscar su combinación de colores. La imagen se procesa solo en el teléfono.</string>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Literata-VF.ttf</string>
+		<string>PlusJakartaSans-VF.ttf</string>
+	</array>
 </dict>
 </plist>

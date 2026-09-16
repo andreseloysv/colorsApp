@@ -182,7 +182,8 @@ final class LayersInspectorTests: XCTestCase {
             XCTAssertNotNil(stack.layer(kind)?.overlay, "capa \(kind.rawValue) con imagen")
             XCTAssertNil(stack.layer(kind)?.warning, "capa \(kind.rawValue) sin aviso: \(stack.layer(kind)?.warning ?? "")")
         }
-        XCTAssertTrue(stack.layer(.skin)?.facts.first?.hasSuffix("px de piel quitados") == true)
+        let skinFact = try XCTUnwrap(stack.layer(.skin)?.facts.first)
+        XCTAssertTrue(skinFact.contains("px de piel quitados"), skinFact)
         XCTAssertEqual(stack.notice.text, "Solo ropa · piel excluida")
         let image = try XCTUnwrap(LayersShareRenderer.render(stack: stack, title: "Escena sintética"))
         try saveScreen(try XCTUnwrap(image.pngData()), name: "layers-share-demo.png")

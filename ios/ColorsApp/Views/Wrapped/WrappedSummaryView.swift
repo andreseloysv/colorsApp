@@ -1,6 +1,7 @@
-// Resumen tipo "tu carrete en color" tras el escaneo del día 0 (PLAN §7.6):
-// color firma, top 5 colores del diccionario, combinaciones desbloqueadas,
-// combinaciones más frecuentes, contador n/348 y botón "Ver rejilla".
+// Resumen «Tu carrete en color» tras el escaneo del día 0 (PLAN §7.6) con el estilo del
+// sistema de diseño (docs/design/DESIGN_SYSTEM.md): portada con la cifra de fotos, color
+// firma, 5 colores más frecuentes, combinaciones desbloqueadas, las que más se repiten,
+// contador n/348 y «Ver rejilla». Todo color de datos va en un pocillo neutro (§1.4).
 // Vista pura sobre `ScanSummary` + `WadaDictionary` (sin base de datos).
 import SwiftUI
 
@@ -14,7 +15,7 @@ struct WrappedSummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 header
                 if summary.scanned == 0 {
                     emptyState
@@ -26,32 +27,59 @@ struct WrappedSummaryView: View {
                 }
                 counter
                 if let onShowGrid {
-                    Button(action: onShowGrid) {
-                        Text("Ver rejilla")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("wrapped.showGrid")
+                    SolarPrimaryButton(title: "Ver rejilla", systemImage: "square.grid.2x2", luminous: true, action: onShowGrid)
+                        .accessibilityIdentifier("wrapped.showGrid")
                 }
             }
-            .padding()
+            .padding(.horizontal, Spacing.margin)
+            .padding(.top, Spacing.md)
+            .padding(.bottom, Spacing.xl)
         }
+        .scrollIndicators(.hidden)
+        .background(Theme.surface.ignoresSafeArea())
         .accessibilityIdentifier("wrapped.summary")
     }
 
     // MARK: Secciones
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
+                // Emblema de la marca en vez del SF Symbol `sun.max.fill` (FIDELITY.md §2.1).
+                ChromaSolLogo(size: 28, animated: true)
+                Text("Escaneo del carrete").textRole(.overline).foregroundStyle(Theme.secondary)
+            }
             Text("Tu carrete en color")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .textRole(.headlineXLMobile)
+                .foregroundStyle(Theme.primary)
+                .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                Text("\(summary.scanned)")
+                    .textRole(.headlineXL)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.onSurface)
+                Text(summary.scanned == 1 ? "foto analizada" : "fotos analizadas")
+                    .textRole(.labelLG)
+                    .foregroundStyle(Theme.onSurfaceVariant)
+            }
             Text(statsLine)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .textRole(.bodySM)
+                .foregroundStyle(Theme.onSurfaceVariant)
                 .accessibilityIdentifier("wrapped.stats")
         }
+        .padding(Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Theme.card)
+                SolarWash(kind: .warm, diameter: 170, blur: 44).offset(x: 60, y: -70)
+                SolarWash(kind: .green, diameter: 140, blur: 36).offset(x: -210, y: 90)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            .elevation(.restStrong)
+        }
+        .glowCard(cornerRadius: Radius.card)
+        .sunGlint(cornerRadius: Radius.card)
     }
 
     var statsLine: String {
@@ -63,41 +91,53 @@ struct WrappedSummaryView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("No había fotos que analizar", systemImage: "photo")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Label {
+                Text("No había fotos que analizar").textRole(.headlineSM)
+            } icon: {
+                Image(systemName: "photo")
+            }
+            .foregroundStyle(Theme.primary)
             Text("Haz fotos de lo que llevas puesto o elige algunas del carrete y vuelve a intentarlo.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .textRole(.bodyMD)
+                .foregroundStyle(Theme.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding()
+        .padding(Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .solarCard(fill: Theme.container, elevation: .flat)
     }
 
     @ViewBuilder
     private var signature: some View {
         if let index = summary.signatureColorIndex, let color = dictionary.color(index: index) {
             let count = summary.topColors.first { $0.colorIndex == index }?.count ?? 0
-            VStack(alignment: .leading, spacing: 8) {
-                sectionTitle("Tu color firma")
-                HStack(spacing: 16) {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color(wada: color))
-                        .frame(width: 110, height: 110)
-                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(color.name)
-                            .font(.title2.bold())
-                        Text(color.hex.uppercased())
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                        Text(count == 1 ? "en 1 foto" : "en \(count) fotos")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+            let swatch = PaletteColor(id: 0, wada: color)
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                SectionHeader(title: "Tu color firma", systemImage: "seal")
+                SwatchWell(padding: Spacing.md, cornerRadius: Radius.card) {
+                    HStack(spacing: Spacing.margin) {
+                        RoundedRectangle(cornerRadius: Radius.block, style: .continuous)
+                            .fill(swatch.color)
+                            .overlay(SwatchHairline(shape: RoundedRectangle(cornerRadius: Radius.block, style: .continuous)))
+                            .frame(width: 96, height: 96)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text(color.name)
+                                .textRole(.headlineMD)
+                                .foregroundStyle(Theme.wellText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(swatch.hex)
+                                .textRole(.hex)
+                                .foregroundStyle(Theme.wellTextSecondary)
+                            Text(count == 1 ? "en 1 foto" : "en \(count) fotos")
+                                .textRole(.labelMD)
+                                .foregroundStyle(Theme.wellTextSecondary)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer()
                 }
+                .accessibilityElement(children: .combine)
             }
             .accessibilityIdentifier("wrapped.signature")
         }
@@ -105,27 +145,35 @@ struct WrappedSummaryView: View {
 
     @ViewBuilder
     private var topColors: some View {
-        let top = Array(summary.topColors.prefix(5))
+        let top = Array(summary.topColors.prefix(5)).compactMap { entry -> (ColorCount, WadaColor)? in
+            dictionary.color(index: entry.colorIndex).map { (entry, $0) }
+        }
         if !top.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                sectionTitle("Tus 5 colores")
-                HStack(alignment: .top, spacing: 10) {
-                    ForEach(top, id: \.colorIndex) { entry in
-                        if let color = dictionary.color(index: entry.colorIndex) {
-                            VStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                SectionHeader(title: "Tus 5 colores", systemImage: "paintpalette")
+                SwatchWell(padding: Spacing.sm, cornerRadius: Radius.card) {
+                    HStack(alignment: .top, spacing: Spacing.xs) {
+                        ForEach(top, id: \.0.colorIndex) { entry, color in
+                            let swatch = PaletteColor(id: entry.colorIndex, wada: color)
+                            VStack(spacing: Spacing.xs) {
                                 Circle()
-                                    .fill(Color(wada: color))
-                                    .frame(width: 52, height: 52)
-                                    .overlay(Circle().strokeBorder(Color.primary.opacity(0.1)))
+                                    .fill(swatch.color)
+                                    .overlay(SwatchHairline(shape: Circle()))
+                                    .frame(width: 48, height: 48)
+                                    .padding(.top, 2)
                                 Text(color.name)
-                                    .font(.caption2)
+                                    .textRole(.labelSM)
+                                    .foregroundStyle(Theme.wellText)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
+                                    .minimumScaleFactor(0.85)
                                 Text("×\(entry.count)")
-                                    .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(.secondary)
+                                    .textRole(.labelSM)
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.wellTextSecondary)
                             }
                             .frame(maxWidth: .infinity)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -136,29 +184,36 @@ struct WrappedSummaryView: View {
 
     @ViewBuilder
     private var unlockedCombos: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle(summary.newUnlocks.count == 1 ? "1 combinación desbloqueada" : "\(summary.newUnlocks.count) combinaciones desbloqueadas")
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeader(title: summary.newUnlocks.count == 1 ? "1 combinación desbloqueada" : "\(summary.newUnlocks.count) combinaciones desbloqueadas",
+                          systemImage: "checkmark.seal")
             if summary.newUnlocks.isEmpty {
                 Text("Ninguna foto se parecía lo bastante a una combinación de Wada (resultados ambiguos o lejanos no desbloquean).")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .textRole(.bodySM)
+                    .foregroundStyle(Theme.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 64, maximum: 96), spacing: 8)], spacing: 8) {
-                    ForEach(summary.newUnlocks.prefix(maxUnlockTiles), id: \.self) { id in
-                        if let combo = dictionary.combo(id: id) {
-                            VStack(spacing: 4) {
-                                ComboTile(combo: combo, colors: dictionary.colors(of: combo), unlocked: true)
-                                Text(dictionary.displayName(id: id))
-                                    .font(.caption2)
+                SwatchWell(padding: Spacing.sm, cornerRadius: Radius.card) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 64, maximum: 96), spacing: Spacing.sm)], spacing: Spacing.sm) {
+                        ForEach(summary.newUnlocks.prefix(maxUnlockTiles), id: \.self) { id in
+                            VStack(spacing: Spacing.xs) {
+                                PaletteRibbon(colors: PaletteColor.combo(id, in: dictionary), style: .stripes, height: 56,
+                                              inWell: false)
+                                Text(WadaDictionary.numberLabel(id))
+                                    .textRole(.labelSM)
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.wellTextSecondary)
                                     .lineLimit(1)
                             }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Combinación \(WadaDictionary.numberLabel(id)), \(GardenText.comboTitle(id, dictionary: dictionary))")
                         }
                     }
                 }
                 if summary.newUnlocks.count > maxUnlockTiles {
                     Text("y \(summary.newUnlocks.count - maxUnlockTiles) más en la rejilla")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .textRole(.bodySM)
+                        .foregroundStyle(Theme.onSurfaceVariant)
                 }
             }
         }
@@ -167,53 +222,70 @@ struct WrappedSummaryView: View {
 
     @ViewBuilder
     private var frequentCombos: some View {
-        let top = Array(summary.topCombos.prefix(5))
+        let top = Array(summary.topCombos.prefix(5)).filter { dictionary.combo(id: $0.comboId) != nil }
         if !top.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                sectionTitle("Las que más se repiten")
-                ForEach(top, id: \.comboId) { entry in
-                    if let combo = dictionary.combo(id: entry.comboId) {
-                        HStack(spacing: 12) {
-                            HStack(spacing: 0) {
-                                ForEach(dictionary.colors(of: combo)) { color in
-                                    Color(wada: color)
-                                }
-                            }
-                            .frame(width: 72, height: 28)
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                            Text(dictionary.displayName(id: combo.id))
-                            Spacer()
-                            Text(entry.count == 1 ? "1 foto" : "\(entry.count) fotos")
-                                .font(.footnote.monospacedDigit())
-                                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                SectionHeader(title: "Las que más se repiten", systemImage: "repeat")
+                VStack(spacing: 0) {
+                    ForEach(Array(top.enumerated()), id: \.element.comboId) { i, entry in
+                        if i > 0 {
+                            Rectangle().fill(Theme.outlineVariant.opacity(0.6)).frame(height: 1)
                         }
+                        HStack(spacing: Spacing.md) {
+                            PaletteRibbon(colors: PaletteColor.combo(entry.comboId, in: dictionary), style: .strip,
+                                          height: 28, wellPadding: 6, wellCornerRadius: Radius.block)
+                                .frame(width: 104)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(GardenText.comboTitle(entry.comboId, dictionary: dictionary))
+                                    .textRole(.labelLG)
+                                    .foregroundStyle(Theme.onSurface)
+                                    .lineLimit(2)
+                                Text(WadaDictionary.numberLabel(entry.comboId))
+                                    .textRole(.bodySM)
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.onSurfaceVariant)
+                            }
+                            Spacer(minLength: Spacing.xs)
+                            Text(entry.count == 1 ? "1 foto" : "\(entry.count) fotos")
+                                .textRole(.labelMD)
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.secondary)
+                        }
+                        .padding(.vertical, Spacing.sm)
+                        .accessibilityElement(children: .combine)
                     }
                 }
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.xs)
+                .solarCard(elevation: .rest)
             }
             .accessibilityIdentifier("wrapped.topCombos")
         }
     }
 
     private var counter: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(RejillaModel.counterText(unlocked: summary.totalUnlocked, total: totalCombos))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                Text(Self.counterText(unlocked: summary.totalUnlocked, total: totalCombos))
+                    .textRole(.headlineXL)
                     .monospacedDigit()
+                    .foregroundStyle(Theme.primary)
                     .accessibilityIdentifier("wrapped.counter")
-                Text("combinaciones de Sanzo Wada")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text("combinaciones de Sanzo Wada en tu rejilla")
+                    .textRole(.labelMD)
+                    .foregroundStyle(Theme.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            ProgressView(value: Double(summary.totalUnlocked), total: Double(max(1, totalCombos)))
-                .tint(.primary)
+            GardenProgressBar(fraction: Double(summary.totalUnlocked) / Double(max(1, totalCombos)), height: 8)
+                .accessibilityHidden(true)
         }
+        .padding(Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .solarCard(fill: Theme.container, elevation: .small)
     }
 
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.headline)
-    }
+    /// "41/348".
+    static func counterText(unlocked: Int, total: Int) -> String { "\(unlocked)/\(total)" }
 
     /// "3,2 s" / "1 min 12 s".
     static func durationText(_ seconds: TimeInterval) -> String {

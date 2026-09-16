@@ -63,6 +63,21 @@ struct ScanRepository: Sendable {
         try await db.write { db in try scan.update(db) }
     }
 
+    /// Scans vivos (más reciente primero) que se analizaron con una política, un motor o un
+    /// diccionario viejos y habría que volver a analizar (`AnalysisPolicy.needsReanalysis`).
+    /// El filtro fino se hace en Swift: la columna puede ser NULL (scans anteriores a v4).
+    func needingReanalysis(limit: Int = 50) async throws -> [ScanRecord] {
+        try await db.read { db in
+            try ScanRecord
+                .filter(ScanRecord.Columns.deletedAt == nil)
+                .order(ScanRecord.Columns.scannedAt.desc)
+                .fetchAll(db)
+                .filter(\.needsReanalysis)
+                .prefix(limit)
+                .map { $0 }
+        }
+    }
+
     /// Observación de los últimos scans (emite el valor actual y cada cambio).
     func observeRecent(limit: Int = 50) -> AsyncValueObservation<[ScanRecord]> {
         ValueObservation.tracking { db in try Self.recentRequest(limit: limit).fetchAll(db) }.values(in: db)

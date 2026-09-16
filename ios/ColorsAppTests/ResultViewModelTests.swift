@@ -65,7 +65,8 @@ final class ResultViewModelTests: XCTestCase {
         await model.load()
         XCTAssertNil(model.verdict)
         XCTAssertEqual(model.unlockState, .locked)
-        XCTAssertEqual(model.title, "Nº 012")
+        // Título: nombre aceptado → propuesto (names.suggested.json) → «Nº 012».
+        XCTAssertEqual(model.title, ComboNaming.bundled.name(for: 12, in: env.dictionary).text)
         XCTAssertNil(model.ambiguityText)
         XCTAssertEqual(model.otherHits.count, 2)
 
@@ -125,7 +126,7 @@ final class ResultViewModelTests: XCTestCase {
         let outcome = ScanOutcome(image: image, raster: raster, result: ambiguous, scan: scan)
         let model = ResultViewModel(outcome: outcome, env: env)
         XCTAssertEqual(model.ambiguityText, "Entre Nº 012 y Nº 178")
-        XCTAssertEqual(model.shareTitle, "colorsApp · Wada Nº 012")
+        XCTAssertEqual(model.shareTitle, "\(AppBrand.name) · Wada Nº 012")
         let combo = try XCTUnwrap(model.top1Combo)
         XCTAssertEqual(model.comboHeadline(combo), "2 colores")
     }

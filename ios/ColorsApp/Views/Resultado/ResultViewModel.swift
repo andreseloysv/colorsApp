@@ -1,9 +1,11 @@
-// Modelo de Resultado (PLAN §7.3 + recorte de sujeto): feedback ("sí, es eso" /
-// "no" -> tabla feedback + copia PNG sRGB de 256 px del raster y sus máscaras,
-// JSON y capas para el diagnóstico), desbloqueo (tabla unlocks con el origen del
-// scan), tarjeta compartible, selector de persona (re-analiza con las personas
-// que ya detectó Vision, sin volver a ejecutarlo, y actualiza el scan), "Ver
-// máscara" e inspector de capas del último análisis.
+// Modelo del resultado de Extraer (PLAN §7.3 + recorte de sujeto; docs/design/DESIGN_SYSTEM.md
+// §5.2): feedback ("sí, es eso" / "no" -> tabla feedback + copia PNG sRGB de 256 px del
+// raster y sus máscaras, JSON y capas para el diagnóstico), desbloqueo (tabla unlocks con
+// el origen del scan), tarjeta compartible, selector de persona (re-analiza con las
+// personas que ya detectó Vision, sin volver a ejecutarlo, y actualiza el scan), "Ver
+// máscara", alfileres en el centroide de los píxeles de cada swatch (label map del motor)
+// con el nombre del color de Wada más cercano, aislar un swatch sobre la foto, «Guardar en
+// el jardín» (GardenStore local), «Copiar hex» e inspector de capas del último análisis.
 import Foundation
 import Combine
 import CoreGraphics
@@ -52,7 +54,28 @@ final class ResultViewModel: ObservableObject {
     /// Tarea en segundo plano de la copia del diagnóstico (tests).
     private(set) var feedbackImageTask: Task<Void, Never>?
 
-    init(outcome: ScanOutcome, env: AppEnvironment, imageStore: FeedbackImageStore = .shared, timing: TimingLog = .shared) {
+    /// Paleta del análisis actual con el nombre de Wada más cercano y su ΔE00 (motor).
+    @Published private(set) var palette: [PaletteColor] = []
+    /// Alfileres (uno por swatch con píxeles en el label map), en el orden de la paleta.
+    @Published private(set) var pins: [PhotoPin] = []
+    /// Swatch seleccionado (alfiler o tarjeta de prenda).
+    @Published var selectedSwatch: Int?
+    /// Swatch aislado sobre la foto mientras se mantiene pulsado su alfiler.
+    @Published private(set) var isolatedSwatch: Int?
+    /// Capa (imagen reducida) que oscurece todo menos el swatch aislado.
+    @Published private(set) var isolationOverlay: CGImage?
+    /// Guardado en el Jardín (colección local).
+    @Published private(set) var isSaved = false
+    /// Aviso extra sobre el resultado (p. ej. «Recalculado con el motor actual» al reabrir desde el Feed).
+    @Published var banner: String?
+    /// Datos de ejemplo (atajos de depuración): se marca «Ejemplo» sobre la foto.
+    var isExample = false
+
+    private let garden: GardenStore
+    private let naming: ComboNaming
+
+    init(outcome: ScanOutcome, env: AppEnvironment, imageStore: FeedbackImageStore = .shared, timing: TimingLog = .shared,
+         garden: GardenStore? = nil, naming: ComboNaming = .bundled) {
         self.outcome = outcome
         self.dictionary = env.dictionary
         self.feedbackRepository = env.feedback
@@ -60,6 +83,10 @@ final class ResultViewModel: ObservableObject {
         self.scanRepository = env.scans
         self.imageStore = imageStore
         self.timing = timing
+        self.garden = garden ?? .shared
+        self.naming = naming
+        self.palette = Self.palette(for: outcome, dictionary: env.dictionary)
+        self.isSaved = self.garden.isSaved(scanId: outcome.scan.id)
     }
 
     // MARK: Derivados
@@ -71,21 +98,56 @@ final class ResultViewModel: ObservableObject {
     var people: [PersonInstance] { outcome.subject.people }
 
     var title: String {
-        topHit.map { dictionary.displayName(id: $0.comboId) } ?? "Sin resultado"
+        topHit.map { comboName($0.comboId).text } ?? "Sin resultado"
     }
 
     var shareTitle: String {
-        topHit.map { "colorsApp · Wada \(WadaDictionary.numberLabel($0.comboId))" } ?? "colorsApp"
+        topHit.map { "\(AppBrand.name) · Wada \(WadaDictionary.numberLabel($0.comboId))" } ?? AppBrand.name
+    }
+
+    /// Nombre de una combinación: aceptado → propuesto → «Nº 067».
+    func comboName(_ id: Int) -> ComboName {
+        naming.name(for: id, in: dictionary)
     }
 
     /// "Entre Nº 012 y Nº 178" cuando el motor marca el resultado como ambiguo.
     var ambiguityText: String? {
         guard outcome.result.ambiguous, hits.count >= 2 else { return nil }
-        return "Entre \(dictionary.displayName(id: hits[0].comboId)) y \(dictionary.displayName(id: hits[1].comboId))"
+        return "Entre \(WadaDictionary.numberLabel(hits[0].comboId)) y \(WadaDictionary.numberLabel(hits[1].comboId))"
     }
 
-    /// Aviso con los pasos del recorte.
-    var maskNotice: MaskStepsText.Notice { outcome.maskNotice }
+    /// Aviso con los pasos reales del recorte (SubjectExplanation: pasos, región, respaldo y piel).
+    var maskNotice: MaskStepsText.Notice { SubjectExplanation.notice(options: outcome.subjectOptions, result: outcome.subject) }
+
+    /// Top-3 como resúmenes para las tarjetas (nombre, colores de Wada y ambigüedad en el primero).
+    var matches: [ComboMatchSummary] {
+        hits.enumerated().map { i, hit in
+            ComboMatchSummary(comboId: hit.comboId, name: comboName(hit.comboId).text,
+                              colors: PaletteColor.combo(hit.comboId, in: dictionary),
+                              ambiguityText: i == 0 ? ambiguityText : nil)
+        }
+    }
+
+    /// «Colores de la ropa» con máscara de sujeto; «Colores de la foto» sin ella.
+    var paletteTitle: String { outcome.maskApplied ? "Colores de la ropa" : "Colores de la foto" }
+
+    /// «5 colores · 12,3 % de la foto» o «3 colores · foto completa».
+    var paletteSummary: String {
+        let n = palette.count
+        let colors = "\(n) \(n == 1 ? "color" : "colores")"
+        guard outcome.maskApplied else { return "\(colors) · foto completa" }
+        return "\(colors) · \(SubjectExplanation.percent(outcome.subject.maskCoverage)) de la foto"
+    }
+
+    /// Hex de la paleta separados por espacios (lo que copia «Copiar hex»).
+    var paletteHexList: String { DesignFormat.hexList(palette) }
+
+    /// Pie técnico: versiones y tiempos con coma decimal.
+    var technicalFooter: String {
+        let t = outcome.timings
+        return "Motor \(outcome.scan.engineVersion) · diccionario \(outcome.scan.dictVersion) · \(outcome.elapsedMs) ms "
+            + "(Vision \(Int(t.visionMs.rounded())) · máscara \(Int(t.maskMs.rounded())) · motor \(Int(t.engineMs.rounded())))"
+    }
 
     /// Fila "Personas": solo con dos o más personas.
     var showsPeopleRow: Bool { people.count >= 2 }
@@ -185,10 +247,72 @@ final class ResultViewModel: ObservableObject {
             outcome = ScanOutcome(image: current.image, raster: current.raster, result: analysis.result, scan: scan,
                                   subjectOptions: opts, subject: analysis.subject, debug: analysis.debug,
                                   timings: analysis.timings)
+            palette = Self.palette(for: outcome, dictionary: dictionary)
+            selectedSwatch = nil
+            isolatedSwatch = nil
+            isolationOverlay = nil
             await refreshDerivedImages()
             try await refreshUnlockState()
         } catch {
             errorMessage = ErrorText.describe(error)
+        }
+    }
+
+    // MARK: Colores, alfileres y jardín
+
+    /// Copia los hex de la paleta al portapapeles; devuelve el texto del toast.
+    @discardableResult
+    func copyPalette(pasteboard: UIPasteboard = .general) -> String {
+        pasteboard.string = paletteHexList
+        return palette.count == 1 ? "Copiado \(paletteHexList)" : "Copiados \(palette.count) hex"
+    }
+
+    /// Copia el hex de un color y lo selecciona; devuelve el texto del toast.
+    @discardableResult
+    func copy(_ color: PaletteColor, pasteboard: UIPasteboard = .general) -> String {
+        pasteboard.string = color.hex
+        selectedSwatch = color.id
+        return "Copiado \(color.hex)"
+    }
+
+    /// «Guardar en el jardín» ⇄ quitar; devuelve el texto del toast.
+    @discardableResult
+    func toggleSave() -> String {
+        isSaved = garden.toggle(scanId: outcome.scan.id)
+        return isSaved ? "Guardado en el Jardín" : "Quitado del Jardín"
+    }
+
+    /// Pulsación larga en un alfiler: aísla sus píxeles sobre la foto mientras se mantiene.
+    func setIsolation(_ swatch: Int, active: Bool) {
+        guard active else {
+            if isolatedSwatch == swatch {
+                isolatedSwatch = nil
+                isolationOverlay = nil
+            }
+            return
+        }
+        guard let d = outcome.debug else { return }
+        isolatedSwatch = swatch
+        selectedSwatch = swatch
+        isolationOverlay = LayerBitmaps.isolateSwatch(labelMap: d.labelMap, width: d.debug.reducedWidth,
+                                                      height: d.debug.reducedHeight, swatch: swatch)
+    }
+
+    /// Paleta con nombres de Wada (motor: `nearestDictionaryColor`).
+    nonisolated static func palette(for outcome: ScanOutcome, dictionary: WadaDictionary) -> [PaletteColor] {
+        outcome.result.swatches.enumerated().map { PaletteColor(id: $0.offset, swatch: $0.element, dictionary: dictionary) }
+    }
+
+    /// Alfileres en el centroide de los píxeles de cada swatch (ajustado al píxel más cercano
+    /// con esa etiqueta); sin capas del motor no hay alfileres.
+    nonisolated static func pins(for outcome: ScanOutcome, palette: [PaletteColor]) -> [PhotoPin] {
+        guard let d = outcome.debug, !palette.isEmpty else { return [] }
+        let positions = PinOverlay.positions(labelMap: d.labelMap, width: d.debug.reducedWidth,
+                                             height: d.debug.reducedHeight, swatchCount: palette.count)
+        return palette.compactMap { c in
+            guard let p = positions[c.id] else { return nil }
+            return PhotoPin(id: c.id, position: p, color: c, title: c.name ?? c.hex,
+                            detail: c.weight.map(DesignFormat.percent))
         }
     }
 
@@ -199,15 +323,18 @@ final class ResultViewModel: ObservableObject {
     /// Miniaturas de personas y capa de "Ver máscara" del análisis actual (en segundo plano).
     private func refreshDerivedImages() async {
         let o = outcome
-        let (thumbnails, overlay) = await Task.detached(priority: .userInitiated) { () -> ([CGImage], CGImage?) in
+        let colors = palette
+        let (thumbnails, overlay, newPins) = await Task.detached(priority: .userInitiated) { () -> ([CGImage], CGImage?, [PhotoPin]) in
             let base = PNGCoding.cgImage(from: o.raster)
             let thumbs = base.map { image in o.subject.people.compactMap { LayerBitmaps.crop(image, bbox: $0.bbox) } } ?? []
             let overlay = o.subject.mask.flatMap { LayerBitmaps.dimOutside(mask: $0, width: o.raster.width, height: o.raster.height) }
-            return (thumbs, overlay)
+            return (thumbs, overlay, Self.pins(for: o, palette: colors))
         }.value
         guard outcome.scan.rev == o.scan.rev else { return }
         personThumbnails = thumbnails
         maskOverlay = overlay
+        pins = newPins
+        if maskOverlay == nil { showMask = false }
     }
 
     /// Copia PNG sRGB de 256 px del raster que vio el motor y sus extras

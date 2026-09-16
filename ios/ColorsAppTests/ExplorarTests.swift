@@ -1,6 +1,7 @@
-// Explorar: "Buscar por color" (hex exacto del diccionario -> ΔE00 0 y las
-// combinaciones que lo contienen), conversión Color -> sRGB8, búsqueda por
-// número, colecciones y "Extraer de una foto" sobre una imagen sintética.
+// Búsqueda que heredó la Rejilla de Explorar: "Buscar por color" (hex exacto del
+// diccionario -> ΔE00 0 y las combinaciones que lo contienen), conversión Color -> sRGB8,
+// búsqueda por número (RejillaSearch), colecciones por tamaño y la extracción de paleta
+// del motor sobre una imagen sintética (PaletteBars, que usan otras pantallas).
 import XCTest
 import SwiftUI
 import ColorEngine
@@ -59,13 +60,17 @@ final class ExplorarTests: XCTestCase {
     }
 
     func testNumberSearchParsing() {
-        XCTAssertEqual(ExplorarView.parseNumber("12", count: 348), 12)
-        XCTAssertEqual(ExplorarView.parseNumber(" 012 ", count: 348), 12)
-        XCTAssertEqual(ExplorarView.parseNumber("348", count: 348), 348)
-        XCTAssertNil(ExplorarView.parseNumber("0", count: 348))
-        XCTAssertNil(ExplorarView.parseNumber("349", count: 348))
-        XCTAssertNil(ExplorarView.parseNumber("doce", count: 348))
-        XCTAssertNil(ExplorarView.parseNumber("", count: 348))
+        XCTAssertEqual(RejillaSearch.parseNumber("12", count: 348), 12)
+        XCTAssertEqual(RejillaSearch.parseNumber(" 012 ", count: 348), 12)
+        XCTAssertEqual(RejillaSearch.parseNumber("348", count: 348), 348)
+        XCTAssertEqual(RejillaSearch.parseNumber("Nº 67", count: 348), 67)
+        XCTAssertEqual(RejillaSearch.parseNumber("nº067", count: 348), 67)
+        XCTAssertEqual(RejillaSearch.parseNumber("n.12", count: 348), 12)
+        XCTAssertNil(RejillaSearch.parseNumber("0", count: 348))
+        XCTAssertNil(RejillaSearch.parseNumber("349", count: 348))
+        XCTAssertNil(RejillaSearch.parseNumber("doce", count: 348))
+        XCTAssertNil(RejillaSearch.parseNumber("", count: 348))
+        XCTAssertNil(RejillaSearch.parseNumber("1234", count: 348))
     }
 
     func testCollectionsCoverEveryCombination() throws {
@@ -77,6 +82,7 @@ final class ExplorarTests: XCTestCase {
         XCTAssertEqual(comboSubtitle(WadaCombo(id: 1, size: 3, colors: [0, 1, 2], collection: "Japón")), "3 colores · Japón")
     }
 
+    @MainActor
     func testPaletteExtractionOnSyntheticImageHasNoMatch() throws {
         let d = try loadDictionary()
         let image = try XCTUnwrap(SyntheticImage.blocks(comboId: 12, dictionary: d))

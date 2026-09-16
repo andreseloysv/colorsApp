@@ -1,8 +1,8 @@
 // Regresión del caso real del usuario (2026-09-15): camiseta negra + pantalón rosa
 // palo. Solo se usan los colores hex de la paleta que extrajo la app (con sus
 // proporciones), nunca la foto. Con la hipótesis de iluminante del motor ganaba
-// Nº 067 (Olympic Blue + Dark Tyrian Blue); con la política de la app no puede
-// ganar una combinación azul.
+// Nº 067 (Olympic Blue + Dark Tyrian Blue); desde ADR-009 el motor POR DEFECTO ya no
+// la usa (y la app usa el motor por defecto), así que no puede ganar una combinación azul.
 import XCTest
 import CoreGraphics
 import ColorEngine
@@ -32,24 +32,37 @@ final class MatchPolicyTests: XCTestCase {
         return try XCTUnwrap(ctx.makeImage())
     }
 
-    func testAppPolicyDisablesIlluminantHypothesis() {
-        XCTAssertFalse(EngineBridge.appMatchOptions.illuminantSearch)
-        XCTAssertEqual(EngineBridge.appMatchOptions.exposureEVMax, MatchOptions.default.exposureEVMax)
-    }
-
-    func testPinkAndBlackDoesNotBecomeBlue() throws {
-        let image = try stripesImage()
-        let raster = try EngineBridge.rasterize(image)
+    private func analyzeStripes(matchOptions: MatchOptions) throws -> AnalysisResult {
+        let raster = try EngineBridge.rasterize(try stripesImage())
         var palette = PaletteOptions.default
         palette.centerSigma = 0
-        let engineDefault = try EngineBridge.analyze(raster: raster, paletteOptions: palette, topK: 3)
-        let app = try EngineBridge.analyze(raster: raster, paletteOptions: palette,
-                                           matchOptions: EngineBridge.appMatchOptions, topK: 3)
-        // Documenta el fallo del motor por defecto (si algún día cambia, este test lo avisa).
-        XCTAssertEqual(engineDefault.hits.first?.comboId, 67, "el motor por defecto ya no elige Nº 067: revisar ADR-009")
-        // Con la política de la app: rosa + negro, nunca la pareja azul.
-        XCTAssertNotEqual(app.hits.first?.comboId, 67)
-        XCTAssertFalse(app.hits.map(\.comboId).contains(67))
-        XCTAssertTrue([337, 27].contains(app.hits.first?.comboId ?? -1), "top-1 inesperado: \(app.hits.map(\.comboId))")
+        return try EngineBridge.analyze(raster: raster, paletteOptions: palette, matchOptions: matchOptions, topK: 3)
+    }
+
+    /// La política de la app es el motor por defecto (appMatchOptions es un alias).
+    func testAppPolicyIsEngineDefault() {
+        XCTAssertEqual(EngineBridge.appMatchOptions, MatchOptions.default)
+        XCTAssertFalse(MatchOptions.default.illuminantSearch)
+        XCTAssertEqual(EngineBridge.appMatchOptions.exposureEVMax, 1.0)
+    }
+
+    /// Regresión: con el motor POR DEFECTO (y la app) rosa + negro nunca da la pareja azul.
+    func testPinkAndBlackDoesNotBecomeBlue() throws {
+        let engineDefault = try analyzeStripes(matchOptions: .default)
+        XCTAssertNotEqual(engineDefault.hits.first?.comboId, 67)
+        XCTAssertFalse(engineDefault.hits.map(\.comboId).contains(67))
+        XCTAssertTrue([337, 27].contains(engineDefault.hits.first?.comboId ?? -1),
+                      "top-1 inesperado: \(engineDefault.hits.map(\.comboId))")
+        let app = try analyzeStripes(matchOptions: EngineBridge.appMatchOptions)
+        XCTAssertEqual(app, engineDefault)
+    }
+
+    /// Documenta el fallo de la hipótesis de iluminante (sigue disponible como opción):
+    /// con illuminantSearch = true sale Nº 067. Si algún día cambia, revisar ADR-009.
+    func testIlluminantHypothesisStillPicks067() throws {
+        var illuminant = MatchOptions.default
+        illuminant.illuminantSearch = true
+        let result = try analyzeStripes(matchOptions: illuminant)
+        XCTAssertEqual(result.hits.first?.comboId, 67, "con illuminantSearch = true ya no sale Nº 067: revisar ADR-009")
     }
 }

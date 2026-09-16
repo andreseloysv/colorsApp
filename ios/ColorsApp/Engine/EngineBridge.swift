@@ -137,16 +137,16 @@ enum EngineBridge {
     /// explicación de cada hit) en un único `ce_analyze` y un único `ce_ctx`:
     /// `analysis` es idéntico (hash incluido) al de `analyze` con los mismos
     /// argumentos. Lo usa el inspector de capas de Resultado.
-    /// Opciones de match que usa la app (no las del motor por defecto).
-    /// La hipótesis de iluminante queda DESACTIVADA: las fotos del iPhone ya llegan
-    /// con balance de blancos y "compensar" una luz cálida inexistente convertía
-    /// rosas en azules (caso real del usuario, 2026-09-15: pantalón rosa palo +
-    /// camiseta negra -> Nº 067 azul claro + azul marino por la hipótesis A).
-    /// La hipótesis de exposición se mantiene (solo cambia la luminosidad).
+    /// Opciones de match que usa la app: alias documentado de `MatchOptions.default`.
+    /// Desde 2026-09-15 el motor ya trae la hipótesis de iluminante DESACTIVADA por
+    /// defecto (ADR-009): las fotos del iPhone llegan con balance de blancos y
+    /// "compensar" una luz cálida inexistente convertía rosas en azules (caso real del
+    /// usuario: pantalón rosa palo + camiseta negra -> Nº 067 azul claro + azul marino
+    /// por la hipótesis A). La hipótesis de exposición se mantiene (solo cambia la
+    /// luminosidad). Se conserva el nombre para que el resto de la app no cambie y para
+    /// que un cambio futuro de política de la app no dependa del valor por defecto.
     static var appMatchOptions: MatchOptions {
-        var o = MatchOptions.default
-        o.illuminantSearch = false
-        return o
+        MatchOptions.default
     }
 
     static func analyzeWithLayers(raster: Raster, paletteOptions: PaletteOptions = .default,

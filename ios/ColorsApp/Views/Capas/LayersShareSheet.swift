@@ -15,7 +15,7 @@ struct LayersShareSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("colorsApp · capas del análisis")
+                Text("\(AppBrand.name) · capas del análisis")
                     .font(.system(size: 26, weight: .bold))
                 Text(title)
                     .font(.system(size: 17))

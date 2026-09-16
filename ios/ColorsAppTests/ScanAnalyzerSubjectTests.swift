@@ -10,6 +10,9 @@
 //    sintéticas: el scan guarda modo, región, piel, personas, persona usada,
 //    pasos y cobertura, y TimingLog los tiempos de Vision, máscara y motor.
 //  - elegir persona en Resultado reutiliza `subject.people` sin Vision.
+//  - personas fantasma: una instancia sin pose, cara ni silueta plausible (el cartel)
+//    se descarta; sin nadie más, la foto se analiza completa con los pasos
+//    [.rejectedPhantom, .noPeople], que el scan guarda y relee.
 import XCTest
 import ImageIO
 import ColorEngine
@@ -211,6 +214,47 @@ final class ScanAnalyzerSubjectTests: XCTestCase {
         print("ScanAnalyzerSubjectTests: persona 2 paleta \(model.outcome.result.swatches.map { "\($0.hex) \($0.weight)" }) top \(model.outcome.result.hits.map(\.comboId))")
         XCTAssertNotEqual(model.outcome.result.hits.first?.comboId, outcome.result.hits.first?.comboId)
         XCTAssertEqual(model.outcome.subject.layers.primary?.instanceId, 2)
+    }
+
+    func testPhantomOnlyDetectionAnalyzesFullPhoto() async throws {
+        let env = try env()
+        let scene = SyntheticPersonScene.make()
+        let image = try XCTUnwrap(scene.image)
+        let raster = try EngineBridge.rasterize(image)
+        let sign = twoPeople(scene)[1]
+        // El cartel (bloque sin pose ni cara) no es una persona; la persona sintética sí (pose).
+        let screened = SubjectExtractor.rejectPhantoms([scene.person, sign], width: raster.width, height: raster.height)
+        XCTAssertEqual(screened.people.map(\.id), [scene.person.id])
+        XCTAssertEqual(screened.rejected.map(\.instance.id), [2])
+        XCTAssertEqual(screened.rejected.first?.evidence.kind, PersonEvidence.Kind.none)
+        XCTAssertEqual(SubjectExtractor.bodyEvidence(for: scene.person, width: raster.width, height: raster.height).kind, .pose)
+
+        let detection = PeopleDetection(people: [], rejectedPhantoms: SubjectExtractor.rejectPhantoms([sign], width: raster.width,
+                                                                                                       height: raster.height).rejected)
+        let subject = try raster.pixels.withUnsafeBufferPointer { px in
+            try SubjectExtractor.mask(detection: detection, rgba: px, width: raster.width, height: raster.height,
+                                      stride: raster.stride, options: .default)
+        }
+        XCTAssertEqual(subject.steps, [.rejectedPhantom, .noPeople])
+        XCTAssertNil(subject.mask)
+        XCTAssertEqual(subject.rejectedPhantoms.count, 1)
+        XCTAssertEqual(MaskStepsText.notice(options: .default, result: subject).text, "Sin persona: foto completa")
+        // Foto completa: el mismo análisis que sin recorte.
+        let plain = try EngineBridge.analyze(raster: raster, matchOptions: EngineBridge.appMatchOptions)
+        let masked = try EngineBridge.analyze(raster: raster, matchOptions: EngineBridge.appMatchOptions, mask: subject.mask)
+        XCTAssertEqual(masked, plain)
+        // El scan guarda los pasos y 0 personas.
+        let info = ScanSubjectInfo(options: .default, result: subject)
+        let scan = ScanRecord.make(from: plain, source: .library, assetLocalId: "sim-phantom", subject: info)
+        try await env.scans.insert(scan)
+        let storedOptional = try await env.scans.fetch(id: scan.id)
+        let stored = try XCTUnwrap(storedOptional)
+        XCTAssertEqual(stored.maskStepValues, [.rejectedPhantom, .noPeople])
+        XCTAssertEqual(stored.maskSteps, "[\"rejectedPhantom\",\"noPeople\"]")
+        XCTAssertEqual(stored.peopleCount, 0)
+        XCTAssertNil(stored.personIndex)
+        XCTAssertEqual(stored.maskCoverage, 0)
+        print("ScanAnalyzerSubjectTests: fantasma \(screened.rejected.map { "\($0.evidence)" }) -> pasos \(subject.steps.map(\.rawValue)), top \(plain.hits.map(\.comboId))")
     }
 
     func testMaskStepsNotices() throws {

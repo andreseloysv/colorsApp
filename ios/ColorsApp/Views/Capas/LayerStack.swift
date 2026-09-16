@@ -120,6 +120,11 @@ struct LayerStack: Sendable {
 
     func layer(_ kind: InspectorLayer.Kind) -> InspectorLayer? { layers.first { $0.kind == kind } }
 
+    /// Número con coma decimal (es_ES) y `digits` decimales.
+    static func num(_ value: Double, _ digits: Int) -> String {
+        value.formatted(.number.precision(.fractionLength(digits)).grouping(.never).locale(Locale(identifier: "es_ES")))
+    }
+
     /// Construye las 11 capas. Puro y síncrono: llamar fuera del MainActor.
     static func build(outcome o: ScanOutcome, dictionary: WadaDictionary,
                       paletteOptions: PaletteOptions = .default, matchOptions: MatchOptions = EngineBridge.appMatchOptions) -> LayerStack {
@@ -128,7 +133,7 @@ struct LayerStack: Sendable {
         let opts = o.subjectOptions
         let photo = o.image
         var layers: [InspectorLayer] = []
-        let pct = { (v: Double) in String(format: "%.1f %%", v * 100) }
+        let pct = { (v: Double) in SubjectExplanation.percent(v) }
 
         // 1. Foto.
         layers.append(InspectorLayer(
@@ -141,7 +146,7 @@ struct LayerStack: Sendable {
             kind: .raster, title: "Lo que ve el motor",
             meaning: "Los píxeles convertidos a sRGB de 8 bits y reducidos a 1024 px como máximo: la misma imagen para Vision y para el motor de color.",
             facts: ["\(w) × \(h) px · sRGB · \(o.raster.stride / max(1, w)) bytes por píxel",
-                    String(format: "Rasterizado en %.0f ms", o.timings.rasterMs)],
+                    "Rasterizado en \(num(o.timings.rasterMs, 0)) ms"],
             overlay: PNGCoding.cgImage(from: o.raster), defaultOpacity: 1))
 
         // 3. Imagen reducida.
@@ -163,7 +168,7 @@ struct LayerStack: Sendable {
         // 4. Personas detectadas.
         var peopleLayer = InspectorLayer(
             kind: .people, title: "Personas detectadas",
-            meaning: "Vision separa a cada persona de la foto (hasta 4); cada una va de un color y la que se usa va resaltada con contorno.")
+            meaning: "Vision separa a cada persona de la foto (hasta 4); cada una va de un color y la que se usa va resaltada con contorno. Las siluetas sin cuerpo (sin pose, cara ni forma de persona) se descartan.")
         let chosenIds: Set<Int> = {
             if opts.mode == .allPeople { return Set(s.people.map(\.id)) }
             if let i = s.chosenIndex, i < s.people.count { return [s.people[i].id] }
@@ -174,94 +179,54 @@ struct LayerStack: Sendable {
                                                       people: s.people, highlightIds: chosenIds)
             peopleLayer.defaultOpacity = 0.85
         }
-        peopleLayer.facts = [s.people.count == 1 ? "1 persona" : "\(s.people.count) personas"]
-        for (i, p) in s.people.enumerated() {
-            var line = "Persona \(i + 1): \(pct(p.coverage)) de la foto · pose \(p.pose != nil ? "sí" : "no") · cara \(p.faceSampleMask != nil ? "sí" : "no")"
-            if chosenIds.contains(p.id) { line += " · usada" }
-            peopleLayer.facts.append(line)
-        }
-        if opts.mode == .off {
-            peopleLayer.warning = "Recorte desactivado en Ajustes: no se buscan personas."
-        } else if s.steps.contains(.visionUnavailable) {
-            peopleLayer.warning = "Vision no está disponible aquí (p. ej. en el simulador): se analiza la foto completa."
-        } else if s.people.isEmpty {
-            peopleLayer.warning = "Vision no encontró personas: se analiza la foto completa."
-        }
-        if s.timings["detect"] != nil {
-            peopleLayer.facts.append(String(format: "Vision: %.0f ms", o.timings.visionMs))
-        } else if !s.people.isEmpty {
-            peopleLayer.facts.append("Vision no se ejecutó en este análisis: personas reutilizadas (otra persona elegida o escena sintética).")
-        }
+        let peopleText = SubjectExplanation.peopleLayer(options: opts, result: s, chosenIds: chosenIds, visionMs: o.timings.visionMs)
+        peopleLayer.facts = peopleText.facts
+        peopleLayer.warning = peopleText.warning
         layers.append(peopleLayer)
 
         // 5. Pose y región de ropa.
         var poseLayer = InspectorLayer(
             kind: .pose, title: "Pose y región de ropa",
-            meaning: "Con el esqueleto de la pose el motor se queda con torso, brazos y piernas y quita cabeza, antebrazos y manos.")
+            meaning: "Con el esqueleto de la pose el motor se queda con torso, brazos y piernas y quita cabeza y manos, siempre dentro de la silueta del cuerpo (contorno blanco). Si faltan las caderas, se estiman.")
         let regionMasks = s.layers.persons.compactMap(\.regionMask)
         if let union = MaskOps.union(regionMasks) {
-            poseLayer.overlay = LayerBitmaps.region(mask: union, width: w, height: h)
-            poseLayer.facts.append("Región: \(pct(MaskOps.coverage(union, width: w, height: h))) de la foto")
+            poseLayer.overlay = LayerBitmaps.regionWithSilhouette(
+                region: union, silhouette: MaskOps.union(s.layers.persons.compactMap(\.silhouetteMask)), width: w, height: h)
         }
         var poses: [(pose: Pose, colorIndex: Int)] = []
         for person in s.layers.persons {
-            if let pose = person.pose { poses.append((pose, person.personIndex)) }
+            if let pose = SubjectExplanation.drawnPose(person) { poses.append((pose, person.personIndex)) }
         }
         poseLayer.defaultOpacity = 0.8
-        if opts.region == .wholePerson, opts.mode != .off {
-            poseLayer.facts.append("Región: persona completa (Ajustes > Recorte)")
-        }
-        if s.steps.contains(.headCut) {
-            poseLayer.warning = "Sin pose utilizable: se quitó el \(Int(SubjectExtractor.headCutFraction * 100)) % superior de la persona (la cabeza) en lugar de usar la pose."
-        } else if s.layers.persons.isEmpty {
-            poseLayer.warning = "Sin persona: no hay región de ropa."
-        }
-        if let ms = s.timings["regions"] { poseLayer.facts.append(String(format: "Regiones: %.1f ms", ms)) }
+        let poseText = SubjectExplanation.poseLayer(options: opts, result: s)
+        poseLayer.facts = poseText.facts
+        poseLayer.warning = poseText.warning
         layers.append(poseLayer)
 
         // 6. Piel excluida.
         var skinLayer = InspectorLayer(
             kind: .skin, title: "Piel excluida",
-            meaning: "El motor aprende el tono de piel de la cara de cada persona (contorno amarillo) y quita de la región los píxeles de ese tono (magenta).")
+            meaning: "El motor aprende el tono de piel de la cara de cada persona (contorno amarillo; si no se le ve la cara, el de otra persona de la foto) y quita de la región los píxeles de ese tono (magenta).")
         let removed = MaskOps.union(s.layers.persons.compactMap(\.skinRemovedMask))
         let samples = MaskOps.union(s.layers.persons.compactMap(\.faceSampleMask))
         if removed != nil || samples != nil {
             skinLayer.overlay = LayerBitmaps.skin(removed: removed, faceSample: samples, width: w, height: h)
         }
-        let excluded = s.layers.persons.reduce(0) { $0 + $1.skinExcludedPixels }
-        skinLayer.facts.append("\(excluded) px de piel quitados")
-        for person in s.layers.persons {
-            if let m = person.skinModel {
-                skinLayer.facts.append(String(format: "Persona %d: modelo con %d muestras, Lab medio %.1f %.1f %.1f",
-                                              person.personIndex + 1, m.sampleCount, m.mean.L, m.mean.a, m.mean.b))
-            }
-        }
-        if !opts.adaptiveSkin {
-            skinLayer.warning = "Exclusión de piel desactivada en Ajustes."
-        } else if s.steps.contains(.skinGuard) {
-            skinLayer.warning = "Salvaguarda: se habría quitado más del \(Int(opts.skinOptions.maxExcludedFraction * 100)) % de la región (prenda parecida a la piel), así que no se excluyó nada."
-        } else if s.layers.persons.contains(where: { $0.skinNote != nil }) {
-            skinLayer.warning = "La cara es demasiado pequeña (menos de 50 muestras): piel sin excluir."
-        } else if s.layers.persons.isEmpty {
-            skinLayer.warning = "Sin persona: no se excluye piel."
-        } else if samples == nil {
-            skinLayer.warning = "No se ve ninguna cara (de espaldas, gafas, mascarilla): piel sin excluir."
-        }
-        if let ms = s.timings["skin"] { skinLayer.facts.append(String(format: "Piel: %.1f ms", ms)) }
+        let skinText = SubjectExplanation.skinLayer(options: opts, result: s)
+        skinLayer.facts = skinText.facts
+        skinLayer.warning = skinText.warning
         layers.append(skinLayer)
 
         // 7. Máscara final.
         var maskLayer = InspectorLayer(
             kind: .finalMask, title: "Máscara final",
-            meaning: "Lo único que mira el motor: fuera de la máscara (oscuro) los píxeles no cuentan.")
+            meaning: "Lo único que mira el motor: fuera de la máscara (oscuro) los píxeles no cuentan. La región de ropa basta si es una parte suficiente de la silueta de la propia persona.")
         if let mask = s.mask {
             maskLayer.overlay = LayerBitmaps.dimOutside(mask: mask, width: w, height: h)
-            maskLayer.facts.append("Cobertura: \(pct(s.maskCoverage)) de la foto")
-        } else {
-            maskLayer.warning = "Sin máscara: el motor analiza la foto completa."
         }
-        maskLayer.facts.append("Pasos: " + (s.steps.isEmpty ? "—" : s.steps.map(MaskStepsText.stepTitle).joined(separator: " → ")))
-        maskLayer.facts.append(String(format: "Cadena de máscaras: %.1f ms", o.timings.maskMs))
+        let maskText = SubjectExplanation.maskLayer(options: opts, result: s, maskMs: o.timings.maskMs)
+        maskLayer.facts = maskText.facts
+        maskLayer.warning = maskText.warning
         layers.append(maskLayer)
 
         // 8. Peso por píxel.
@@ -284,7 +249,7 @@ struct LayerStack: Sendable {
             weightLayer.pixelated = true
             weightLayer.defaultOpacity = 0.9
             weightLayer.facts = [
-                String(format: "Gaussiana al centro: σ = %.1f px de la reducida (%.2f del lado)", d.debug.centerSigmaPx, paletteOptions.centerSigma),
+                "Gaussiana al centro: σ = \(num(d.debug.centerSigmaPx, 1)) px de la reducida (\(num(paletteOptions.centerSigma, 2)) del lado)",
                 "Peso 0 en \(pct(d.debug.zeroWeightFraction)) de la imagen reducida",
             ]
             let labelCounts = DiagnosticsSubject.counts(d.labelMap)
@@ -294,8 +259,7 @@ struct LayerStack: Sendable {
             labelLayer.defaultOpacity = 0.9
             labelLayer.facts = [
                 "\(d.analysis.swatches.count) colores · \(labelCounts[Int(paletteLabelDiscarded)] ?? 0) px descartados · \(labelCounts[Int(paletteLabelNone)] ?? 0) px sin peso",
-                String(format: "Fusión si ΔE00 < %.1f · descarte si el grupo pesa < %.0f %% · máximo %d colores",
-                       paletteOptions.mergeDeltaE, paletteOptions.minWeight * 100, paletteOptions.maxColors),
+                "Fusión si ΔE00 < \(num(paletteOptions.mergeDeltaE, 1)) · descarte si el grupo pesa < \(num(paletteOptions.minWeight * 100, 0)) % · máximo \(paletteOptions.maxColors) colores",
             ]
             for (i, sw) in d.analysis.swatches.enumerated() {
                 let near = nearestDictionaryColor(sw.lab)
@@ -311,16 +275,16 @@ struct LayerStack: Sendable {
                     reason = ""
                 case .merged:
                     let target = c.finalIndex.map { "el color \($0 + 1)" } ?? "otro color"
-                    reason = String(format: "Fusionado en %@: a menos de %.1f ΔE00 del representante de su grupo.", target, paletteOptions.mergeDeltaE)
+                    reason = "Fusionado en \(target): a menos de \(num(paletteOptions.mergeDeltaE, 1)) ΔE00 del representante de su grupo."
                 case .discarded:
-                    reason = String(format: "Descartado: su grupo pesaba menos del %.0f %% del total.", paletteOptions.minWeight * 100)
+                    reason = "Descartado: su grupo pesaba menos del \(num(paletteOptions.minWeight * 100, 0)) % del total."
                 case .truncated:
                     reason = "Recortado: la paleta ya tenía \(paletteOptions.maxColors) colores más pesados."
                 }
                 clusterRows.append(ClusterRow(index: i, hex: c.hex, rgb: (c.r, c.g, c.b), weight: c.weight,
                                               pixels: clusterCounts[i] ?? 0, fate: c.fate, reason: reason))
             }
-            weightLayer.facts.append(String(format: "Motor (paleta + match + capas): %.0f ms", o.timings.engineMs))
+            weightLayer.facts.append("Motor (paleta + match + capas): \(num(o.timings.engineMs, 0)) ms")
         } else {
             weightLayer.warning = "Sin capas del motor en este resultado."
             labelLayer.warning = "Sin capas del motor en este resultado."
@@ -333,7 +297,7 @@ struct LayerStack: Sendable {
             kind: .palette, title: "Paleta final",
             meaning: "Los colores que el motor compara con el diccionario y cuánto pesa cada uno.")
         paletteLayer.facts = o.result.swatches.enumerated().map { i, sw in
-            String(format: "%d. %@ · %.1f %%", i + 1, sw.hex, sw.weight * 100)
+            "\(i + 1). \(sw.hex.uppercased()) · \(num(sw.weight * 100, 1)) %"
         }
         layers.append(paletteLayer)
 
@@ -343,13 +307,12 @@ struct LayerStack: Sendable {
             meaning: "Para cada una de las 3 mejores: qué color de la combinación explica cada color de la foto, cuánto falta por cubrir y qué corrección de luz se supuso.")
         let cards = explanationCards(o, dictionary: dictionary, matchOptions: matchOptions)
         if cards.isEmpty { whyLayer.warning = "Sin explicación del match en este resultado." }
-        whyLayer.facts = o.result.ambiguous ? ["Resultado ambiguo: las dos primeras están a menos de \(String(format: "%.1f", matchOptions.ambiguousGap)) de score."] : []
+        whyLayer.facts = o.result.ambiguous ? ["Resultado ambiguo: las dos primeras están a menos de \(num(matchOptions.ambiguousGap, 1)) de score."] : []
         layers.append(whyLayer)
 
-        let notice = MaskStepsText.notice(options: opts, result: s)
+        let notice = SubjectExplanation.notice(options: opts, result: s)
         var header = ["Motor \(o.scan.engineVersion) · diccionario \(o.scan.dictVersion)",
-                      String(format: "Tiempos: Vision %.0f ms · máscara %.0f ms · motor %.0f ms · total %.0f ms",
-                             o.timings.visionMs, o.timings.maskMs, o.timings.engineMs, o.timings.totalMs)]
+                      "Tiempos: Vision \(num(o.timings.visionMs, 0)) ms · máscara \(num(o.timings.maskMs, 0)) ms · motor \(num(o.timings.engineMs, 0)) ms · total \(num(o.timings.totalMs, 0)) ms"]
         header.insert("Recorte: \(opts.mode.rawValue) · \(opts.region.rawValue) · piel \(opts.adaptiveSkin ? "sí" : "no") — \(notice.text)", at: 0)
         return LayerStack(photo: photo, rasterWidth: w, rasterHeight: h, layers: layers, poses: poses,
                           swatches: swatchRows, clusters: clusterRows, explanations: cards, labelMap: labelMap,
@@ -370,7 +333,7 @@ struct LayerStack: Sendable {
     static func hypothesisText(exposureEV: Double, illuminant: Int) -> String {
         var parts: [String] = []
         if exposureEV != 0 {
-            parts.append(String(format: "exposición %+.1f EV", exposureEV))
+            parts.append("exposición \(exposureEV > 0 ? "+" : "")\(num(exposureEV, 1)) EV")
         }
         if illuminant >= 0 {
             parts.append("\(illuminantText(illuminant)) sin balance de blancos")
@@ -399,19 +362,19 @@ struct LayerStack: Sendable {
                                                  deltaE: p.deltaE)
             }
             let hypothesis = hypothesisText(exposureEV: e.exposureEV, illuminant: e.illuminant)
-            var summary = String(format: "Score %.2f = ajuste %.2f + cobertura %.2f + penalización %.2f. ", e.score, e.fitTerm, e.coverageTerm, e.hypothesisPenalty)
-            summary += String(format: "Ajuste: de media, cada color de la foto está a %.2f ΔE00 de su color más cercano de la combinación. ", e.fitTerm)
+            var summary = "Score \(num(e.score, 2)) = ajuste \(num(e.fitTerm, 2)) + cobertura \(num(e.coverageTerm, 2)) + penalización \(num(e.hypothesisPenalty, 2)). "
+            summary += "Ajuste: de media, cada color de la foto está a \(num(e.fitTerm, 2)) ΔE00 de su color más cercano de la combinación. "
             let meanCoverage = matchOptions.coverageLambda > 0 ? e.coverageTerm / matchOptions.coverageLambda : 0
-            summary += String(format: "Cobertura: cada color de la combinación está, de media, a %.2f ΔE00 del color más cercano de la foto. ", meanCoverage)
+            summary += "Cobertura: cada color de la combinación está, de media, a \(num(meanCoverage, 2)) ΔE00 del color más cercano de la foto. "
             if e.hypothesisPenalty > 0 {
-                summary += String(format: "Se supuso %@ (penalización %.2f). ", hypothesis.lowercased(), e.hypothesisPenalty)
+                summary += "Se supuso \(hypothesis.lowercased()) (penalización \(num(e.hypothesisPenalty, 2))). "
             } else {
                 summary += "Sin corrección de luz. "
             }
             if rank == 0 {
                 summary += "Gana por tener el score más bajo."
             } else if let best {
-                summary += String(format: "Queda a %.2f de la primera.", e.score - best)
+                summary += "Queda a \(num(e.score - best, 2)) de la primera."
             }
             return ExplanationCard(rank: rank + 1, comboId: e.comboId, title: dictionary.displayName(id: e.comboId),
                                    comboHexes: combo.map { dictionary.colors(of: $0).map(\.hex) } ?? [],

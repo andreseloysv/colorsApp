@@ -6,16 +6,16 @@
   "height": 400,
   "reduced_width": 150,
   "reduced_height": 200,
-  "opts": {"palette": {"k_init": 6, "max_iters": 20, "max_colors": 5, "max_side": 256, "center_sigma": 0.34999999999999998, "merge_de": 5, "min_weight": 0.050000000000000003, "skin_rule": 0}, "match": {"kL": 1, "kC": 1, "kH": 1, "coverage_lambda": 1, "ambiguous_gap": 1, "exposure_ev_max": 1, "exposure_penalty": 2, "illuminant_search": 1, "illuminant_penalty": 2, "top": 3}},
+  "opts": {"palette": {"k_init": 6, "max_iters": 20, "max_colors": 5, "max_side": 256, "center_sigma": 0.34999999999999998, "merge_de": 5, "min_weight": 0.050000000000000003, "skin_rule": 0, "merge_light_de": 0}, "match": {"kL": 1, "kC": 1, "kH": 1, "coverage_lambda": 1, "ambiguous_gap": 1, "exposure_ev_max": 1, "exposure_penalty": 2, "illuminant_search": 0, "illuminant_penalty": 2, "top": 3}},
   "swatches": [
-    {"rgb": [10, 145, 151], "hex": "#0a9197", "lab": [54.648194299530452, -29.244726110548431, -12.314582226005736], "weight": 0.70612409745421267},
-    {"rgb": [197, 165, 111], "hex": "#c5a56f", "lab": [69.566753735908406, 4.2984857683961097, 32.639501652866784], "weight": 0.29387590254578744}
+    {"rgb": [9, 145, 151], "hex": "#099197", "lab": [54.627016180841004, -29.256479578977579, -12.333703823881308], "weight": 0.70169822524012515},
+    {"rgb": [197, 165, 111], "hex": "#c5a56f", "lab": [69.564554362117292, 4.2995785191389526, 32.638901948718278], "weight": 0.29830177475987479}
   ],
   "hits": [
-    {"id": 12, "score": 0.18340934547051527, "size": 2, "colors": [50, 119]},
-    {"id": 178, "score": 14.885939180005263, "size": 3, "colors": [41, 112, 119]},
-    {"id": 148, "score": 16.56393330545356, "size": 3, "colors": [58, 60, 117]}
+    {"id": 12, "score": 0.15706352189813949, "size": 2, "colors": [50, 119]},
+    {"id": 178, "score": 14.922748403723961, "size": 3, "colors": [41, 112, 119]},
+    {"id": 148, "score": 16.5880605105623, "size": 3, "colors": [58, 60, 117]}
   ],
   "ambiguous": 0,
-  "hash": "8e7562a0406a2e91"
+  "hash": "7ea4833ea0bef2c7"
 }

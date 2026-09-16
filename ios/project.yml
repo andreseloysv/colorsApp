@@ -60,6 +60,11 @@ targets:
       - path: ../data/wada/names.es.json
         buildPhase: resources
         group: Resources
+      # Nombres propuestos por el agente (data/wada/names.suggested.json, solo lectura): la
+      # Rejilla los muestra marcados «Nombre propuesto» mientras names.es.json siga `pending`.
+      - path: ../data/wada/names.suggested.json
+        buildPhase: resources
+        group: Resources
       # Foto de grupo solo para los atajos de depuración (Release la excluye).
       - path: ../harness/people/06_group_courier_street.png
         buildPhase: resources
@@ -82,6 +87,9 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+        # Icono de la app (Assets.xcassets/AppIcon.appiconset, 1024 px claro/oscuro/tintado)
+        # renderizado desde el emblema vectorial con ios/Scripts/render_app_icon.sh.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   ColorsAppTests:
     type: bundle.unit-test

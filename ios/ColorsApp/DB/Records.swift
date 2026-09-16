@@ -1,5 +1,5 @@
 // Registros GRDB (Codable + FetchableRecord + PersistableRecord) de las cuatro
-// tablas (migraciones v1 y v2). Columnas en snake_case (estrategia de GRDB);
+// tablas (migraciones v1 a v4). Columnas en snake_case (estrategia de GRDB);
 // propiedades en camelCase. Todas llevan las columnas sync-ready
 // updated_at / deleted_at / rev / dirty (PLAN §7): los repositorios las
 // mantienen; la UI no las toca.
@@ -57,6 +57,67 @@ struct PaletteEntry: Codable, Hashable, Sendable {
         self.rgb = rgb
         self.lab = lab
         self.weight = weight
+    }
+}
+
+/// Un color de prenda serializado en `scans.garments_json` (paleta por prenda, ADR-011).
+/// `region`: 1 arriba, 2 abajo, 3 prenda entera, 0 sin mapa (`GarmentRegion.rawValue`).
+struct GarmentEntry: Codable, Hashable, Sendable {
+    var hex: String
+    var rgb: [Int]
+    var lab: [Double]
+    var weight: Double
+    var region: Int
+    /// Cuota de la región de esta prenda en la máscara (0...1).
+    var regionShare: Double
+    /// Clusters de tono (luz y sombra) agrupados en este color.
+    var mergedClusters: Int
+
+    init(garment: GarmentSwatch) {
+        let s = garment.swatch
+        hex = s.hex
+        rgb = [Int(s.r), Int(s.g), Int(s.b)]
+        lab = [s.lab.L, s.lab.a, s.lab.b]
+        weight = s.weight
+        region = garment.region.rawValue
+        regionShare = garment.regionShare
+        mergedClusters = garment.mergedClusterCount
+    }
+
+    init(hex: String, rgb: [Int], lab: [Double], weight: Double, region: Int, regionShare: Double, mergedClusters: Int) {
+        self.hex = hex
+        self.rgb = rgb
+        self.lab = lab
+        self.weight = weight
+        self.region = region
+        self.regionShare = regionShare
+        self.mergedClusters = mergedClusters
+    }
+
+    /// Etiqueta de la región para las tarjetas (CONTEXT §13).
+    var regionLabel: String {
+        switch region {
+        case 1: "Parte de arriba"
+        case 2: "Parte de abajo"
+        case 3: "Prenda entera"
+        default: "Prenda"
+        }
+    }
+}
+
+/// Datos de la paleta por prenda de un scan (v4): los colores por prenda y cuántas regiones
+/// tenía el mapa que recibió el motor (nil = camino clásico, sin pose).
+struct ScanGarmentInfo: Equatable, Sendable {
+    var garments: [GarmentSwatch]
+    var regionCount: Int?
+
+    init(garments: [GarmentSwatch], regionCount: Int?) {
+        self.garments = garments
+        self.regionCount = regionCount
+    }
+
+    init(result: GarmentAnalysisResult, regionCount: Int?) {
+        self.init(garments: result.garments, regionCount: regionCount)
     }
 }
 
@@ -119,6 +180,13 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
     var maskSteps: String? = nil
     /// Cobertura de la máscara entregada al motor (0 sin máscara).
     var maskCoverage: Double? = nil
+    // v4: paleta por prenda y política de análisis (nil en scans anteriores a v4).
+    /// JSON `[GarmentEntry]` con un color por prenda; nil = camino clásico (sin mapa de regiones).
+    var garmentsJson: String? = nil
+    /// Regiones del mapa de prenda que recibió el motor (2 con pose); nil sin mapa.
+    var garmentRegions: Int? = nil
+    /// `AnalysisPolicy.current` con el que se analizó; nil = antes de v4 (hay que re-analizar).
+    var enginePolicyVersion: Int? = nil
 
     enum Columns {
         static let id = Column(CodingKeys.id)
@@ -131,10 +199,13 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
 
     /// Construye el registro a partir del resultado del motor. `id` nuevo (UUIDv7) si no se pasa.
     /// `subject`: opciones y pasos del recorte (nil = sin datos de recorte).
+    /// `garments` y `policyVersion` son aditivos: sin ellos el registro queda como antes de v4
+    /// (columnas nil) y `AnalysisPolicy.needsReanalysis` pedirá re-analizarlo.
     static func make(from result: AnalysisResult, source: ScanSource, assetLocalId: String? = nil,
                      subject: ScanSubjectInfo? = nil,
                      engineVersion: String = colorEngineVersion, dictVersion: String = dictionaryVersion,
-                     now: Date = Date(), id: String? = nil) -> ScanRecord {
+                     now: Date = Date(), id: String? = nil, garments: ScanGarmentInfo? = nil,
+                     policyVersion: Int? = nil) -> ScanRecord {
         let ids = result.hits.map(\.comboId)
         var record = ScanRecord(
             id: id ?? UUIDv7.string(now: now),
@@ -157,19 +228,37 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
         if let subject {
             record.apply(subject: subject)
         }
+        if let garments {
+            record.apply(garments: garments)
+        }
+        record.enginePolicyVersion = policyVersion
         return record
     }
 
-    /// Sustituye resultado y recorte (p. ej. al elegir otra persona en Resultado):
-    /// mismo id y origen, rev + 1 y dirty.
-    func updated(with result: AnalysisResult, subject: ScanSubjectInfo?, now: Date = Date()) -> ScanRecord {
+    /// Sustituye resultado y recorte (p. ej. al elegir otra persona en Resultado, o al
+    /// re-analizar un scan viejo): mismo id y origen, rev + 1 y dirty. `garments` y
+    /// `policyVersion` son aditivos (sin ellos el scan vuelve al camino clásico).
+    func updated(with result: AnalysisResult, subject: ScanSubjectInfo?, now: Date = Date(),
+                 garments: ScanGarmentInfo? = nil, policyVersion: Int? = nil) -> ScanRecord {
         var copy = ScanRecord.make(from: result, source: source, assetLocalId: assetLocalId, subject: subject,
-                                   engineVersion: engineVersion, dictVersion: dictVersion, now: scannedAt, id: id)
+                                   engineVersion: engineVersion, dictVersion: dictVersion, now: scannedAt, id: id,
+                                   garments: garments, policyVersion: policyVersion)
         copy.updatedAt = updatedAt
         copy.rev = rev
         copy.deletedAt = deletedAt
         copy.touch(now: now)
         return copy
+    }
+
+    /// Guarda la paleta por prenda (v4). Sin prendas deja las columnas nil (camino clásico).
+    mutating func apply(garments: ScanGarmentInfo?) {
+        guard let garments, !garments.garments.isEmpty else {
+            garmentsJson = nil
+            garmentRegions = nil
+            return
+        }
+        garmentsJson = JSONCoding.encode(garments.garments.map(GarmentEntry.init(garment:)))
+        garmentRegions = garments.regionCount
     }
 
     mutating func apply(subject: ScanSubjectInfo) {
@@ -196,6 +285,16 @@ struct ScanRecord: SyncRecord, Hashable, Identifiable {
 
     /// Paleta decodificada (vacía si el JSON no es válido).
     var palette: [PaletteEntry] { JSONCoding.decode([PaletteEntry].self, from: paletteJson) ?? [] }
+
+    /// Colores por prenda decodificados (vacío en los scans del camino clásico o antes de v4).
+    var garmentColors: [GarmentEntry] {
+        guard let garmentsJson else { return [] }
+        return JSONCoding.decode([GarmentEntry].self, from: garmentsJson) ?? []
+    }
+
+    /// true si este scan se analizó con una política, un motor o un diccionario antiguos y hay
+    /// que volver a analizarlo al abrirlo (`AnalysisPolicy`).
+    var needsReanalysis: Bool { AnalysisPolicy.needsReanalysis(self) }
 }
 
 // MARK: - unlocks

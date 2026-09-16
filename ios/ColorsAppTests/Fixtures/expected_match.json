@@ -25,7 +25,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -35,7 +36,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -118,7 +119,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -128,7 +130,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -226,7 +228,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -236,7 +239,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -323,7 +326,7 @@
     },
     {
      "id": 124,
-     "score": 18.632143173766373,
+     "score": 19.603496044638142,
      "size": 3,
      "colors": [
       35,
@@ -333,7 +336,7 @@
     }
    ],
    "ambiguous": 1,
-   "hash": "88bd56ae7e76dfdb"
+   "hash": "8ff498911656fa06"
   },
   {
    "file": "f37_c253_v09.ppm",
@@ -351,7 +354,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -361,7 +365,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -488,7 +492,8 @@
      "center_sigma": 0.35,
      "merge_de": 5,
      "min_weight": 0.05,
-     "skin_rule": 0
+     "skin_rule": 0,
+     "merge_light_de": 0
     },
     "match": {
      "kL": 1,
@@ -498,7 +503,7 @@
      "ambiguous_gap": 1,
      "exposure_ev_max": 1,
      "exposure_penalty": 2,
-     "illuminant_search": 1,
+     "illuminant_search": 0,
      "illuminant_penalty": 2,
      "top": 3
     }
@@ -574,16 +579,6 @@
      ]
     },
     {
-     "id": 202,
-     "score": 23.59767613045323,
-     "size": 3,
-     "colors": [
-      87,
-      114,
-      157
-     ]
-    },
-    {
      "id": 61,
      "score": 26.64187906238493,
      "size": 2,
@@ -591,10 +586,21 @@
       91,
       151
      ]
+    },
+    {
+     "id": 290,
+     "score": 27.34517250271527,
+     "size": 4,
+     "colors": [
+      37,
+      39,
+      107,
+      114
+     ]
     }
    ],
    "ambiguous": 0,
-   "hash": "fd7063904d1e7056"
+   "hash": "7aa0adac10c9d5de"
   }
  ]
 }
