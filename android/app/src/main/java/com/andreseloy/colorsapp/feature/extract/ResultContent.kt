@@ -77,23 +77,26 @@ import com.andreseloy.colorsapp.design.solarPress
 import com.andreseloy.colorsapp.engine.MatchExplanation
 import com.andreseloy.colorsapp.feature.feed.ComboMatchSummary
 import com.andreseloy.colorsapp.feature.feed.ComboSheet
-import com.andreseloy.colorsapp.feature.feed.W3IconChevronRight
-import com.andreseloy.colorsapp.feature.feed.W3IconCopy
-import com.andreseloy.colorsapp.feature.feed.W3IconEye
-import com.andreseloy.colorsapp.feature.feed.W3IconEyeSlash
-import com.andreseloy.colorsapp.feature.feed.W3IconHeart
-import com.andreseloy.colorsapp.feature.feed.W3IconHeartFilled
-import com.andreseloy.colorsapp.feature.feed.W3IconLayers
-import com.andreseloy.colorsapp.feature.feed.W3IconLock
-import com.andreseloy.colorsapp.feature.feed.W3IconLockOpen
-import com.andreseloy.colorsapp.feature.feed.W3IconPalette
-import com.andreseloy.colorsapp.feature.feed.W3IconSeal
-import com.andreseloy.colorsapp.feature.feed.W3IconShare
-import com.andreseloy.colorsapp.feature.feed.W3IconThumbDown
-import com.andreseloy.colorsapp.feature.feed.W3IconWarning
+import com.andreseloy.colorsapp.design.SolarIconCheck
+import com.andreseloy.colorsapp.design.SolarIconChevronRight
+import com.andreseloy.colorsapp.design.SolarIconPerson
+import com.andreseloy.colorsapp.design.SolarIconCopy
+import com.andreseloy.colorsapp.design.SolarIconEye
+import com.andreseloy.colorsapp.design.SolarIconEyeSlash
+import com.andreseloy.colorsapp.design.SolarIconHeart
+import com.andreseloy.colorsapp.design.SolarIconHeartFilled
+import com.andreseloy.colorsapp.design.SolarIconLayers
+import com.andreseloy.colorsapp.design.SolarIconLock
+import com.andreseloy.colorsapp.design.SolarIconLockOpen
+import com.andreseloy.colorsapp.design.SolarIconPalette
+import com.andreseloy.colorsapp.design.SolarIconSeal
+import com.andreseloy.colorsapp.design.SolarIconShare
+import com.andreseloy.colorsapp.design.SolarIconThumbDown
+import com.andreseloy.colorsapp.design.SolarIconWarning
 import com.andreseloy.colorsapp.feature.share.ShareCardSheet
 import com.andreseloy.colorsapp.feature.share.ShareFormat
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /* ---------------- Pantalla empujada (Feed -> Abrir en Extraer) ---------------- */
 
@@ -212,7 +215,7 @@ fun ResultContent(
                     style = type.headlineSm, color = colors.primary,
                 )
                 Icon(
-                    W3IconPalette, contentDescription = null, tint = colors.secondary,
+                    SolarIconPalette, contentDescription = null, tint = colors.secondary,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -285,7 +288,7 @@ fun ResultContent(
                     text = stringResource(
                         if (copiedPalette) R.string.w3_copied_btn else R.string.w3_copy_hex,
                     ),
-                    icon = W3IconCopy,
+                    icon = SolarIconCopy,
                     onClick = {
                         flash(model.copyPalette())
                         copiedPalette = true
@@ -296,7 +299,7 @@ fun ResultContent(
                 )
                 PillButton(
                     text = stringResource(R.string.w3_view_layers),
-                    icon = W3IconLayers,
+                    icon = SolarIconLayers,
                     onClick = { onOpenLayers?.invoke() },
                     enabled = onOpenLayers != null && !model.reanalyzing,
                     modifier = Modifier.weight(1f).testTag("result.layersButton"),
@@ -369,7 +372,7 @@ fun ResultContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                W3IconShare, contentDescription = null, tint = colors.primary,
+                SolarIconShare, contentDescription = null, tint = colors.primary,
                 modifier = Modifier.size(16.dp),
             )
             Box(Modifier.size(SolarSpacing.sm))
@@ -383,7 +386,7 @@ fun ResultContent(
                 horizontalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
             ) {
                 Icon(
-                    W3IconWarning, contentDescription = null, tint = colors.error,
+                    SolarIconWarning, contentDescription = null, tint = colors.error,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(error, style = type.bodyMd, color = colors.error)
@@ -482,7 +485,7 @@ fun GarmentCard(
     val colors = SolarTheme.colors
     val type = SolarTheme.type
     val locale = w3Locale()
-    val eyebrow = "%02d".format(index) + (color.weight?.let { " · ${percentText(it)}" } ?: "")
+    val eyebrow = String.format(Locale.ROOT, "%02d", index) + (color.weight?.let { " · ${percentText(it)}" } ?: "")
     val description = buildList {
         add(stringResource(R.string.w3_color_n, index))
         region?.let { add(it) }
@@ -548,7 +551,7 @@ fun GarmentCard(
             ) {
                 Text(color.hex, style = type.hex, color = colors.wellTextSecondary, maxLines = 1)
                 Icon(
-                    if (isCopied) com.andreseloy.colorsapp.feature.feed.W3IconCheck else W3IconCopy,
+                    if (isCopied) SolarIconCheck else SolarIconCopy,
                     contentDescription = null, tint = colors.wellTextSecondary,
                     modifier = Modifier.size(10.dp),
                 )
@@ -786,8 +789,8 @@ fun ResultViewfinder(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
-                            if (notice.isFallback) W3IconWarning
-                            else com.andreseloy.colorsapp.feature.feed.W3IconPerson,
+                            if (notice.isFallback) SolarIconWarning
+                            else SolarIconPerson,
                             contentDescription = null,
                             tint = if (notice.isFallback) colors.secondary else colors.onSurface,
                             modifier = Modifier.size(13.dp),
@@ -816,7 +819,7 @@ fun ResultViewfinder(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Icon(
-                            if (maskOn) W3IconEyeSlash else W3IconEye,
+                            if (maskOn) SolarIconEyeSlash else SolarIconEye,
                             contentDescription = stringResource(
                                 if (maskOn) R.string.w3_hide_mask else R.string.w3_view_mask,
                             ),
@@ -985,7 +988,7 @@ fun ResultViewfinder(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            W3IconLayers, contentDescription = null, tint = colors.primary,
+                            SolarIconLayers, contentDescription = null, tint = colors.primary,
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -1070,7 +1073,7 @@ fun TopMatchCard(
                             style = type.bodySm, color = colors.onSurfaceVariant,
                         )
                         Icon(
-                            W3IconChevronRight, contentDescription = null,
+                            SolarIconChevronRight, contentDescription = null,
                             tint = colors.onSurfaceVariant, modifier = Modifier.size(13.dp),
                         )
                     }
@@ -1167,9 +1170,9 @@ fun TopMatchCard(
                             },
                         ),
                         icon = if (model.verdict == FeedbackVerdict.YES) {
-                            W3IconHeartFilled
+                            SolarIconHeartFilled
                         } else {
-                            W3IconHeart
+                            SolarIconHeart
                         },
                         chosen = model.verdict == FeedbackVerdict.YES,
                         chosenFill = colors.primaryFixed,
@@ -1179,7 +1182,7 @@ fun TopMatchCard(
                     ) { model.vote(FeedbackVerdict.YES) }
                     VoteButton(
                         title = stringResource(R.string.w3_no_short),
-                        icon = W3IconThumbDown,
+                        icon = SolarIconThumbDown,
                         chosen = model.verdict == FeedbackVerdict.NO,
                         chosenFill = colors.secondaryFixed,
                         enabled = model.verdict == null && !model.busy && !model.reanalyzing,
@@ -1194,7 +1197,7 @@ fun TopMatchCard(
                         modifier = Modifier.testTag("result.thanks"),
                     ) {
                         Icon(
-                            W3IconSeal, contentDescription = null, tint = colors.primary,
+                            SolarIconSeal, contentDescription = null, tint = colors.primary,
                             modifier = Modifier.size(14.dp),
                         )
                         Text(
@@ -1218,7 +1221,7 @@ fun TopMatchCard(
                     horizontalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                 ) {
                     Icon(
-                        W3IconLock, contentDescription = null, tint = colors.onSurfaceVariant,
+                        SolarIconLock, contentDescription = null, tint = colors.onSurfaceVariant,
                         modifier = Modifier.size(14.dp),
                     )
                     Text(
@@ -1228,7 +1231,7 @@ fun TopMatchCard(
                     )
                     PillButton(
                         text = stringResource(R.string.w3_unlock),
-                        icon = W3IconLockOpen,
+                        icon = SolarIconLockOpen,
                         onClick = { model.unlock() },
                         enabled = model.topHit != null && !model.busy &&
                             model.unlockState != UnlockState.UNKNOWN,
@@ -1256,7 +1259,7 @@ private fun UnlockLine(text: String, testTag: String) {
         modifier = Modifier.testTag(testTag),
     ) {
         Icon(
-            W3IconSeal, contentDescription = null, tint = colors.primary,
+            SolarIconSeal, contentDescription = null, tint = colors.primary,
             modifier = Modifier.size(14.dp),
         )
         Text(text, style = SolarTheme.type.labelMd, color = colors.primary)
@@ -1343,7 +1346,7 @@ fun MatchRow(
             )
         }
         Icon(
-            W3IconChevronRight, contentDescription = null, tint = colors.onSurfaceVariant,
+            SolarIconChevronRight, contentDescription = null, tint = colors.onSurfaceVariant,
             modifier = Modifier.size(13.dp),
         )
     }

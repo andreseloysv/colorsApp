@@ -1,8 +1,10 @@
-// Glifos minimos del carril W3 (acciones del Feed y de Resultado) que aun no
-// estan en design/SolarIcons.kt. Trazo simple 24x24, tintable. Los
-// personajes y glifos definitivos son de W5 (diseno); estos solo cubren las
-// acciones reales de iOS (corazon, pulgar, copiar, compartir…).
-package com.andreseloy.colorsapp.feature.feed
+// Glifos de accion de la marca (W5): los equivalentes Android de los SF
+// Symbols pequenos de iOS (FIDELITY §2.4: heart, hand.thumbsdown,
+// doc.on.doc, square.and.arrow.up, checkmark.seal, eye, lock, person,
+// paintpalette, gearshape…). Trazo 24x24 tintable con Icon(tint=...); los
+// trae W3 como SolarIcons y W5 los adopta en el sistema de diseno con los
+// nombres SolarIcon*. Los personajes de pestana viven en BrandCreatures.kt.
+package com.andreseloy.colorsapp.design
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
@@ -14,7 +16,7 @@ import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-private fun w3Icon(
+private fun solarStrokeIcon(
     name: String,
     filled: Boolean = false,
     builder: PathBuilder.() -> Unit,
@@ -33,7 +35,7 @@ private fun w3Icon(
     )
 }.build()
 
-val W3IconHeart: ImageVector = w3Icon("W3Heart") {
+val SolarIconHeart: ImageVector = solarStrokeIcon("SolarHeart") {
     moveTo(12f, 20.5f)
     curveTo(5f, 15.5f, 3f, 12f, 3f, 8.8f)
     curveTo(3f, 6f, 5f, 4f, 7.6f, 4f)
@@ -44,7 +46,7 @@ val W3IconHeart: ImageVector = w3Icon("W3Heart") {
     close()
 }
 
-val W3IconHeartFilled: ImageVector = w3Icon("W3HeartFilled", filled = true) {
+val SolarIconHeartFilled: ImageVector = solarStrokeIcon("SolarHeartFilled", filled = true) {
     moveTo(12f, 20.5f)
     curveTo(5f, 15.5f, 3f, 12f, 3f, 8.8f)
     curveTo(3f, 6f, 5f, 4f, 7.6f, 4f)
@@ -55,7 +57,7 @@ val W3IconHeartFilled: ImageVector = w3Icon("W3HeartFilled", filled = true) {
     close()
 }
 
-val W3IconThumbDown: ImageVector = w3Icon("W3ThumbDown") {
+val SolarIconThumbDown: ImageVector = solarStrokeIcon("SolarThumbDown") {
     moveTo(7f, 11f)
     lineTo(4f, 11f)
     lineTo(4f, 4f)
@@ -76,7 +78,7 @@ val W3IconThumbDown: ImageVector = w3Icon("W3ThumbDown") {
     lineTo(16.3f, 12.6f)
 }
 
-val W3IconCopy: ImageVector = w3Icon("W3Copy") {
+val SolarIconCopy: ImageVector = solarStrokeIcon("SolarCopy") {
     moveTo(9f, 9f)
     lineTo(20f, 9f)
     lineTo(20f, 20f)
@@ -92,13 +94,13 @@ val W3IconCopy: ImageVector = w3Icon("W3Copy") {
     lineTo(15f, 5f)
 }
 
-val W3IconCheck: ImageVector = w3Icon("W3Check") {
+val SolarIconCheck: ImageVector = solarStrokeIcon("SolarCheck") {
     moveTo(4f, 12.5f)
     lineTo(9.5f, 18f)
     lineTo(20f, 6.5f)
 }
 
-val W3IconShare: ImageVector = w3Icon("W3Share") {
+val SolarIconShare: ImageVector = solarStrokeIcon("SolarShare") {
     moveTo(12f, 15f)
     lineTo(12f, 3.5f)
     moveTo(8f, 6.5f)
@@ -112,7 +114,7 @@ val W3IconShare: ImageVector = w3Icon("W3Share") {
     lineTo(19f, 12f)
 }
 
-val W3IconExpand: ImageVector = w3Icon("W3Expand") {
+val SolarIconExpand: ImageVector = solarStrokeIcon("SolarExpand") {
     moveTo(9f, 4f)
     lineTo(4f, 4f)
     lineTo(4f, 9f)
@@ -125,7 +127,7 @@ val W3IconExpand: ImageVector = w3Icon("W3Expand") {
     lineTo(14f, 14f)
 }
 
-val W3IconPhoto: ImageVector = w3Icon("W3Photo") {
+val SolarIconPhoto: ImageVector = solarStrokeIcon("SolarPhoto") {
     moveTo(4f, 5f)
     lineTo(20f, 5f)
     lineTo(20f, 19f)
@@ -141,7 +143,7 @@ val W3IconPhoto: ImageVector = w3Icon("W3Photo") {
     arcTo(1.4f, 1.4f, 0f, false, true, 7.6f, 9f)
 }
 
-val W3IconPhotoStack: ImageVector = w3Icon("W3PhotoStack") {
+val SolarIconPhotoStack: ImageVector = solarStrokeIcon("SolarPhotoStack") {
     moveTo(7f, 7f)
     lineTo(21f, 7f)
     lineTo(21f, 20f)
@@ -157,7 +159,7 @@ val W3IconPhotoStack: ImageVector = w3Icon("W3PhotoStack") {
     lineTo(18f, 5f)
 }
 
-val W3IconLayers: ImageVector = w3Icon("W3Layers") {
+val SolarIconLayers: ImageVector = solarStrokeIcon("SolarLayers") {
     moveTo(12f, 3.5f)
     lineTo(21f, 8.5f)
     lineTo(12f, 13.5f)
@@ -171,7 +173,7 @@ val W3IconLayers: ImageVector = w3Icon("W3Layers") {
     lineTo(20.5f, 17f)
 }
 
-val W3IconEye: ImageVector = w3Icon("W3Eye") {
+val SolarIconEye: ImageVector = solarStrokeIcon("SolarEye") {
     moveTo(2.5f, 12f)
     curveTo(5f, 6.5f, 8.5f, 4.5f, 12f, 4.5f)
     curveTo(15.5f, 4.5f, 19f, 6.5f, 21.5f, 12f)
@@ -183,7 +185,7 @@ val W3IconEye: ImageVector = w3Icon("W3Eye") {
     arcTo(3f, 3f, 0f, false, true, 9f, 12f)
 }
 
-val W3IconEyeSlash: ImageVector = w3Icon("W3EyeSlash") {
+val SolarIconEyeSlash: ImageVector = solarStrokeIcon("SolarEyeSlash") {
     moveTo(4f, 4f)
     lineTo(20f, 20f)
     moveTo(10.6f, 5.2f)
@@ -196,7 +198,7 @@ val W3IconEyeSlash: ImageVector = w3Icon("W3EyeSlash") {
     curveTo(13f, 19f, 14f, 18.8f, 15f, 18.4f)
 }
 
-val W3IconLock: ImageVector = w3Icon("W3Lock") {
+val SolarIconLock: ImageVector = solarStrokeIcon("SolarLock") {
     moveTo(6f, 11f)
     lineTo(18f, 11f)
     lineTo(18f, 20f)
@@ -209,7 +211,7 @@ val W3IconLock: ImageVector = w3Icon("W3Lock") {
     lineTo(15f, 11f)
 }
 
-val W3IconLockOpen: ImageVector = w3Icon("W3LockOpen") {
+val SolarIconLockOpen: ImageVector = solarStrokeIcon("SolarLockOpen") {
     moveTo(6f, 11f)
     lineTo(18f, 11f)
     lineTo(18f, 20f)
@@ -221,20 +223,20 @@ val W3IconLockOpen: ImageVector = w3Icon("W3LockOpen") {
     curveTo(13.7f, 4f, 15f, 5.8f, 15f, 8f)
 }
 
-val W3IconChevronRight: ImageVector = w3Icon("W3ChevronRight") {
+val SolarIconChevronRight: ImageVector = solarStrokeIcon("SolarChevronRight") {
     moveTo(9f, 5f)
     lineTo(16f, 12f)
     lineTo(9f, 19f)
 }
 
-val W3IconClose: ImageVector = w3Icon("W3Close") {
+val SolarIconClose: ImageVector = solarStrokeIcon("SolarClose") {
     moveTo(5f, 5f)
     lineTo(19f, 19f)
     moveTo(19f, 5f)
     lineTo(5f, 19f)
 }
 
-val W3IconPerson: ImageVector = w3Icon("W3Person") {
+val SolarIconPerson: ImageVector = solarStrokeIcon("SolarPerson") {
     moveTo(8.8f, 7.8f)
     arcTo(3.2f, 3.2f, 0f, false, true, 15.2f, 7.8f)
     arcTo(3.2f, 3.2f, 0f, false, true, 8.8f, 7.8f)
@@ -243,7 +245,7 @@ val W3IconPerson: ImageVector = w3Icon("W3Person") {
     curveTo(15.2f, 14.8f, 18f, 16.5f, 19f, 20f)
 }
 
-val W3IconPalette: ImageVector = w3Icon("W3Palette") {
+val SolarIconPalette: ImageVector = solarStrokeIcon("SolarPalette") {
     moveTo(12f, 3.5f)
     curveTo(7f, 3.5f, 3f, 7.4f, 3f, 12.2f)
     curveTo(3f, 17f, 7f, 20.5f, 12f, 20.5f)
@@ -264,7 +266,7 @@ val W3IconPalette: ImageVector = w3Icon("W3Palette") {
     arcTo(1.1f, 1.1f, 0f, false, true, 15.4f, 10.5f)
 }
 
-val W3IconWarning: ImageVector = w3Icon("W3Warning") {
+val SolarIconWarning: ImageVector = solarStrokeIcon("SolarWarning") {
     moveTo(12f, 4f)
     lineTo(22f, 20f)
     lineTo(2f, 20f)
@@ -276,7 +278,7 @@ val W3IconWarning: ImageVector = w3Icon("W3Warning") {
     arcTo(0.6f, 0.6f, 0f, false, true, 11.4f, 17.2f)
 }
 
-val W3IconSeal: ImageVector = w3Icon("W3Seal") {
+val SolarIconSeal: ImageVector = solarStrokeIcon("SolarSeal") {
     moveTo(4.5f, 12f)
     arcTo(7.5f, 7.5f, 0f, false, true, 19.5f, 12f)
     arcTo(7.5f, 7.5f, 0f, false, true, 4.5f, 12f)
@@ -285,7 +287,7 @@ val W3IconSeal: ImageVector = w3Icon("W3Seal") {
     lineTo(15.4f, 9.8f)
 }
 
-val W3IconRefresh: ImageVector = w3Icon("W3Refresh") {
+val SolarIconRefresh: ImageVector = solarStrokeIcon("SolarRefresh") {
     moveTo(20f, 12f)
     arcTo(8f, 8f, 0f, true, true, 5.7f, 5.7f)
     moveTo(20f, 4.5f)
@@ -293,7 +295,7 @@ val W3IconRefresh: ImageVector = w3Icon("W3Refresh") {
     lineTo(15.5f, 9f)
 }
 
-val W3IconGear: ImageVector = w3Icon("W3Gear") {
+val SolarIconGear: ImageVector = solarStrokeIcon("SolarGear") {
     moveTo(8.5f, 12f)
     arcTo(3.5f, 3.5f, 0f, false, true, 15.5f, 12f)
     arcTo(3.5f, 3.5f, 0f, false, true, 8.5f, 12f)
@@ -313,4 +315,32 @@ val W3IconGear: ImageVector = w3Icon("W3Gear") {
     lineTo(6f, 16.8f)
     moveTo(18f, 7.2f)
     lineTo(19.7f, 5.5f)
+}
+
+/** Lupa del buscador (magnifyingglass en iOS). W5. */
+val SolarIconSearch: ImageVector = solarStrokeIcon("SolarSearch") {
+    moveTo(4.5f, 11f)
+    arcTo(6.5f, 6.5f, 0f, false, true, 17.5f, 11f)
+    arcTo(6.5f, 6.5f, 0f, false, true, 4.5f, 11f)
+    moveTo(15.8f, 15.8f)
+    lineTo(20.5f, 20.5f)
+}
+
+/** Deslizadores de filtros (slider.horizontal.3 en iOS). W5. */
+val SolarIconSliders: ImageVector = solarStrokeIcon("SolarSliders") {
+    moveTo(4f, 7f)
+    lineTo(20f, 7f)
+    moveTo(4f, 12f)
+    lineTo(20f, 12f)
+    moveTo(4f, 17f)
+    lineTo(20f, 17f)
+    moveTo(8.6f, 7f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 11.8f, 7f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 8.6f, 7f)
+    moveTo(13.4f, 12f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 16.6f, 12f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 13.4f, 12f)
+    moveTo(6.4f, 17f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 9.6f, 17f)
+    arcTo(1.6f, 1.6f, 0f, false, true, 6.4f, 17f)
 }

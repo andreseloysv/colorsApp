@@ -78,11 +78,11 @@ import com.andreseloy.colorsapp.design.SolarTone
 import com.andreseloy.colorsapp.design.ToneBadgeIcon
 import com.andreseloy.colorsapp.design.solarPress
 import com.andreseloy.colorsapp.feature.feed.GardenSavedStore
-import com.andreseloy.colorsapp.feature.feed.W3IconCheck
-import com.andreseloy.colorsapp.feature.feed.W3IconPerson
-import com.andreseloy.colorsapp.feature.feed.W3IconPhoto
-import com.andreseloy.colorsapp.feature.feed.W3IconPhotoStack
-import com.andreseloy.colorsapp.feature.feed.W3IconWarning
+import com.andreseloy.colorsapp.design.SolarIconCheck
+import com.andreseloy.colorsapp.design.SolarIconPerson
+import com.andreseloy.colorsapp.design.SolarIconPhoto
+import com.andreseloy.colorsapp.design.SolarIconPhotoStack
+import com.andreseloy.colorsapp.design.SolarIconWarning
 import com.andreseloy.colorsapp.feature.feed.W3ToastHost
 import com.andreseloy.colorsapp.feature.wrapped.ScanOnboardingSheet
 import com.andreseloy.colorsapp.scan.NoopScanRunner
@@ -408,7 +408,7 @@ private fun CaptureContent(
                             }
                             GhostPillButton(
                                 text = stringResource(R.string.w3_scan_library_200),
-                                icon = W3IconPhotoStack,
+                                icon = SolarIconPhotoStack,
                                 onClick = onScan,
                                 enabled = scanEnabled && !isScanRunning(scanProgress),
                                 modifier = Modifier.fillMaxWidth().testTag("extraer.scanLibrary"),
@@ -425,7 +425,7 @@ private fun CaptureContent(
                 modifier = Modifier.testTag("extraer.error"),
             ) {
                 Icon(
-                    W3IconWarning, contentDescription = null, tint = colors.error,
+                    SolarIconWarning, contentDescription = null, tint = colors.error,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(state.message, style = type.bodyMd, color = colors.error)
@@ -439,7 +439,7 @@ private fun CaptureContent(
                         horizontalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                     ) {
                         Icon(
-                            W3IconPhotoStack, contentDescription = null, tint = colors.secondary,
+                            SolarIconPhotoStack, contentDescription = null, tint = colors.secondary,
                             modifier = Modifier.size(18.dp),
                         )
                         Text(
@@ -476,7 +476,7 @@ private fun CaptureContent(
                     style = type.overline, color = colors.secondary,
                 )
                 AnalysisStep(
-                    W3IconPerson,
+                    SolarIconPerson,
                     stringResource(R.string.w3_step1_title),
                     stringResource(R.string.w3_step1_body),
                 )
@@ -541,7 +541,7 @@ private fun CropSettingsChip(settings: SubjectSettings?) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
-            W3IconPerson, contentDescription = null, tint = colors.secondary,
+            SolarIconPerson, contentDescription = null, tint = colors.secondary,
             modifier = Modifier.size(13.dp),
         )
         Text(title, style = type.labelSm, color = colors.onSurface, maxLines = 1)
@@ -618,7 +618,7 @@ fun PillButton(
         if (isDone) {
             Box(Modifier.size(SolarSpacing.sm))
             Icon(
-                W3IconCheck, contentDescription = null,
+                SolarIconCheck, contentDescription = null,
                 tint = content, modifier = Modifier.size(16.dp),
             )
         }

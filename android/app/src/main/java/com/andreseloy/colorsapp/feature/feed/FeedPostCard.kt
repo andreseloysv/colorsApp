@@ -53,6 +53,18 @@ import androidx.compose.ui.unit.dp
 import com.andreseloy.colorsapp.R
 import com.andreseloy.colorsapp.data.FeedbackVerdict
 import com.andreseloy.colorsapp.design.SolarIconCamera
+import com.andreseloy.colorsapp.design.SolarIconCheck
+import com.andreseloy.colorsapp.design.SolarIconChevronRight
+import com.andreseloy.colorsapp.design.SolarIconCopy
+import com.andreseloy.colorsapp.design.SolarIconExpand
+import com.andreseloy.colorsapp.design.SolarIconHeart
+import com.andreseloy.colorsapp.design.SolarIconHeartFilled
+import com.andreseloy.colorsapp.design.SolarIconPalette
+import com.andreseloy.colorsapp.design.SolarIconPhoto
+import com.andreseloy.colorsapp.design.SolarIconPhotoStack
+import com.andreseloy.colorsapp.design.SolarIconShare
+import com.andreseloy.colorsapp.design.SolarIconThumbDown
+import com.andreseloy.colorsapp.design.SolarIconWarning
 import com.andreseloy.colorsapp.design.SolarIconGrid
 import com.andreseloy.colorsapp.design.SolarIconLeaf
 import com.andreseloy.colorsapp.design.SolarSizes
@@ -182,9 +194,9 @@ private fun FeedPostCard(
             ) {
                 ToneBadgeIcon(
                     icon = when (source) {
-                        PostSource.LIBRARY -> W3IconPhotoStack
+                        PostSource.LIBRARY -> SolarIconPhotoStack
                         PostSource.CAMERA -> SolarIconCamera
-                        PostSource.PICKED -> W3IconPhoto
+                        PostSource.PICKED -> SolarIconPhoto
                     },
                     tone = if (isCamera) SolarTone.CELADON else SolarTone.AMBER,
                     contentDescription = null,
@@ -297,7 +309,7 @@ private fun FeedPostCard(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Icon(
-                            W3IconPhoto, contentDescription = null,
+                            SolarIconPhoto, contentDescription = null,
                             tint = colors.onSurfaceVariant, modifier = Modifier.size(32.dp),
                         )
                         Text(
@@ -318,7 +330,7 @@ private fun FeedPostCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
-                            if (notice.isFallback) W3IconWarning else SolarIconCamera,
+                            if (notice.isFallback) SolarIconWarning else SolarIconCamera,
                             contentDescription = null, tint = colors.secondary,
                             modifier = Modifier.size(13.dp),
                         )
@@ -348,7 +360,7 @@ private fun FeedPostCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            W3IconExpand, contentDescription = null, tint = colors.primary,
+                            SolarIconExpand, contentDescription = null, tint = colors.primary,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -365,7 +377,7 @@ private fun FeedPostCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(
-                        W3IconPalette, contentDescription = null, tint = colors.primary,
+                        SolarIconPalette, contentDescription = null, tint = colors.primary,
                         modifier = Modifier.size(14.dp),
                     )
                     Text(
@@ -393,7 +405,7 @@ private fun FeedPostCard(
                             horizontalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
                             Icon(
-                                W3IconCopy, contentDescription = null, tint = colors.secondary,
+                                SolarIconCopy, contentDescription = null, tint = colors.secondary,
                                 modifier = Modifier.size(12.dp),
                             )
                             Text(
@@ -547,7 +559,7 @@ private fun MatchFooter(item: FeedItemData, onOpenCombo: (Int) -> Unit) {
                     )
                 }
                 Icon(
-                    W3IconChevronRight, contentDescription = null,
+                    SolarIconChevronRight, contentDescription = null,
                     tint = colors.onSurfaceVariant, modifier = Modifier.size(14.dp),
                 )
             }
@@ -596,7 +608,7 @@ private fun ActionBar(
                 if (verdict == FeedbackVerdict.YES) R.string.w3_it_is else R.string.w3_yes_short,
             ),
             label = stringResource(R.string.w3_yes_it_is),
-            icon = if (verdict == FeedbackVerdict.YES) W3IconHeartFilled else W3IconHeart,
+            icon = if (verdict == FeedbackVerdict.YES) SolarIconHeartFilled else SolarIconHeart,
             tint = if (verdict == FeedbackVerdict.YES) colors.secondary else colors.onSurfaceVariant,
             enabled = verdict == null || verdict == FeedbackVerdict.YES,
             showLabel = showLabels,
@@ -606,7 +618,7 @@ private fun ActionBar(
         ActionButton(
             title = stringResource(R.string.w3_no_short),
             label = stringResource(R.string.w3_no_it_isnt),
-            icon = W3IconThumbDown,
+            icon = SolarIconThumbDown,
             tint = if (verdict == FeedbackVerdict.NO) colors.onSurface else colors.onSurfaceVariant,
             enabled = verdict == null || verdict == FeedbackVerdict.NO,
             showLabel = showLabels,
@@ -631,7 +643,7 @@ private fun ActionBar(
                     if (isCopied) R.string.w3_copied_short else R.string.w3_copy_short,
                 ),
                 label = stringResource(R.string.w3_copy_combo_hex),
-                icon = if (isCopied) W3IconCheck else W3IconCopy,
+                icon = if (isCopied) SolarIconCheck else SolarIconCopy,
                 tint = if (isCopied) colors.primary else colors.onSurfaceVariant,
                 enabled = true,
                 showLabel = showLabels,
@@ -654,7 +666,7 @@ private fun ActionBar(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                W3IconShare, contentDescription = null, tint = colors.onSurfaceVariant,
+                SolarIconShare, contentDescription = null, tint = colors.onSurfaceVariant,
                 modifier = Modifier.size(19.dp),
             )
         }

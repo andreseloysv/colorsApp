@@ -522,4 +522,19 @@ class W3FormatTest {
         assertEquals("#1B1B21", W3Format.hexList(listOf(color)))
         assertNull(PaletteColor.fromHex(0, "#xyz"))
     }
+
+    // W5: hex e ids son legibles por máquina: dígitos latinos siempre,
+    // también con una locale por defecto de dígitos arábigos.
+    @Test
+    fun numerosDeMaquinaSonLocaleRoot() {
+        val previo = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG"))
+            assertEquals("067", W3Format.paddedComboId(67))
+            val color = PaletteColor.fromHex(0, "#1b1b21", weight = 0.5)!!
+            assertEquals("#1B1B21", color.hex)
+        } finally {
+            Locale.setDefault(previo)
+        }
+    }
 }

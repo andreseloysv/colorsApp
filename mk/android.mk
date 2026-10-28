@@ -47,7 +47,8 @@ ANDROID_AVD ?= Medium_Phone_API_37.0
 ANDROID_APP_ID := com.andreseloy.colorsapp
 ANDROID_DEBUG_APK := $(ANDROID_DIR)/app/build/outputs/apk/debug/app-debug.apk
 # Sin firma el APK se llama app-release-unsigned.apk; firmado, app-release.apk.
-ANDROID_RELEASE_APK = $(firstword $(wildcard $(ANDROID_DIR)/app/build/outputs/apk/release/app-release*.apk))
+# (Su ruta se resuelve en el shell tras compilar, no con $(wildcard): ver
+# android-check-no-network.)
 ANDROID_AAB := $(ANDROID_DIR)/app/build/outputs/bundle/release/app-release.aab
 ANDROID_OUT := $(ROOT)/harness/out/android
 
@@ -79,14 +80,18 @@ android-test-device: android-local-properties
 # Puerta sin red, simétrica de ios-lint pero sobre el artefacto: se compila
 # release (el manifiesto fusionado incluye lo que añadan las dependencias)
 # y se buscan permisos de red en el manifiesto binario del APK.
+# El APK se resuelve en el shell DESPUÉS de compilar: un $(wildcard) en la
+# receta se expandía antes de ejecutar assembleRelease y en un árbol limpio
+# salía vacío (había que correr android-lint dos veces).
 android-check-no-network: android-local-properties
 	$(GRADLEW) :app:assembleRelease
-	@test -n "$(ANDROID_RELEASE_APK)" || { echo "FALLO: no se generó el APK release"; exit 1; }
-	@echo "permisos del APK release ($(ANDROID_RELEASE_APK)):"
-	@$(AAPT2) dump permissions "$(ANDROID_RELEASE_APK)" || { echo "FALLO: aapt2 no pudo leer el APK"; exit 1; }
-	@if $(AAPT2) dump permissions "$(ANDROID_RELEASE_APK)" | grep -E "INTERNET|ACCESS_NETWORK_STATE|ACCESS_WIFI_STATE|CHANGE_NETWORK_STATE"; then \
-	  echo "FALLO: permiso de red en el manifiesto fusionado de release"; exit 1; \
-	fi
+	@APK=$$(ls -t $(ANDROID_DIR)/app/build/outputs/apk/release/app-release*.apk 2>/dev/null | head -n 1); \
+	  test -n "$$APK" || { echo "FALLO: no se generó el APK release"; exit 1; }; \
+	  echo "permisos del APK release ($$APK):"; \
+	  $(AAPT2) dump permissions "$$APK" || { echo "FALLO: aapt2 no pudo leer el APK"; exit 1; }; \
+	  if $(AAPT2) dump permissions "$$APK" | grep -E "INTERNET|ACCESS_NETWORK_STATE|ACCESS_WIFI_STATE|CHANGE_NETWORK_STATE"; then \
+	    echo "FALLO: permiso de red en el manifiesto fusionado de release"; exit 1; \
+	  fi
 	@if grep -rEl --include="*.kt" "java\.net\.|HttpURLConnection|OkHttp|Retrofit|Socket\(" $(ANDROID_DIR)/app/src/main $(ANDROID_DIR)/engine/src/main; then \
 	  echo "FALLO: uso de APIs de red en el código de la app"; exit 1; \
 	fi

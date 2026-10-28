@@ -8,8 +8,10 @@
 // Con acceso denegado: mensaje y boton a los Ajustes del sistema.
 package com.andreseloy.colorsapp.feature.wrapped
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -50,6 +52,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.andreseloy.colorsapp.R
 import com.andreseloy.colorsapp.app.AppContainer
+import com.andreseloy.colorsapp.data.LibraryAccess
 import com.andreseloy.colorsapp.data.ScanSource
 import com.andreseloy.colorsapp.data.SettingsRepository
 import com.andreseloy.colorsapp.data.WadaDictionary
@@ -69,13 +72,13 @@ import com.andreseloy.colorsapp.feature.extract.PhotoLoading
 import com.andreseloy.colorsapp.feature.extract.ScanAnalyzer
 import com.andreseloy.colorsapp.feature.extract.ScanJson
 import com.andreseloy.colorsapp.feature.extract.ScanSubjectInfo
-import com.andreseloy.colorsapp.feature.feed.W3IconClose
-import com.andreseloy.colorsapp.feature.feed.W3IconGear
-import com.andreseloy.colorsapp.feature.feed.W3IconPhoto
-import com.andreseloy.colorsapp.feature.feed.W3IconPhotoStack
-import com.andreseloy.colorsapp.feature.feed.W3IconRefresh
-import com.andreseloy.colorsapp.feature.feed.W3IconSeal
-import com.andreseloy.colorsapp.feature.feed.W3IconWarning
+import com.andreseloy.colorsapp.design.SolarIconClose
+import com.andreseloy.colorsapp.design.SolarIconGear
+import com.andreseloy.colorsapp.design.SolarIconPhoto
+import com.andreseloy.colorsapp.design.SolarIconPhotoStack
+import com.andreseloy.colorsapp.design.SolarIconRefresh
+import com.andreseloy.colorsapp.design.SolarIconSeal
+import com.andreseloy.colorsapp.design.SolarIconWarning
 import com.andreseloy.colorsapp.scan.ColorCount
 import com.andreseloy.colorsapp.scan.ComboCount
 import com.andreseloy.colorsapp.scan.ScanException
@@ -245,7 +248,7 @@ fun ScanOnboardingSheet(
         if (uris.isNotEmpty()) startPickerScan(uris)
     }
 
-    fun start() {
+    fun startScan() {
         stage = Stage.Running
         pickerTotal = 0
         scanJob?.cancel()
@@ -264,6 +267,38 @@ fun ScanOnboardingSheet(
             } catch (e: Exception) {
                 stage = Stage.Failed(e.toString())
             }
+        }
+    }
+
+    // Permisos del carrete según la API: completo y, en 34+, el limitado
+    // («seleccionar fotos») que Android concede desde el mismo diálogo.
+    fun libraryPermissions(): Array<String> = when {
+        Build.VERSION.SDK_INT >= 34 -> arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        )
+        Build.VERSION.SDK_INT >= 33 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+        else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        // El resultado fiable es el acceso efectivo tras el diálogo.
+        when (container.photoLibrary.access()) {
+            LibraryAccess.FULL -> startScan()
+            LibraryAccess.LIMITED -> stage = Stage.Limited
+            LibraryAccess.DENIED, LibraryAccess.NOT_DETERMINED -> stage = Stage.Denied
+        }
+    }
+
+    // Como en iOS (PhotoKitScanRunner pide la autorización como paso 1 al
+    // tocar «Escanear ahora»): nunca al arrancar la app, siempre en contexto.
+    fun start() {
+        when (container.photoLibrary.access()) {
+            LibraryAccess.FULL, LibraryAccess.LIMITED -> startScan()
+            LibraryAccess.DENIED, LibraryAccess.NOT_DETERMINED ->
+                permissionLauncher.launch(libraryPermissions())
         }
     }
 
@@ -290,7 +325,7 @@ fun ScanOnboardingSheet(
                 ),
             ) {
                 SolarHeaderButton(
-                    icon = W3IconClose,
+                    icon = SolarIconClose,
                     contentDescription = stringResource(R.string.w3_close),
                     onClick = {
                         scanJob?.cancel()
@@ -317,7 +352,7 @@ fun ScanOnboardingSheet(
                     },
                 )
                 Stage.Limited -> StageCard(
-                    icon = W3IconPhoto,
+                    icon = SolarIconPhoto,
                     title = stringResource(R.string.w3_limited_title),
                     message = stringResource(R.string.w3_limited_body, limit),
                 ) {
@@ -334,7 +369,7 @@ fun ScanOnboardingSheet(
                     )
                 }
                 Stage.Denied -> StageCard(
-                    icon = W3IconWarning,
+                    icon = SolarIconWarning,
                     title = stringResource(R.string.w3_denied_title),
                     message = stringResource(
                         R.string.w3_denied_body, stringResource(R.string.app_name),
@@ -342,7 +377,7 @@ fun ScanOnboardingSheet(
                 ) {
                     SolarPrimaryButton(
                         text = stringResource(R.string.w3_open_settings),
-                        icon = W3IconGear,
+                        icon = SolarIconGear,
                         onClick = {
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                                 .setData(Uri.fromParts("package", context.packageName, null))
@@ -352,20 +387,20 @@ fun ScanOnboardingSheet(
                     )
                     GhostPillButton(
                         text = stringResource(R.string.w3_retry),
-                        icon = W3IconRefresh,
+                        icon = SolarIconRefresh,
                         onClick = { start() },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 is Stage.Failed -> StageCard(
-                    icon = W3IconWarning,
+                    icon = SolarIconWarning,
                     title = stringResource(R.string.w3_scan_failed_title),
                     message = current.message,
                     monospacedMessage = true,
                 ) {
                     SolarPrimaryButton(
                         text = stringResource(R.string.w3_retry),
-                        icon = W3IconRefresh,
+                        icon = SolarIconRefresh,
                         onClick = { start() },
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -410,7 +445,7 @@ private fun IntroContent(
                         style = type.brand, color = colors.primary,
                     )
                     ToneBadgeIcon(
-                        W3IconPhotoStack, SolarTone.AMBER, contentDescription = null, size = 44.dp,
+                        SolarIconPhotoStack, SolarTone.AMBER, contentDescription = null, size = 44.dp,
                     )
                 }
                 Text(
@@ -481,7 +516,7 @@ private fun RunningContent(progress: ScanProgress) {
                     horizontalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                 ) {
                     ToneBadgeIcon(
-                        W3IconPhotoStack, SolarTone.MOSS, contentDescription = null, size = 40.dp,
+                        SolarIconPhotoStack, SolarTone.MOSS, contentDescription = null, size = 40.dp,
                     )
                     Column {
                         Text(
@@ -526,7 +561,7 @@ private fun RunningContent(progress: ScanProgress) {
                         horizontalArrangement = Arrangement.spacedBy(SolarSpacing.xs),
                     ) {
                         Icon(
-                            W3IconSeal, contentDescription = null, tint = colors.primary,
+                            SolarIconSeal, contentDescription = null, tint = colors.primary,
                             modifier = Modifier.size(14.dp),
                         )
                         Text(

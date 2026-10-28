@@ -45,10 +45,10 @@ import com.andreseloy.colorsapp.feature.extract.W3Format
 import com.andreseloy.colorsapp.feature.extract.numberLabel
 import com.andreseloy.colorsapp.feature.extract.w3Locale
 import com.andreseloy.colorsapp.feature.feed.FeedComboName
-import com.andreseloy.colorsapp.feature.feed.W3IconPalette
-import com.andreseloy.colorsapp.feature.feed.W3IconPhoto
-import com.andreseloy.colorsapp.feature.feed.W3IconRefresh
-import com.andreseloy.colorsapp.feature.feed.W3IconSeal
+import com.andreseloy.colorsapp.design.SolarIconPalette
+import com.andreseloy.colorsapp.design.SolarIconPhoto
+import com.andreseloy.colorsapp.design.SolarIconRefresh
+import com.andreseloy.colorsapp.design.SolarIconSeal
 import com.andreseloy.colorsapp.scan.ScanSummary
 
 private const val MAX_UNLOCK_TILES = 12
@@ -146,7 +146,7 @@ fun WrappedSummary(
                         horizontalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                     ) {
                         Icon(
-                            W3IconPhoto, contentDescription = null, tint = colors.primary,
+                            SolarIconPhoto, contentDescription = null, tint = colors.primary,
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
@@ -169,7 +169,7 @@ fun WrappedSummary(
                         Modifier.testTag("wrapped.signature"),
                         verticalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                     ) {
-                        SectionHeader(stringResource(R.string.w3_signature_color), W3IconSeal)
+                        SectionHeader(stringResource(R.string.w3_signature_color), SolarIconSeal)
                         WellContainer(Modifier.fillMaxWidth()) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(SolarSpacing.margin),
@@ -213,7 +213,7 @@ fun WrappedSummary(
                     Modifier.testTag("wrapped.topColors"),
                     verticalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                 ) {
-                    SectionHeader(stringResource(R.string.w3_your_5_colors), W3IconPalette)
+                    SectionHeader(stringResource(R.string.w3_your_5_colors), SolarIconPalette)
                     WellContainer(Modifier.fillMaxWidth(), compact = true) {
                         Row(
                             Modifier.fillMaxWidth(),
@@ -260,7 +260,7 @@ fun WrappedSummary(
                             R.string.w3_unlocked_many_combos, summary.newUnlocks.size,
                         )
                     },
-                    W3IconSeal,
+                    SolarIconSeal,
                 )
                 if (summary.newUnlocks.isEmpty()) {
                     Text(
@@ -317,7 +317,7 @@ fun WrappedSummary(
                     Modifier.testTag("wrapped.topCombos"),
                     verticalArrangement = Arrangement.spacedBy(SolarSpacing.sm),
                 ) {
-                    SectionHeader(stringResource(R.string.w3_most_repeated), W3IconRefresh)
+                    SectionHeader(stringResource(R.string.w3_most_repeated), SolarIconRefresh)
                     SolarCard(Modifier.fillMaxWidth()) {
                         Column {
                             topCombos.forEachIndexed { i, entry ->

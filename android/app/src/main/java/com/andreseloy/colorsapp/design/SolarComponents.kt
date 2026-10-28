@@ -286,6 +286,8 @@ data class SolarTabItem(
     val icon: ImageVector,
     val badge: String? = null,
     val contentDescription: String = title,
+    /** Personaje de marca (W5): si está, sustituye al glifo como en iOS. */
+    val creature: BrandCreature? = null,
 )
 
 /**
@@ -343,12 +345,18 @@ fun SolarTabBar(
                                     .background(colors.mossGlow),
                             )
                         }
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = null,
-                            tint = if (selected) colors.primary else colors.onSurfaceVariant,
-                            modifier = Modifier.size(26.dp),
-                        )
+                        if (item.creature != null) {
+                            // Personaje original animado (FIDELITY §2.3); el
+                            // glifo queda como respaldo sin personaje.
+                            BrandCreatureIcon(item.creature)
+                        } else {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = null,
+                                tint = if (selected) colors.primary else colors.onSurfaceVariant,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
                         if (item.badge != null) {
                             Box(
                                 Modifier

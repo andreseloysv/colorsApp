@@ -25,6 +25,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.andreseloy.colorsapp.R
+import com.andreseloy.colorsapp.design.BrandCreature
+import com.andreseloy.colorsapp.design.LightMotes
 import com.andreseloy.colorsapp.design.SolarIconDrop
 import com.andreseloy.colorsapp.design.SolarIconGrid
 import com.andreseloy.colorsapp.design.SolarIconLeaf
@@ -90,13 +92,16 @@ fun ChromaSolApp(
                     Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) {
                         SolarTabBar(
                             items = listOf(
-                                SolarTabItem(Routes.FEED, stringResource(R.string.tab_feed), SolarIconSun),
+                                SolarTabItem(Routes.FEED, stringResource(R.string.tab_feed), SolarIconSun,
+                                    creature = BrandCreature.SEED),
                                 SolarTabItem(
                                     Routes.EXTRACT, stringResource(R.string.tab_extract), SolarIconDrop,
-                                    badge = scanBadge,
+                                    badge = scanBadge, creature = BrandCreature.DRAGONFLY,
                                 ),
-                                SolarTabItem(Routes.GRID, stringResource(R.string.tab_grid), SolarIconGrid),
-                                SolarTabItem(Routes.GARDEN, stringResource(R.string.tab_garden), SolarIconLeaf),
+                                SolarTabItem(Routes.GRID, stringResource(R.string.tab_grid), SolarIconGrid,
+                                    creature = BrandCreature.DEWDROP),
+                                SolarTabItem(Routes.GARDEN, stringResource(R.string.tab_garden), SolarIconLeaf,
+                                    creature = BrandCreature.SPROUT),
                             ),
                             selectedRoute = currentRoute ?: Routes.FEED,
                             onSelect = { selectTab(it.route) },
@@ -106,13 +111,16 @@ fun ChromaSolApp(
             }
         },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.FEED,
-            modifier = Modifier
+        Box(
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(colors.surface),
+        ) {
+        NavHost(
+            navController = navController,
+            startDestination = Routes.FEED,
+            modifier = Modifier.fillMaxSize(),
         ) {
             composable(Routes.FEED) {
                 // W3: Feed real. Ajustes cuelga del Jardin como en iOS (W4 pone
@@ -122,6 +130,7 @@ fun ChromaSolApp(
                     onAnalyzePhoto = { selectTab(Routes.EXTRACT) },
                     onOpenGarden = { selectTab(Routes.GARDEN) },
                     onShowGridFromScan = { selectTab(Routes.GRID) },
+                    onOpenLayers = { navController.navigate(Routes.LAYERS) },
                 )
             }
             composable(Routes.EXTRACT) {
@@ -136,7 +145,11 @@ fun ChromaSolApp(
                 W4GridScreen(container = container, onOpenLayers = { navController.navigate(Routes.LAYERS) })
             }
             composable(Routes.GARDEN) {
-                W4GardenScreen(container = container, onOpenLayers = { navController.navigate(Routes.LAYERS) })
+                W4GardenScreen(
+                    container = container,
+                    onOpenLayers = { navController.navigate(Routes.LAYERS) },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                )
             }
             composable(Routes.SETTINGS) {
                 W4SettingsScreen(
@@ -162,6 +175,10 @@ fun ChromaSolApp(
             composable(Routes.LAYERS) {
                 LayersScreen(container = container, onBack = { navController.popBackStack() })
             }
+        }
+        // Motas de luz del marco (FIDELITY §1.3): derivan sobre el fondo;
+        // no reciben toques. En iOS van por pantalla y respetan los pocillos.
+        LightMotes(Modifier.fillMaxSize())
         }
     }
 }

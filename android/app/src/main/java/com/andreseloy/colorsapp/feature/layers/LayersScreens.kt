@@ -40,6 +40,7 @@ import com.andreseloy.colorsapp.feature.grid.writeShareFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -115,12 +116,12 @@ fun LayersScreen(container: AppContainer, onBack: () -> Unit, modifier: Modifier
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${i + 1}. " + (container.dictionary.curatedName(hit.comboId) ?: stringResource(R.string.w4_combo_number, hit.comboId)),
                                     style = type.labelMd, color = colors.onSurface)
-                                Text(stringResource(R.string.w4_score, "%.2f".format(hit.score)), style = type.hex, color = colors.wellTextSecondary)
+                                Text(stringResource(R.string.w4_score, String.format(Locale.ROOT, "%.2f", hit.score)), style = type.hex, color = colors.wellTextSecondary)
                             }
                         }
                         if (analysis.ambiguous) Text(stringResource(R.string.w4_ambiguous), style = type.labelSm, color = colors.error)
                         LayerInputHolder.subject?.let { s ->
-                            Text(stringResource(R.string.w4_coverage, "%.1f %%".format(s.maskCoverage * 100)), style = type.bodySm, color = colors.onSurfaceVariant)
+                            Text(stringResource(R.string.w4_coverage, String.format(Locale.ROOT, "%.1f %%", s.maskCoverage * 100)), style = type.bodySm, color = colors.onSurfaceVariant)
                             Text(s.steps.joinToString(", ") { it.raw }, style = type.hex, color = colors.wellTextSecondary)
                         }
                         SolarPrimaryButton(stringResource(R.string.w4_share_all_layers), onClick = {
@@ -146,15 +147,15 @@ fun LayersScreen(container: AppContainer, onBack: () -> Unit, modifier: Modifier
                                 horizontalArrangement = Arrangement.spacedBy(SolarSpacing.md), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(36.dp).clip(SolarRadius.blockShape).background(Color(sw.argb)))
                                 Text(sw.hex, style = type.hex, color = colors.wellTextSecondary)
-                                Text("%.1f %%".format(sw.weight * 100), style = type.labelMd, color = colors.onSurface)
+                                Text(String.format(Locale.ROOT, "%.1f %%", sw.weight * 100), style = type.labelMd, color = colors.onSurface)
                                 if (isolate == i) Text("●", color = colors.primary)
                             }
                         }
                         val debug = layersResult.layers.debug
-                        Text("reduced ${debug.reducedWidth}×${debug.reducedHeight} · clusters ${debug.clusters.size} · lloyd ${debug.lloydIterations} · σ %.1f px".format(debug.centerSigmaPx),
+                        Text(String.format(Locale.ROOT, "reduced ${debug.reducedWidth}×${debug.reducedHeight} · clusters ${debug.clusters.size} · lloyd ${debug.lloydIterations} · σ %.1f px", debug.centerSigmaPx),
                             style = type.hex, color = colors.wellTextSecondary)
                         debug.clusters.forEachIndexed { i, cl ->
-                            Text("cluster $i ${cl.fate} final=${cl.finalIndex ?: "-"} head=${cl.groupHead} ${cl.hex} w=%.3f".format(cl.weight),
+                            Text(String.format(Locale.ROOT, "cluster $i ${cl.fate} final=${cl.finalIndex ?: "-"} head=${cl.groupHead} ${cl.hex} w=%.3f", cl.weight),
                                 style = type.hex, color = colors.wellTextSecondary)
                         }
                     }
@@ -167,11 +168,11 @@ fun LayersScreen(container: AppContainer, onBack: () -> Unit, modifier: Modifier
                         Text(titles.why.uppercase(), style = type.overline, color = colors.secondary)
                         Text(descs["why"] ?: "", style = type.bodySm, color = colors.onSurfaceVariant)
                         layersResult.layers.explanations.forEachIndexed { i, ex ->
-                            Text("${i + 1}. Nº ${ex.comboId} score %.2f fit %.2f coverage %.2f EV %.2f".format(ex.score, ex.fitTerm, ex.coverageTerm, ex.exposureEv),
+                            Text(String.format(Locale.ROOT, "${i + 1}. Nº ${ex.comboId} score %.2f fit %.2f coverage %.2f EV %.2f", ex.score, ex.fitTerm, ex.coverageTerm, ex.exposureEv),
                                 style = type.labelMd, color = colors.onSurface)
                             ex.perSwatch.forEachIndexed { j, s ->
                                 val name = container.dictionary.color(s.nearestColorIndex)?.name ?: "#${s.nearestColorIndex}"
-                                Text("  swatch $j → $name ΔE %.2f".format(s.deltaE), style = type.hex, color = colors.wellTextSecondary)
+                                Text(String.format(Locale.ROOT, "  swatch $j → $name ΔE %.2f", s.deltaE), style = type.hex, color = colors.wellTextSecondary)
                             }
                         }
                     }

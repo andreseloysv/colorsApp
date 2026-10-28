@@ -24,7 +24,8 @@ data class PaletteColor(
     val deltaE: Double? = null,
 ) {
     /** "#RRGGBB" en mayusculas, como se muestra y se copia en iOS. */
-    val hex: String get() = "#%02X%02X%02X".format(r, g, b)
+    // Hex = dato legible por máquina: siempre Locale.ROOT (sin dígitos locales).
+    val hex: String get() = String.format(Locale.ROOT, "#%02X%02X%02X", r, g, b)
     val argb: Int get() = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
 
     companion object {
@@ -93,5 +94,5 @@ object W3Format {
     fun hexList(colors: List<PaletteColor>): String = colors.joinToString(" ") { it.hex }
 
     /** Id de combinacion con tres cifras: 67 -> "067" (el «Nº» es recurso). */
-    fun paddedComboId(id: Int): String = "%03d".format(id)
+    fun paddedComboId(id: Int): String = String.format(Locale.ROOT, "%03d", id)
 }

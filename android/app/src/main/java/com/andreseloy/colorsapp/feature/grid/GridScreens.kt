@@ -40,6 +40,7 @@ import com.andreseloy.colorsapp.engine.WadaEngineDictionary
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 
 // Nombres propuestos por el usuario (ComboNaming de iOS): preferencia local
 // hasta que W1 decida su tabla; nunca toca los nombres curados protegidos.
@@ -105,6 +106,18 @@ private fun GridList(container: AppContainer, onOpenCombo: (Int) -> Unit, modifi
             value = query, onValueChange = { query = it },
             placeholder = { Text(stringResource(R.string.w4_search_hint), style = type.bodyMd) },
             singleLine = true,
+            // Píldora con lupa y deslizadores como en iOS (W5); los
+            // deslizadores abren la búsqueda por color, como el botón de
+            // la cabecera.
+            shape = RoundedCornerShape(50),
+            leadingIcon = {
+                Icon(SolarIconSearch, contentDescription = null, tint = colors.secondary, modifier = Modifier.size(20.dp))
+            },
+            trailingIcon = {
+                IconButton(onClick = { showColorSearch = true }) {
+                    Icon(SolarIconSliders, contentDescription = stringResource(R.string.w4_search_by_color), tint = colors.secondary, modifier = Modifier.size(20.dp))
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(horizontal = SolarSpacing.margin, vertical = SolarSpacing.sm)
                 .semantics { contentDescription = "rejilla.search" },
         )
@@ -131,7 +144,7 @@ private fun GridList(container: AppContainer, onOpenCombo: (Int) -> Unit, modifi
         }
         if (parsed is GridQuery.Hex && nearest != null) {
             val c = dict.color(nearest.first)
-            Text(stringResource(R.string.w4_nearest_color, c?.name ?: "", "ΔE %.2f".format(nearest.second), dict.combosContaining(nearest.first).size),
+            Text(stringResource(R.string.w4_nearest_color, c?.name ?: "", String.format(Locale.ROOT, "ΔE %.2f", nearest.second), dict.combosContaining(nearest.first).size),
                 style = type.bodySm, color = colors.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = SolarSpacing.margin, vertical = SolarSpacing.xs))
         }
@@ -169,14 +182,31 @@ private fun RandomCard(container: AppContainer, comboId: Int, unlocked: Boolean,
     val comboColors = remember(comboId) { dict.colorsOf(comboId) }
     SolarCard(Modifier.fillMaxWidth().clickable { onOpen() }) {
         Column(verticalArrangement = Arrangement.spacedBy(SolarSpacing.md)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.w4_random).uppercase(), style = type.overline, color = colors.secondary)
-                Text(stringResource(R.string.w4_combo_number, comboId), style = type.hex, color = colors.wellTextSecondary)
-            }
+            // Titular y cuerpo como la tarjeta «Al azar» de iOS (W5).
+            Text("✳ " + stringResource(R.string.w4_random).uppercase() + " ✦", style = type.overline, color = colors.secondary)
+            Text(stringResource(R.string.w5_random_headline), style = type.headlineMd, color = colors.primary)
+            Text(stringResource(R.string.w5_random_body, dict.combinations.size), style = type.bodyMd, color = colors.onSurfaceVariant)
             WellContainer(Modifier.fillMaxWidth()) { SwatchStrip(comboColors.map { it.argb }, height = SolarSizes.gridStripes) }
-            Text(dict.curatedName(comboId) ?: comboColors.joinToString(" + ") { it.name }, style = type.headlineSm, color = colors.onSurface)
-            if (!unlocked) Text(stringResource(R.string.w4_status_locked), style = type.labelSm, color = colors.onSurfaceVariant)
-            SolarPrimaryButton(stringResource(R.string.w4_another), onClick = onAnother, icon = SolarIconSparkles)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(dict.curatedName(comboId) ?: comboColors.joinToString(" + ") { it.name }, style = type.labelMd, color = colors.primary)
+                    Text(
+                        stringResource(R.string.w4_combo_number, comboId) +
+                            if (!unlocked) " · " + stringResource(R.string.w4_status_locked) else "",
+                        style = type.labelSm, color = colors.onSurfaceVariant,
+                    )
+                }
+                // Píldora verde oscura «Otra» (en iOS no es el botón marrón ancho).
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(colors.primary).clickable { onAnother() }
+                        .padding(horizontal = SolarSpacing.md, vertical = SolarSpacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(SolarSpacing.xs),
+                ) {
+                    Icon(SolarIconSparkles, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.w4_another), style = type.labelMd, color = colors.onPrimary)
+                }
+            }
         }
     }
 }
@@ -236,7 +266,7 @@ fun ComboDetailScreen(
                         Column(Modifier.weight(1f)) {
                             Text(c.name, style = type.cardTitle, color = colors.onSurface)
                             val lab = remember(c.index) { runCatching { ColorMath.srgbToLab(c.rgb[0], c.rgb[1], c.rgb[2]) }.getOrNull() }
-                            Text("${c.hex} · rgb ${c.rgb.joinToString(",")}" + (lab?.let { " · Lab %.1f %.1f %.1f".format(it.l, it.a, it.b) } ?: ""),
+                            Text("${c.hex} · rgb ${c.rgb.joinToString(",")}" + (lab?.let { String.format(Locale.ROOT, " · Lab %.1f %.1f %.1f", it.l, it.a, it.b) } ?: ""),
                                 style = type.hex, color = colors.wellTextSecondary)
                             Text(stringResource(R.string.w4_color_in_combos, dict.combosContaining(c.index).size), style = type.labelSm, color = colors.onSurfaceVariant)
                         }
@@ -342,7 +372,7 @@ private fun ColorSearchSheet(container: AppContainer, onClose: () -> Unit, onSho
                         WellContainer(Modifier.fillMaxWidth()) {
                             SwatchStrip(listOf((0xFF shl 24) or (rgb!![0] shl 16) or (rgb[1] shl 8) or rgb[2], c.argb), height = 72.dp)
                         }
-                        Text(stringResource(R.string.w4_nearest_color, c.name, "ΔE %.2f".format(near.second),
+                        Text(stringResource(R.string.w4_nearest_color, c.name, String.format(Locale.ROOT, "ΔE %.2f", near.second),
                             container.dictionary.combosContaining(near.first).size), style = type.bodyMd, color = colors.onSurface)
                         SolarSecondaryButton(stringResource(R.string.w4_show_in_grid), onClick = { onShowInGrid(n) })
                     }

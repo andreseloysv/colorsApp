@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +64,7 @@ import com.andreseloy.colorsapp.design.SolarCard
 import com.andreseloy.colorsapp.design.SolarChip
 import com.andreseloy.colorsapp.design.SolarHeader
 import com.andreseloy.colorsapp.design.SolarHeaderButton
+import com.andreseloy.colorsapp.design.SolarHeaderCreatureButton
 import com.andreseloy.colorsapp.design.SolarIconLeaf
 import com.andreseloy.colorsapp.design.SolarIconSparkles
 import com.andreseloy.colorsapp.design.SolarIconSun
@@ -113,6 +115,7 @@ fun FeedScreen(
     onAnalyzePhoto: () -> Unit,
     onOpenGarden: () -> Unit,
     onShowGridFromScan: () -> Unit,
+    onOpenLayers: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -318,7 +321,9 @@ fun FeedScreen(
             model = model,
             dictionary = dictionary,
             onBack = { reopenedModel = null },
-            onOpenLayers = null,
+            // Como en iOS: desde el resultado reabierto se entra en Capas
+            // (ScanAnalyzer.analyze ya dejó la entrada en LayerInputHolder).
+            onOpenLayers = onOpenLayers,
             modifier = modifier,
         )
         W3ToastHost(toast)
@@ -333,14 +338,15 @@ fun FeedScreen(
             }
             val newUnlocks = maxOf(0, unlockedIds.size - maxOf(0, gardenSeen))
             SolarHeader(section = stringResource(R.string.section_feed)) {
-                SolarHeaderButton(
-                    icon = SolarIconSun,
+                // Sol-espíritu y avatar del Jardín de iOS (FIDELITY §2.2).
+                SolarHeaderCreatureButton(
+                    creature = com.andreseloy.colorsapp.design.BrandCreature.SEED,
                     contentDescription = stringResource(R.string.w3_analyze_photo),
                     onClick = onAnalyzePhoto,
                 )
                 Box {
-                    SolarHeaderButton(
-                        icon = SolarIconLeaf,
+                    SolarHeaderCreatureButton(
+                        creature = com.andreseloy.colorsapp.design.BrandCreature.SPROUT,
                         contentDescription = stringResource(R.string.tab_garden),
                         onClick = {
                             gardenSeen = unlockedIds.size
@@ -661,17 +667,17 @@ fun FeedDayCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(SolarSpacing.xs),
                 ) {
+                    // Sol pequeño antes del rótulo, como en iOS.
+                    Icon(
+                        SolarIconSun, contentDescription = null,
+                        tint = colors.secondary, modifier = Modifier.size(14.dp),
+                    )
                     Text(
                         text = stringResource(
                             if (isToday) R.string.w3_day_combo else R.string.w3_random_combo,
                         ).uppercase(),
                         style = type.overline, color = colors.secondary,
                     )
-                    if (isToday) {
-                        Box(
-                            Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF2DD4BF)),
-                        )
-                    }
                 }
                 Box(
                     Modifier

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W5 (pulido e integración). Alemán, del catálogo de iOS. -->
+<resources>
+    <string name="w5_random_headline">Lass die Sonne deine Kombination wählen</string>
+    <string name="w5_random_body">Eine der %1$d von Sanzo Wada für dein nächstes Kleidungsstück. Tipp ihre Farben an, um sie zu öffnen.</string>
+</resources>

@@ -93,8 +93,8 @@ import com.andreseloy.colorsapp.feature.extract.garmentShortLabel
 import com.andreseloy.colorsapp.feature.extract.numberLabel
 import com.andreseloy.colorsapp.feature.extract.percentText
 import com.andreseloy.colorsapp.feature.feed.FeedComboName
-import com.andreseloy.colorsapp.feature.feed.W3IconClose
-import com.andreseloy.colorsapp.feature.feed.W3IconShare
+import com.andreseloy.colorsapp.design.SolarIconClose
+import com.andreseloy.colorsapp.design.SolarIconShare
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -498,7 +498,7 @@ fun ShareCardSheet(
         ) {
             SolarHeader(section = stringResource(R.string.w3_share_card)) {
                 SolarHeaderButton(
-                    icon = W3IconClose,
+                    icon = SolarIconClose,
                     contentDescription = stringResource(R.string.w3_close),
                     onClick = onDismiss,
                 )
@@ -577,7 +577,7 @@ fun ShareCardSheet(
                 if (image != null) {
                     SolarPrimaryButton(
                         text = stringResource(R.string.w3_share_send),
-                        icon = W3IconShare,
+                        icon = SolarIconShare,
                         onClick = {
                             scope.launch(Dispatchers.IO) {
                                 val dir = File(context.cacheDir, "share").apply { mkdirs() }

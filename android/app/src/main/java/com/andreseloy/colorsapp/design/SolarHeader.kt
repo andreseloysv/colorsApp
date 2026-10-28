@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.andreseloy.colorsapp.R
 
@@ -79,7 +81,34 @@ fun SolarHeader(
     }
 }
 
-/** Botón circular de cabecera de 44 dp (headerButton de iOS). */
+/**
+ * Botón de cabecera con personaje de marca (W5): el sol-espíritu y el avatar
+ * del Jardín de iOS (FIDELITY §2.2). Mismo círculo y pulsación que
+ * SolarHeaderButton; el personaje es decorativo y habla la descripción.
+ */
+@Composable
+fun SolarHeaderCreatureButton(
+    creature: BrandCreature,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SolarTheme.colors
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .size(SolarSizes.headerButton)
+            .solarPress(interaction, 0.95f)
+            .clip(CircleShape)
+            .background(colors.card)
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        BrandCreatureIcon(creature, size = 30.dp)
+    }
+}
+
 @Composable
 fun SolarHeaderButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W5 (pulido e integración). Español fuente, textos copiados de
+     ios/ColorsApp/Localizable.xcstrings. -->
+<resources>
+    <string name="w5_random_headline">Deja que el sol elija tu combinación</string>
+    <string name="w5_random_body">Una de las %1$d de Sanzo Wada para tu próxima prenda. Toca sus colores para abrirla.</string>
+</resources>

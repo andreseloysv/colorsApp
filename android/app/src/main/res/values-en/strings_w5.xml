@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W5 (pulido e integración). Inglés, del catálogo de iOS. -->
+<resources>
+    <string name="w5_random_headline">Let the sun pick your combination</string>
+    <string name="w5_random_body">One of Sanzo Wada\'s %1$d for your next garment. Tap its colors to open it.</string>
+</resources>

@@ -36,7 +36,7 @@ import com.andreseloy.colorsapp.feature.grid.writeShareFile
 private enum class GardenSegment { HARVESTS, SAVED }
 
 @Composable
-fun W4GardenScreen(container: AppContainer, onOpenLayers: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun W4GardenScreen(container: AppContainer, onOpenLayers: () -> Unit = {}, onOpenSettings: () -> Unit = {}, modifier: Modifier = Modifier) {
     var selectedId by remember { mutableStateOf<Int?>(null) }
     if (selectedId != null) {
         ComboDetailScreen(container, selectedId!!, onBack = { selectedId = null }, onOpenLayers = onOpenLayers,
@@ -72,12 +72,18 @@ fun W4GardenScreen(container: AppContainer, onOpenLayers: () -> Unit = {}, modif
                     Column(verticalArrangement = Arrangement.spacedBy(SolarSpacing.sm)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(SolarSpacing.md)) {
                             ToneBadgeIcon(SolarIconLeaf, SolarTone.MOSS, null, size = SolarSizes.profileBadge)
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.w4_progress, unlocks.size, dict.combinations.size), style = type.headlineSm, color = colors.onSurface)
                                 Text("${stringResource(R.string.w4_photos_analyzed)}: ${scans.size}", style = type.bodySm, color = colors.onSurfaceVariant)
                                 if (accuracy != null) Text(stringResource(R.string.w4_accuracy, accuracy, feedbackCounts.first, feedbackCounts.first + feedbackCounts.second),
                                     style = type.bodySm, color = colors.primary)
                             }
+                            // Engranaje a Ajustes, como GardenProfileCard de iOS.
+                            SolarHeaderButton(
+                                icon = SolarIconGear,
+                                contentDescription = stringResource(R.string.settings_title),
+                                onClick = onOpenSettings,
+                            )
                         }
                         if (topColors.isNotEmpty()) {
                             Text(stringResource(R.string.w4_top_colors).uppercase(), style = type.overline, color = colors.secondary)

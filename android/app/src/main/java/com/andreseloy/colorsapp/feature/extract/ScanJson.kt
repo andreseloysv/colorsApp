@@ -19,6 +19,7 @@ import com.andreseloy.colorsapp.subject.MaskStep
 import com.andreseloy.colorsapp.subject.RegionMode
 import com.andreseloy.colorsapp.subject.SubjectMaskResult
 import com.andreseloy.colorsapp.subject.SubjectOptions
+import java.util.Locale
 
 /** Lo que se persiste del recorte de un scan (ScanSubjectInfo de iOS). */
 data class ScanSubjectInfo(
@@ -59,7 +60,7 @@ object ScanJson {
                 '\n' -> append("\\n")
                 '\r' -> append("\\r")
                 '\t' -> append("\\t")
-                else -> if (c.code < 0x20) append("\\u%04x".format(c.code)) else append(c)
+                else -> if (c.code < 0x20) append(String.format(Locale.ROOT, "\\u%04x", c.code)) else append(c)
             }
         }
     }

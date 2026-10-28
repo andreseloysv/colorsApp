@@ -30,6 +30,7 @@ import com.andreseloy.colorsapp.subject.RegionMode
 import com.andreseloy.colorsapp.subject.SubjectMode
 import com.andreseloy.colorsapp.subject.SubjectSettings
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 internal fun W4TopBar(title: String, onBack: () -> Unit) {
@@ -124,7 +125,12 @@ fun W4SettingsScreen(
                     Switch(checked = subject.adaptiveSkin, onCheckedChange = { save(subject.copy(adaptiveSkin = it)) })
                 }
             }
-            SectionCard(stringResource(R.string.w4_unlock_section), "%.1f".format(subject.unlockMaxScore), stringResource(R.string.w4_unlock_footer)) {
+            // Valor visible junto al deslizador = texto de UI: localizado
+            // («12,0» en es, como la prosa del pie). Lo legible por máquina
+            // (JSON/CSV/diagnóstico) va en Locale.ROOT en sus sitios.
+            SectionCard(stringResource(R.string.w4_unlock_section),
+                com.andreseloy.colorsapp.feature.extract.W3Format.number(subject.unlockMaxScore, 1, Locale.getDefault()),
+                stringResource(R.string.w4_unlock_footer)) {
                 Slider(value = subject.unlockMaxScore.toFloat(), onValueChange = { subject = subject.copy(unlockMaxScore = it.toDouble()) },
                     onValueChangeFinished = { save(subject) }, valueRange = 0f..30f, steps = 59)
             }

@@ -29,6 +29,7 @@ import com.andreseloy.colorsapp.engine.PALETTE_LABEL_NONE
 import com.andreseloy.colorsapp.engine.PaletteDebugLayers
 import com.andreseloy.colorsapp.engine.PixelFormat
 import com.andreseloy.colorsapp.subject.SubjectMaskResult
+import com.andreseloy.colorsapp.feature.layers.LayerInputHolder
 import com.andreseloy.colorsapp.subject.SubjectOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -201,6 +202,10 @@ object ScanAnalyzer {
         } finally {
             engine.close()
         }
+        // El inspector de capas (W4) lee de aquí: cada análisis mostrado
+        // (Extraer, reapertura del Feed, cambio de persona) deja su raster
+        // con máscara y su resultado de sujeto reales.
+        LayerInputHolder.set(raster, subject)
         ScanAnalysis(
             raster = raster, options = options, subject = subject, result = result,
             debug = debug, garments = garments, garmentRegionCount = regionCount,
