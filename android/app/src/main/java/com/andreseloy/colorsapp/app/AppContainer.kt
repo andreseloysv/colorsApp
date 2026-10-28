@@ -92,10 +92,11 @@ class AppContainer(
     }
 
     companion object {
-        /** Arranque real: diccionario JSON de los assets (con los nombres
-         *  curados del idioma y el chequeo dict_version contra el motor),
-         *  repositorios Room sobre colors.sqlite, contador de lanzamientos
-         *  y runner inerte. No pide ningún permiso. */
+        /** Arranque real: diccionario JSON de los assets (nombres curados del idioma y
+         *  chequeo dict_version contra el motor), repositorios Room sobre colors.sqlite,
+         *  contador de lanzamientos, detector de personas de MediaPipe (perezoso: los
+         *  modelos solo se cargan al primer análisis), fuente MediaStore y runner del
+         *  escaneo día 0. No pide ningún permiso. */
         fun bootstrap(context: Context): AppContainer {
             val launches = LaunchCounter.increment(context)
             val dictionary = JsonWadaDictionary.load(context)
@@ -104,15 +105,30 @@ class AppContainer(
             }
             val database = ColorsDatabase.open(context)
             val versions = EngineVersions.fromEngine()
+            val scans = RoomScanRepository(database, versions)
+            val unlocks = RoomUnlockRepository(database)
+            val settings = RoomSettingsRepository(database)
+            val appContext = context.applicationContext
+            val photoLibrary = com.andreseloy.colorsapp.scan.MediaStorePhotoLibrarySource(appContext)
+            val segmenter = com.andreseloy.colorsapp.subject.SubjectChainSegmenter(
+                com.andreseloy.colorsapp.subject.MediaPipePersonDetector(appContext),
+            )
             return AppContainer(
                 dictionary = dictionary,
-                scans = RoomScanRepository(database, versions),
-                unlocks = RoomUnlockRepository(database),
+                scans = scans,
+                unlocks = unlocks,
                 feedback = RoomFeedbackRepository(database),
-                settings = RoomSettingsRepository(database),
-                photoLibrary = EmptyPhotoLibrarySource(),
-                subjectSegmenter = WholePhotoSubjectSegmenter(),
-                scanRunner = NoopScanRunner(),
+                settings = settings,
+                photoLibrary = photoLibrary,
+                subjectSegmenter = segmenter,
+                scanRunner = com.andreseloy.colorsapp.scan.MediaStoreScanRunner(
+                    scans = scans,
+                    unlocks = unlocks,
+                    settings = settings,
+                    dictionary = dictionary,
+                    photoLibrary = photoLibrary,
+                    segmenter = segmenter,
+                ),
                 launches = launches,
             )
         }

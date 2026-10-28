@@ -6,7 +6,29 @@
      el selector de fotos del sistema (sin permiso) y, para el escaneo del
      carrete, READ_MEDIA_IMAGES / acceso limitado (ver docs/ANDROID.md).
      Solo vertical, como iOS (UISupportedInterfaceOrientations = Portrait). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Sin red también frente a dependencias: tasks-visión arrastra
+         datatransport, cuyo manifiesto pide ACCESS_NETWORK_STATE (y su
+         backend CCT, ya excluido en Gradle, INTERNET). Se eliminan en la
+         fusión; make android-lint lo verifica en el APK release. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <!-- Carril W2: permisos mínimos, pedidos en contexto (nunca al arrancar).
+         El selector de fotos del sistema no necesita permiso; estos son solo
+         para el escaneo del carrete. SIN INTERNET. Sin permiso CAMERA a propósito:
+         la foto se hace con el intent de la cámara del sistema (W3), y declarar
+         CAMERA sin concederlo hace que ese intent lance SecurityException. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <!-- W3: visibilidad del intent de camara del sistema (sin permiso CAMERA:
          la foto la hace la app de camara via TakePicture). -->

@@ -36,3 +36,6 @@ ios/Signing.xcconfig
 
 # iOS: DerivedData de xcodebuild (mk/ios.mk usa -derivedDataPath build-ios/)
 *.xcresult
+
+# Android: salidas de CMake/NDK y de Gradle (regenerables)
+.cxx/

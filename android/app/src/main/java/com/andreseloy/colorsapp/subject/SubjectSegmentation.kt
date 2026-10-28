@@ -107,7 +107,29 @@ class PersonDetection(
     val semanticMap: MaskBuffer? = null,
     /** Confianza global de la instancia [0, 1]. */
     val confidence: Float = 1f,
-)
+    // --- Aditivo (carril W2): lo que PersonInstance de SubjectKit lleva y la
+    // cadena necesita; con valores por defecto para no romper a otros carriles.
+    /** Id estable dentro de la foto (1..n; desempate al ordenar por cobertura). */
+    val id: Int = 0,
+    /** Muestra de piel de la cara (255 en mejillas/frente), si se construyó. */
+    val faceSampleMask: MaskBuffer? = null,
+    /** Landmarks de la cara asociada (para (re)construir la muestra de piel). */
+    val faceLandmarks: FaceLandmarkPoints? = null,
+    /** Id de la instancia origen si esta persona se separó de una fusionada. */
+    val splitFrom: Int? = null,
+) {
+    /** Caja de la cara en píxeles del raster (desde [face]), o null sin cara. */
+    val faceBox: RectD? get() = face?.let {
+        RectD(
+            it.left.toDouble(), it.top.toDouble(),
+            (it.right - it.left).toDouble(), (it.bottom - it.top).toDouble(),
+        )
+    }
+
+    /** Paso de separación de esta persona, como PersonInstance.splitStep. */
+    val splitStep: MaskStep? get() =
+        if (splitFrom == null) null else if (pose != null) MaskStep.SPLIT_BY_POSE else MaskStep.SPLIT_BY_FACE
+}
 
 /**
  * Detector de personas de plataforma (VisionDetector en SubjectKit). Lo
@@ -123,7 +145,9 @@ interface PersonDetector {
     suspend fun detect(image: EngineImage): List<PersonDetection>
 }
 
-/** Opciones de la cadena (SubjectOptions de SubjectKit, resumidas). */
+/** Opciones de la cadena (SubjectOptions de SubjectKit; los campos tras
+ *  minRegionFraction los añadió el carril W2 con los valores por defecto
+ *  exactos del Swift, para que la cadena portada sea literal). */
 data class SubjectOptions(
     val mode: SubjectMode = SubjectMode.LARGEST_PERSON,
     val region: RegionMode = RegionMode.CLOTHING,
@@ -135,6 +159,28 @@ data class SubjectOptions(
     val skinOptions: SkinOptions = DEFAULT_SKIN_OPTIONS,
     val minCoverage: Double = 0.0005,
     val minRegionFraction: Double = 0.15,
+    /** Fracción de píxeles de brazo que deben ser piel para quitar los brazos. */
+    val bareArmsSkinFraction: Double = 0.25,
+    /** Pasadas de aprendizaje de la piel del cuerpo (0 = nunca). */
+    val skinLearningIterations: Int = 2,
+    /** Mahalanobis de los píxeles que amplían la muestra al aprender. */
+    val skinLearningMahalanobis: Double = 3.0,
+    /** Halo Chebyshev (px) alrededor de la piel quitada. */
+    val skinHaloRadius: Int = 2,
+    /** Crecimiento de la piel en sombra: Mahalanobis débil conectado. */
+    val skinGrowMahalanobis: Double = 5.0,
+    /** Pasos máximos del crecimiento desde la piel quitada. */
+    val skinGrowRadius: Int = 12,
+    /** El crecimiento no supera esta fracción de la piel quitada. */
+    val skinGrowMaxRatio: Double = 0.5,
+    /** Sin modelo de piel: fracción de brazo parecida al torso para ser manga. */
+    val sleeveMatchFraction: Double = 0.7,
+    /** Mahalanobis de la prueba de mangas. */
+    val sleeveMatchMahalanobis: Double = 2.0,
+    /** Evidencia corporal anti-fantasmas (la aplica el detector). */
+    val phantomOptions: PhantomOptions = PhantomOptions(),
+    /** Separación de personas fusionadas (la aplica el detector). */
+    val splitOptions: SplitOptions = SplitOptions(),
 ) {
     companion object {
         /** Preajuste de SubjectKit: Mahalanobis 2,75 (el motor trae 2,5; ADR-010). */
@@ -148,6 +194,15 @@ class PersonInstanceResult(
     val coverage: Double,
     val finalMask: MaskBuffer?,
     val garmentRegions: MaskBuffer? = null,
+    // Aditivo (W2): lo que las capas y el selector de persona necesitan.
+    /** Máscara de instancia original (blanda) de la que sale esta persona. */
+    val instanceMask: MaskBuffer? = null,
+    /** Pose asociada en píxeles del raster, si la hay. */
+    val pose: Pose? = null,
+    /** Id de la instancia origen si se separó de una fusionada. */
+    val splitFrom: Int? = null,
+    /** Pasos de la cadena de esta persona. */
+    val steps: List<MaskStep> = emptyList(),
 )
 
 /** Resultado completo de la cadena (SubjectMaskResult de SubjectKit). */
@@ -164,6 +219,11 @@ class SubjectMaskResult(
     val garmentRegions: MaskBuffer? = null,
     val steps: List<MaskStep> = emptyList(),
     val timingsMs: Map<String, Double> = emptyMap(),
+    // Aditivo (W2): capas del inspector y fantasmas descartadas, como en iOS.
+    /** Capas por etapa (personas, pose, piel, prendas…), si se calcularon. */
+    val layers: SubjectLayers? = null,
+    /** Instancias descartadas sin evidencia corporal (paso REJECTED_PHANTOM). */
+    val rejectedPhantoms: List<PersonInstanceResult> = emptyList(),
 ) {
     val maskCoverage: Double get() = mask?.coverage() ?: 0.0
 }

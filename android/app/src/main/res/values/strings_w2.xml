@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W2 (sujeto y escaneo). Textos EXACTOS del catálogo de iOS
+     (ios/ColorsApp/Localizable.xcstrings, clave = texto español). -->
+<resources>
+    <string name="w2_no_photos_access">Sin acceso a Fotos</string>
+    <string name="w2_limited_photos_access">Acceso limitado a Fotos: el escaneo del carrete necesita acceso completo.</string>
+    <string name="w2_requesting_photos_access">Pidiendo acceso a Fotos…</string>
+    <string name="w2_scanning_library">Escaneando el carrete</string>
+    <string name="w2_library_scan">Escaneo del carrete</string>
+    <string name="w2_scan_library">Escanear carrete</string>
+    <string name="w2_analyzing_library_photos">Analizando %1$d/%2$d fotos del carrete</string>
+    <string name="w2_allow_photos_in_settings">Para escanear el carrete, permite el acceso a Fotos en Ajustes &gt; %1$s. Las fotos se analizan solo en el teléfono.</string>
+</resources>

@@ -1,1 +1,0 @@
-/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64
