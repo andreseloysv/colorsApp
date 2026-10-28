@@ -34,9 +34,12 @@ import com.andreseloy.colorsapp.design.SolarTabItem
 import com.andreseloy.colorsapp.design.SolarTheme
 import com.andreseloy.colorsapp.feature.ExtractScreen
 import com.andreseloy.colorsapp.feature.FeedScreen
-import com.andreseloy.colorsapp.feature.GardenScreen
-import com.andreseloy.colorsapp.feature.GridScreen
-import com.andreseloy.colorsapp.feature.SettingsScreen
+import com.andreseloy.colorsapp.feature.garden.W4GardenScreen
+import com.andreseloy.colorsapp.feature.grid.W4GridScreen
+import com.andreseloy.colorsapp.feature.layers.LayersScreen
+import com.andreseloy.colorsapp.feature.settings.AboutScreen
+import com.andreseloy.colorsapp.feature.settings.FontLicensesScreen
+import com.andreseloy.colorsapp.feature.settings.W4SettingsScreen
 import com.andreseloy.colorsapp.scan.ScanProgress
 
 /** Rutas de la app (AppTab de iOS + secundarias). */
@@ -47,6 +50,8 @@ object Routes {
     const val GARDEN = "garden"
     const val SETTINGS = "settings"
     const val LICENSES = "licenses"
+    const val ABOUT = "about"
+    const val LAYERS = "layers"
     val TABS = listOf(FEED, EXTRACT, GRID, GARDEN)
 }
 
@@ -120,22 +125,34 @@ fun ChromaSolApp(
                 ExtractScreen(container = container)
             }
             composable(Routes.GRID) {
-                GridScreen(container = container)
+                W4GridScreen(container = container, onOpenLayers = { navController.navigate(Routes.LAYERS) })
             }
             composable(Routes.GARDEN) {
-                GardenScreen(container = container)
+                W4GardenScreen(container = container, onOpenLayers = { navController.navigate(Routes.LAYERS) })
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(
+                W4SettingsScreen(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    onOpenLicenses = { navController.navigate(Routes.LICENSES) },
+                    onOpenAbout = { navController.navigate(Routes.ABOUT) },
+                    onOpenLayers = { navController.navigate(Routes.LAYERS) },
+                )
+            }
+            composable(Routes.LICENSES) {
+                FontLicensesScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(Routes.ABOUT) {
+                AboutScreen(
                     container = container,
                     onBack = { navController.popBackStack() },
                     onOpenLicenses = { navController.navigate(Routes.LICENSES) },
                 )
             }
-            composable(Routes.LICENSES) {
-                com.andreseloy.colorsapp.feature.LicensesScreen(
-                    onBack = { navController.popBackStack() },
-                )
+            composable(Routes.LAYERS) {
+                LayersScreen(container = container, onBack = { navController.popBackStack() })
             }
         }
     }
