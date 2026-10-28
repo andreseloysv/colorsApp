@@ -107,6 +107,11 @@ android-bundle: android-local-properties
 	else \
 	  echo "AAB sin firmar: $(ANDROID_AAB) (define CHROMASOL_KEYSTORE_PATH/ALIAS/PASSWORD para firmar; con Play App Signing se sube así)"; \
 	fi
+	@$(MAKE) --no-print-directory android-16kb-check
+
+# Play rechaza releases cuyas librerías nativas no admiten páginas de 16 KB (Android 15+).
+android-16kb-check:
+	$(ANDROID_DIR)/tools/check_16kb.sh $(ANDROID_AAB) $$(ls $(ANDROID_SDK)/ndk/*/toolchains/llvm/prebuilt/*/bin/llvm-readelf | tail -1)
 
 android-icon:
 	python3 $(ANDROID_DIR)/tools/make_icon.py

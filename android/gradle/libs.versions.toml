@@ -22,13 +22,16 @@ espresso = "3.7.0"
 # (carril W2): reutilizar una tarea muere con "Packet timestamp mismatch"
 # en norm_rect_in, la máscara float de pose falla al empaquetarse en
 # algunos tamaños y el InteractiveSegmenterLegacy ignora la ROI (máscara
-# idéntica para cualquier punto). tensorflow-lite 2.17.0 (W6).
+# idéntica para cualquier punto). Intérprete de YuNet: LiteRT 1.4.0 (sucesor de
+# tensorflow-lite con la misma API org.tensorflow.lite). tensorflow-lite 2.17.0
+# traía libtensorflowlite_jni.so de x86_64 alineada a 4 KB y Play rechaza la
+# release por no admitir páginas de 16 KB; LiteRT 1.4.0 alinea todas las ABI a 16 KB.
 mediapipeTasksVision = "0.10.35"
-tensorflowLite = "2.17.0"
+tensorflowLite = "1.4.0"
 
 [libraries]
 mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipeTasksVision" }
-tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
+tensorflow-lite = { module = "com.google.ai.edge.litert:litert", version.ref = "tensorflowLite" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
