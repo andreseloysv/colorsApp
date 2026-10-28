@@ -1,0 +1,24 @@
+ChromaSol schaut sich ein Foto an, isoliert die Personen, lässt die Haut weg und reduziert die Kleidung auf ihre echten Farben: eine Farbe pro Kleidungsstück, ohne dass Licht und Schatten sie in mehrere Töne zerlegen. Dann sucht es unter den 348 Kombinationen aus Sanzo Wadas Dictionary of Color Combinations (1933-1934) die ähnlichste und zeigt sie dir mit ihren Originalnamen.
+
+Was die App kann
+- Analysiere ein Foto aus deiner Galerie oder ein neues Foto und erhalte die nächste Wada-Kombination, mit Alternativen und einer Einschätzung, wie sicher das Ergebnis ist.
+- Fotos mit mehreren Personen: jede wird erkannt und ihre Kleidung getrennt analysiert.
+- Extrahieren: Schritt für Schritt nachvollziehen, wie das Ergebnis entstanden ist (Ausschnitt, Haut, Kleidungsstücke und Palette).
+- Raster: alle 348 Kombinationen des Wörterbuchs mit eigenem Namen und Markierung, welche du schon getragen hast; die Kombination des Tages erscheint wie auf den Buchseiten.
+- Garten: deine Sammlung freigeschalteter und gespeicherter Kombinationen.
+- Teilbare Karte mit deiner Palette und der Nummer der Kombination.
+
+Datenschutz und Offline-Nutzung
+Die gesamte Analyse läuft auf deinem Telefon, und die App funktioniert offline. Sie hat keinen Server, braucht kein Konto und nutzt kein Netz: kein Foto und keine Daten verlassen das Gerät. Sie greift nur auf die Fotos zu, die du auswählst, oder auf deine Galerie, wenn du es erlaubst, und funktioniert auch mit eingeschränktem Zugriff auf einzelne Fotos.
+
+Preis
+Einmaliger Kauf. Keine Werbung, keine In-App-Käufe und kein Abo.
+
+So werden die Farben berechnet
+CIELAB-Farbmetrik (D65) mit CIEDE2000-Abständen, deterministische Palettenextraktion und Abgleich mit dem Wörterbuch. Dieselben Ergebnisse auf jedem Telefon, jedes Mal.
+
+Sprachen
+Deutsch, Spanisch und Englisch, je nach Systemsprache deines Geräts.
+
+Credits
+Sanzo Wada (1883-1967), A Dictionary of Color Combinations, Seigensha-Ausgabe (2011). Schriften Literata und Plus Jakarta Sans (SIL Open Font License).

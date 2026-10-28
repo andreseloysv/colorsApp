@@ -1,0 +1,24 @@
+ChromaSol mira una foto, aísla a las personas, deja fuera la piel y reduce la ropa a sus colores reales: un color por prenda, sin que la luz y las sombras la partan en varios tonos. Después busca entre las 348 combinaciones del Diccionario de Combinaciones de Color de Sanzo Wada (1933-1934) la más parecida y te la enseña con sus nombres originales.
+
+Qué hace
+- Analiza una foto de tu galería o una foto nueva y te propone la combinación de Wada más cercana, con las alternativas y el grado de seguridad del resultado.
+- Fotos con varias personas: reconoce a cada una y analiza su ropa por separado.
+- Extraer: inspecciona paso a paso cómo se llegó al resultado (recorte, piel, prendas y paleta) para entender cada decisión.
+- Rejilla: las 348 combinaciones del diccionario, con nombre propio y con las que ya has llevado marcadas; la combinación del día se ve como en las páginas del libro.
+- Jardín: tu colección de combinaciones desbloqueadas y guardadas.
+- Tarjeta compartible con tu paleta y el número de combinación.
+
+Privacidad y uso sin conexión
+Todo el análisis ocurre en tu teléfono y la app funciona sin conexión. No tiene servidor, no requiere cuenta y no usa la red: ninguna foto ni ningún dato sale del dispositivo. Solo accede a las fotos que tú eliges, o a tu galería si se lo permites, y funciona también con un acceso limitado a unas fotos concretas.
+
+Precio
+Pago único. Sin anuncios, sin compras dentro de la app y sin suscripción.
+
+Cómo calcula los colores
+Colorimetría CIELAB (D65) con distancias CIEDE2000, extracción determinista de la paleta y comparación contra el diccionario. Los mismos resultados en cada teléfono, siempre.
+
+Idiomas
+Español, alemán e inglés, según el idioma del sistema de tu dispositivo.
+
+Créditos
+Sanzo Wada (1883-1967), A Dictionary of Color Combinations, edición de Seigensha (2011). Tipografías Literata y Plus Jakarta Sans (SIL Open Font License).
