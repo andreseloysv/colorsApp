@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deutsch. Übersetzungen aus ios/ColorsApp/Localizable.xcstrings übernommen;
+     die Platzhaltertexte (stub_*) sind neu übersetzt. -->
+<resources>
+    <string name="app_name">ChromaSol</string>
+
+    <string name="tab_feed">Feed</string>
+    <string name="tab_extract">Extrahieren</string>
+    <string name="tab_grid">Raster</string>
+    <string name="tab_garden">Garten</string>
+
+    <string name="section_feed">FEED</string>
+    <string name="section_extract">EXTRAHIEREN</string>
+    <string name="section_grid">RASTER</string>
+    <string name="section_garden">GARTEN</string>
+
+    <string name="feed_combo_of_the_day">KOMBINATION DES TAGES</string>
+    <string name="feed_another_combo">Andere Kombination</string>
+    <string name="feed_filter_all">Alle</string>
+    <string name="feed_filter_2">2 Farben</string>
+    <string name="feed_filter_3">3 Farben</string>
+    <string name="feed_filter_4">4 Farben</string>
+    <string name="feed_empty_title">Deine Galerie in Wada-Kombinationen</string>
+    <string name="feed_empty_body">Analysiere deine Fotos direkt auf dem Telefon und finde die Sanzo-Wada-Farbkombination, die der Kleidung am nächsten kommt. Kein Foto verlässt das Gerät.</string>
+    <string name="feed_analyze_photo">Ein Foto analysieren</string>
+    <string name="feed_combo_number">Nr. %1$d</string>
+    <string name="feed_combo_colors_in_grid">%1$d FARBEN · IN DEINEM RASTER</string>
+
+    <string name="stub_extract_body">Mach ein Foto oder wähle eines aus der Galerie: ChromaSol schneidet die Person frei, liest die Farben ihrer Kleidung und sucht ihre Wada-Kombination.</string>
+    <string name="stub_grid_body">Die 348 Kombinationen aus Sanzo Wadas Buch. Was du in deinen Fotos findest, wird hier freigeschaltet.</string>
+    <string name="stub_garden_body">Deine Sammlung: freigeschaltete Kombinationen, häufige Farben und die Zusammenfassung deiner Galerie.</string>
+    <string name="stub_unlocked_count">%1$d von %2$d Kombinationen</string>
+
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_about">Über die App</string>
+    <string name="settings_licenses">Lizenzen</string>
+    <string name="settings_engine_version">Farb-Engine %1$s</string>
+    <string name="settings_dict_version">Wörterbuch %1$s · %2$d Kombinationen · %3$d Farben</string>
+    <string name="settings_font_licenses_title">Literata und Plus Jakarta Sans (SIL OFL 1.1)</string>
+    <string name="settings_no_network">Kein Netz, keine Konten, keine Analyse-Tracker: Die gesamte Auswertung läuft auf diesem Telefon.</string>
+    <string name="settings_open">Einstellungen öffnen</string>
+    <string name="back">Zurück</string>
+</resources>

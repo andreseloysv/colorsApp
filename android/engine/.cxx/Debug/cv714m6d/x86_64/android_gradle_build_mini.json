@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/andreseloyasanchezva/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/andreseloyasanchezva/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "colorengine::@6890427a1f51a3e7e1df": {
+      "artifactName": "colorengine",
+      "abi": "x86_64",
+      "output": "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64/libcolorengine.so",
+      "runtimeFiles": []
+    }
+  }
+}

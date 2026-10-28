@@ -1,0 +1,1 @@
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/RelWithDebInfo/2r5o4v4e/obj/x86_64

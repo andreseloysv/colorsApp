@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 27+ en oscuro. -->
+<resources>
+    <style name="Theme.ChromaSol" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#15130E</item>
+        <item name="android:statusBarColor">#15130E</item>
+        <item name="android:navigationBarColor">#15130E</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

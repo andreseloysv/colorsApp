@@ -1,0 +1,1 @@
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/arm64-v8a

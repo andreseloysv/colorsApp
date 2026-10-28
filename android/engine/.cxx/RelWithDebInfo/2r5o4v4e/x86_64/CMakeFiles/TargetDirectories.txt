@@ -1,0 +1,3 @@
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/colorengine.dir
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/edit_cache.dir
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/rebuild_cache.dir

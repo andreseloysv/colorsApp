@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arranque en oscuro: fondo "surface" oscuro (#15130E). -->
+<resources>
+    <style name="Theme.ChromaSol" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#15130E</item>
+        <item name="android:statusBarColor">#15130E</item>
+        <item name="android:navigationBarColor">#15130E</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

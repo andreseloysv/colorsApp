@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tema puente para el arranque (ventana antes del primer frame de Compose):
+     fondo "surface" claro del sistema de diseño (#FCF9F1). El aspecto real lo
+     pone ChromaSolTheme en Compose, claro y oscuro. -->
+<resources>
+    <style name="Theme.ChromaSol" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FCF9F1</item>
+        <item name="android:statusBarColor">#FCF9F1</item>
+        <item name="android:navigationBarColor">#FCF9F1</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

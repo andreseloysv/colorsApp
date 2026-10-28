@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Español: idioma fuente, como en iOS (Localizable.xcstrings, sourceLanguage es).
+     Esta carpeta values/ es además el RESPALDO para cualquier otro idioma del
+     sistema: Android la usa cuando no hay values-<idioma> que coincida.
+     Equivale al CFBundleDevelopmentRegion = "es" de iOS, que hace caer los
+     idiomas sin traducción al español. Ver docs/ANDROID.md §Idiomas.
+     Traducciones de/en copiadas de ios/ColorsApp/Localizable.xcstrings. -->
+<resources>
+    <string name="app_name">ChromaSol</string>
+
+    <!-- Pestañas (RootTabView / SolarTabs) -->
+    <string name="tab_feed">Feed</string>
+    <string name="tab_extract">Extraer</string>
+    <string name="tab_grid">Rejilla</string>
+    <string name="tab_garden">Jardín</string>
+
+    <!-- Cabeceras de sección -->
+    <string name="section_feed">FEED</string>
+    <string name="section_extract">EXTRAER</string>
+    <string name="section_grid">REJILLA</string>
+    <string name="section_garden">JARDÍN</string>
+
+    <!-- Feed -->
+    <string name="feed_combo_of_the_day">COMBINACIÓN DEL DÍA</string>
+    <string name="feed_another_combo">Otra combinación</string>
+    <string name="feed_filter_all">Todo</string>
+    <string name="feed_filter_2">2 colores</string>
+    <string name="feed_filter_3">3 colores</string>
+    <string name="feed_filter_4">4 colores</string>
+    <string name="feed_empty_title">Tu carrete, en combinaciones de Wada</string>
+    <string name="feed_empty_body">Analiza tus fotos en el propio teléfono y encuentra la combinación de colores de Sanzo Wada más parecida a la ropa. Ninguna foto sale del dispositivo.</string>
+    <string name="feed_analyze_photo">Analizar una foto</string>
+    <string name="feed_combo_number">N.º %1$d</string>
+    <string name="feed_combo_colors_in_grid">%1$d COLORES · EN TU REJILLA</string>
+
+    <!-- Pantallas en preparación (esqueleto de la fundación) -->
+    <string name="stub_extract_body">Haz una foto o elige una del carrete: ChromaSol recorta a la persona, lee los colores de su ropa y busca su combinación de Wada.</string>
+    <string name="stub_grid_body">Las 348 combinaciones del libro de Sanzo Wada. Las que encuentres en tus fotos se desbloquean aquí.</string>
+    <string name="stub_garden_body">Tu colección: combinaciones desbloqueadas, colores frecuentes y el resumen de tu carrete.</string>
+    <string name="stub_unlocked_count">%1$d de %2$d combinaciones</string>
+
+    <!-- Ajustes / Acerca de -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_licenses">Licencias</string>
+    <string name="settings_engine_version">Motor de color %1$s</string>
+    <string name="settings_dict_version">Diccionario %1$s · %2$d combinaciones · %3$d colores</string>
+    <string name="settings_font_licenses_title">Literata y Plus Jakarta Sans (SIL OFL 1.1)</string>
+    <string name="settings_no_network">Sin red, sin cuentas y sin analítica: todo el análisis ocurre en este teléfono.</string>
+    <string name="settings_open">Abrir ajustes</string>
+    <string name="back">Atrás</string>
+</resources>
