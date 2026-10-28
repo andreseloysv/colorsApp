@@ -41,7 +41,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
+			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
 		},
 		{
 			"isExternal" : true,
@@ -307,7 +307,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -458,14 +458,14 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		}
 	],
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64",
-		"source" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp"
+		"build" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64",
+		"source" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/src/main/cpp"
 	},
 	"version" : 
 	{

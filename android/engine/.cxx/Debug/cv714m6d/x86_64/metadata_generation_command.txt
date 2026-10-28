@@ -1,4 +1,4 @@
-                        -H/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp
+                        -H/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/src/main/cpp
 -DCMAKE_SYSTEM_NAME=Android
 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 -DCMAKE_SYSTEM_VERSION=26
@@ -9,10 +9,10 @@
 -DCMAKE_ANDROID_NDK=/Users/andreseloyasanchezva/Library/Android/sdk/ndk/29.0.14206865
 -DCMAKE_TOOLCHAIN_FILE=/Users/andreseloyasanchezva/Library/Android/sdk/ndk/29.0.14206865/build/cmake/android.toolchain.cmake
 -DCMAKE_MAKE_PROGRAM=/Users/andreseloyasanchezva/Library/Android/sdk/cmake/3.22.1/bin/ninja
--DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64
--DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64
 -DCMAKE_BUILD_TYPE=Debug
--B/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64
+-B/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/Debug/cv714m6d/x86_64
 -GNinja
 -DANDROID_STL=none
                         Build command args: []

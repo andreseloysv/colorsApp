@@ -1,4 +1,4 @@
-# Install script for directory: /Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp
+# Install script for directory: /Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/src/main/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/Debug/cv714m6d/x86_64/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

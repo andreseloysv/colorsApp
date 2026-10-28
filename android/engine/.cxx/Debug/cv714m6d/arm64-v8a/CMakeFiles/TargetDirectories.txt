@@ -1,3 +1,3 @@
-/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/colorengine.dir
-/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/edit_cache.dir
-/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/colorengine.dir
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/integration/android/engine/.cxx/Debug/cv714m6d/arm64-v8a/CMakeFiles/rebuild_cache.dir
