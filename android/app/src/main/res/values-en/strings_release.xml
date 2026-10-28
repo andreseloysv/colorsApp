@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de la publicación en Play: enlace a la política de privacidad desde «Acerca de». -->
+<resources>
+    <string name="rel_privacy_title">Privacy policy</string>
+    <string name="rel_privacy_detail">What the app does with your data: nothing leaves the phone. Opens in your browser.</string>
+    <string name="rel_privacy_url">https://andreseloysv.github.io/colorsApp_public/privacy.en.html</string>
+</resources>

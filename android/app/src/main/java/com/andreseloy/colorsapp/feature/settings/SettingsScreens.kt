@@ -230,6 +230,18 @@ fun AboutScreen(container: AppContainer, onBack: () -> Unit, onOpenLicenses: () 
                     HorizontalDivider(color = colors.outlineVariant)
                 }
                 LinkRow(stringResource(R.string.w4_font_licenses), stringResource(R.string.w4_font_licenses_detail), onOpenLicenses)
+                HorizontalDivider(color = colors.outlineVariant)
+                // Play exige enlazar la política de privacidad dentro de la app. La abre el
+                // navegador del sistema: ChromaSol sigue sin permiso de red.
+                val privacyUrl = stringResource(R.string.rel_privacy_url)
+                LinkRow(stringResource(R.string.rel_privacy_title), stringResource(R.string.rel_privacy_detail)) {
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(privacyUrl))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
             }
             SectionCard(stringResource(R.string.w4_this_build), stringResource(R.string.w4_this_build)) {
                 ValueRow(stringResource(R.string.w4_app_version), "${appVersionName(context)} (${appVersionCode(LocalContext.current)})")
