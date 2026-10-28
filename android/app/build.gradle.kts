@@ -220,11 +220,10 @@ val subjectModels = listOf(
         "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite2/float16/1/efficientdet_lite2.tflite",
         "5d4ebec1029bc9907aeadb9e7b4ac9cb1da6a19d01ad375210a9ae18ba173302", 12_138_859,
     ),
-    SubjectModel(
-        "face_detection_yunet_2023mar.onnx",
-        "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
-        "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4", 232_589,
-    ),
+    // YuNet YA no se descarga (carril W6): el .onnx fijado de OpenCV Zoo
+    // (232.589 B, sha256 8f2383e4…2fa4) se convirtió a TFLite float32 y va
+    // versionado en src/main/assets/models/ (tools/convert_yunet.py lo
+    // regenera verificando ese sha256). Sin ONNX Runtime en la app.
 )
 
 val subjectModelsOut = layout.buildDirectory.dir("generated/subjectModels/assets/models")
@@ -343,7 +342,8 @@ dependencies {
     // release sin permisos de red. Quitar las clases del todo exigiría
     // LiteRT a pelo (informe §2.4): decisión anotada para el dueño.
     implementation(libs.mediapipe.tasks.vision)
-    implementation(libs.onnxruntime.android)
+    // YuNet en TFLite (carril W6; antes ONNX Runtime: ver convert_yunet.py).
+    implementation(libs.tensorflow.lite)
 
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

@@ -9,6 +9,7 @@ package com.andreseloy.colorsapp.scan
 
 import android.graphics.Bitmap
 import com.andreseloy.colorsapp.data.GarmentEntry
+import com.andreseloy.colorsapp.data.UuidV7
 import com.andreseloy.colorsapp.data.PaletteEntry
 import com.andreseloy.colorsapp.data.ScanRecord
 import com.andreseloy.colorsapp.data.ScanSource
@@ -27,7 +28,6 @@ import com.andreseloy.colorsapp.subject.SubjectOptions
 import com.andreseloy.colorsapp.subject.SubjectRaster
 import com.andreseloy.colorsapp.subject.SubjectSegmenter
 import java.util.Locale
-import java.util.UUID
 
 /** Resultado de analizar una foto en el escaneo. */
 class PhotoAnalysis(
@@ -101,7 +101,8 @@ object PhotoAnalyzer {
         assetId: String?,
         options: SubjectOptions,
         nowMs: Long = System.currentTimeMillis(),
-        id: String = UUID.randomUUID().toString(),
+        // UUIDv7 de W1 como en iOS (ordenables por tiempo); antes randomUUID (v4).
+        id: String = UuidV7.string(nowMs),
     ): ScanRecord {
         val result = analysis.result
         val subject = analysis.subject

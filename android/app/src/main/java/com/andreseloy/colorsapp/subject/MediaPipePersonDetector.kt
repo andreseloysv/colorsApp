@@ -7,9 +7,13 @@
 //   MagicTouch legacy por InteractiveSegmenter (un punto cuello->raíz
 //     por pose; si el AAR/modelo no lo acepta o la máscara es absurda, se usa
 //     la máscara de la pose: verificado en el emulador, informe del carril)
-//   YuNet (caras a cualquier distancia) por ONNX Runtime
+//   YuNet (caras a cualquier distancia) por TFLite (W6; antes ORT)
 //   EfficientDet-Lite2 `person` como rectángulos de persona (evidencia)
 //   SelfieMulticlass SOLO como respaldo de la muestra de piel (clase 3)
+// EfficientDet y SelfieMulticlass corren PEREZOSOS (W6): solo cuando una
+// decisión posterior los puede necesitar (semilla de cara sin cuerpo,
+// rescate, respaldo de piel, fantasma sin evidencia); las tareas
+// MediaPipe se reutilizan calientes entre fotos bajo el mutex.
 // Después: semillas + PersonSplitter (con rescate de caras con cuerpo sin
 // pose: instancia interactiva sembrada bajo la cara, el cierre del §5.2
 // para grupos como la foto 06) y PersonEvidence. La cadena de geometría y
@@ -43,49 +47,129 @@ class MediaPipePersonDetector(
     private val context: Context,
     private val splitOptions: SplitOptions = SplitOptions(),
     private val phantomOptions: PhantomOptions = PhantomOptions(),
+    /**
+     * Delegado GPU: DESACTIVADO por defecto (medido por W6 en el Galaxy
+     * A14, Mali + tasks 0.10.35): InteractiveSegmenter y EfficientDet con
+     * GPU mueren con abort NATIVO (SIGABRT en la conversión de resultado
+     * y en tensors_to_detections), sin excepción Java que capturar, así
+     * que no hay respaldo posible en tiempo de ejecución. El mecanismo
+     * (GPU primero, lista negra por modelo, CPU XNNPACK detrás) queda
+     * detrás de este flag para revisarlo en otro hardware/versión.
+     */
+    private val preferGpu: Boolean = false,
+    /**
+     * Lado máximo del bitmap que ven las tareas MediaPipe (W6); 0 = el
+     * raster entero (≤1024). Medido en el A14 con 640: SIN ganancia
+     * clara de tiempo y rompiendo puertas (foto 07: 7→6 personas y otro
+     * top-3; 08: orden del top-3; ΔIoU hasta −0,216). Desactivado; el
+     * mecanismo queda por si una futura medición lo justifica.
+     */
+    private val detectMaxSide: Int = 0,
 ) : DetailedPersonDetector {
 
     override val modelDescription: String =
         "mediapipe-tasks-vision-0.10.35 pose_landmarker_full@0.3x8 + magic_touch-legacy" +
-            " + yunet-2023mar-ort + efficientdet_lite2 + selfie_multiclass(solo-piel)"
+            " + yunet-2023mar-tflite + efficientdet_lite2 + selfie_multiclass(solo-piel)"
 
     @Volatile private var interactiveFailed = false
     @Volatile private var multiclassFailed = false
     private val yuNet by lazy { YuNetFaceDetector(context.applicationContext) }
 
-    private fun base(asset: String): BaseOptions =
-        BaseOptions.builder().setModelAssetPath(asset).setDelegate(Delegate.CPU).build()
+    /** Modelos cuya tarea GPU falló al crear o al ejecutar: van en CPU. */
+    private val gpuBlacklist = HashSet<String>()
 
-    // Una tarea MediaPipe POR FOTO (se crea y se cierra en detectSync):
-    //  1) Reutilizar una tarea para varias fotos es frágil entre versiones
-    //     de tasks-visión (marcas de tiempo de paquetes: la 1.1.1 moría en
-    //     la segunda foto con "Packet timestamp mismatch").
-    //  2) Las tareas no son seguras para detect() concurrentes, y el
-    //     escaneo analiza 3 fotos a la vez con el mismo detector.
-    // Es el mismo patrón que Vision en iOS (un handler por llamada); el
-    // coste de crear la tarea queda dentro de los timings vision.*.
-    private fun pose(withMasks: Boolean = true): PoseLandmarker {
-        val options = PoseLandmarker.PoseLandmarkerOptions.builder()
-            .setBaseOptions(base(POSE_MODEL))
-            .setRunningMode(RunningMode.IMAGE)
-            .setNumPoses(8)
-            .setMinPoseDetectionConfidence(0.3f)
-            .setMinPosePresenceConfidence(0.3f)
-            .setMinTrackingConfidence(0.3f)
-            .setOutputSegmentationMasks(withMasks)
-            .build()
-        return PoseLandmarker.createFromOptions(context, options)
+    private fun base(asset: String, delegate: Delegate): BaseOptions =
+        BaseOptions.builder().setModelAssetPath(asset).setDelegate(delegate).build()
+
+    /**
+     * Crea una tarea con el delegado preferido; si era GPU y la creación
+     * muere, el modelo queda en la lista negra y se recrea en CPU.
+     */
+    private fun <T> createWithFallback(asset: String, allowGpu: Boolean = true, make: (Delegate) -> T): T {
+        val first = if (preferGpu && allowGpu && asset !in gpuBlacklist) Delegate.GPU else Delegate.CPU
+        return try {
+            make(first)
+        } catch (e: Exception) {
+            if (first == Delegate.GPU) {
+                Log.w(TAG, "GPU no acepta $asset ($e); ese modelo va en CPU")
+                gpuBlacklist.add(asset)
+                make(Delegate.CPU)
+            } else {
+                throw e
+            }
+        }
     }
 
-    private fun interactiveOrNull(): InteractiveSegmenter? {
+    // Tareas MediaPipe CALIENTES, reutilizadas entre fotos (carril W6):
+    // crear la tarea (cargar el modelo y compilar el grafo) costaba en el
+    // Galaxy A14 una parte grande de cada vision.* (los timings del
+    // informe W2 ya lo incluían). La reutilización es segura aquí porque
+    // detectSync corre siempre bajo detectMutex (una detección a la vez,
+    // nunca concurrente) y la versión fijada (0.10.35) acepta detect()
+    // repetidos en modo IMAGE (la fragilidad de "Packet timestamp
+    // mismatch" era de la 1.1.1, descartada por W2). Red de seguridad: si
+    // una tarea reutilizada muere, se invalida su caché, se anota
+    // warmReuseFailed en los tiempos y se recrea una fresca en el acto;
+    // el comportamiento cae al de antes (una tarea por foto) sin perder
+    // la foto. La primera foto paga la inicialización (calentamiento).
+    /** Tamaños (ancho<<32|alto) donde la máscara float de pose muere. */
+    private val poseMasksBadSizes = HashSet<Long>()
+    private var poseTaskCache: PoseLandmarker? = null
+    private var poseNoMasksTaskCache: PoseLandmarker? = null
+    private var interactiveTaskCache: InteractiveSegmenter? = null
+    private var objectsTaskCache: ObjectDetector? = null
+    private var multiclassTaskCache: ImageSegmenter? = null
+
+    private fun createPose(withMasks: Boolean = true): PoseLandmarker =
+        createWithFallback(POSE_MODEL) { delegate ->
+            val options = PoseLandmarker.PoseLandmarkerOptions.builder()
+                .setBaseOptions(base(POSE_MODEL, delegate))
+                .setRunningMode(RunningMode.IMAGE)
+                .setNumPoses(8)
+                .setMinPoseDetectionConfidence(0.3f)
+                .setMinPosePresenceConfidence(0.3f)
+                .setMinTrackingConfidence(0.3f)
+                .setOutputSegmentationMasks(withMasks)
+                .build()
+            PoseLandmarker.createFromOptions(context, options)
+        }
+
+    /** Pose caliente (con o sin máscaras): se crea una vez y se reusa. */
+    private fun poseTask(withMasks: Boolean): PoseLandmarker {
+        if (withMasks) {
+            poseTaskCache?.let { return it }
+            return createPose(true).also { poseTaskCache = it }
+        }
+        poseNoMasksTaskCache?.let { return it }
+        return createPose(false).also { poseNoMasksTaskCache = it }
+    }
+
+    /** Invalida la caché de pose (la tarea ha muerto y se recreará). */
+    private fun dropPoseCache(withMasks: Boolean) {
+        if (withMasks) {
+            runCatching { poseTaskCache?.close() }
+            poseTaskCache = null
+        } else {
+            runCatching { poseNoMasksTaskCache?.close() }
+            poseNoMasksTaskCache = null
+        }
+    }
+
+    private fun createInteractive(): InteractiveSegmenter? {
         if (interactiveFailed) return null
         return try {
-            val options = InteractiveSegmenter.InteractiveSegmenterOptions.builder()
-                .setBaseOptions(base(MAGIC_TOUCH_MODEL))
-                .setOutputCategoryMask(true)
-                .setOutputConfidenceMasks(false)
-                .build()
-            InteractiveSegmenter.createFromOptions(context, options)
+            // MagicTouch SIEMPRE en CPU: con el delegado GPU el proceso
+            // muere con abort nativo al convertir el resultado en el
+            // Galaxy A14 (Mali, tasks 0.10.35; medido por W6, sin
+            // excepción Java que capturar). Sin fallback posible.
+            createWithFallback(MAGIC_TOUCH_MODEL, allowGpu = false) { delegate ->
+                val options = InteractiveSegmenter.InteractiveSegmenterOptions.builder()
+                    .setBaseOptions(base(MAGIC_TOUCH_MODEL, delegate))
+                    .setOutputCategoryMask(true)
+                    .setOutputConfidenceMasks(false)
+                    .build()
+                InteractiveSegmenter.createFromOptions(context, options)
+            }
         } catch (e: Exception) {
             // El chequeo del §7.1 del informe: si este AAR no acepta el
             // magic_touch legacy, la instancia sale de la máscara de la pose.
@@ -95,37 +179,75 @@ class MediaPipePersonDetector(
         }
     }
 
-    private fun objects(): ObjectDetector? {
+    /** InteractiveSegmenter caliente; null si el AAR no acepta el modelo. */
+    private fun interactiveOrNull(): InteractiveSegmenter? {
+        interactiveTaskCache?.let { return it }
+        return createInteractive()?.also { interactiveTaskCache = it }
+    }
+
+    /** Invalida el interactivo caliente (falló en un punto; se recreará). */
+    private fun dropInteractiveCache() {
+        runCatching { interactiveTaskCache?.close() }
+        interactiveTaskCache = null
+    }
+
+    private fun createObjects(): ObjectDetector? {
         return try {
-            val options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setBaseOptions(base(EFFICIENTDET_MODEL))
-                .setRunningMode(RunningMode.IMAGE)
-                .setScoreThreshold(0.3f)
-                .setCategoryAllowlist(listOf("person"))
-                .setMaxResults(-1)
-                .build()
-            ObjectDetector.createFromOptions(context, options)
+            createWithFallback(EFFICIENTDET_MODEL) { delegate ->
+                val options = ObjectDetector.ObjectDetectorOptions.builder()
+                    .setBaseOptions(base(EFFICIENTDET_MODEL, delegate))
+                    .setRunningMode(RunningMode.IMAGE)
+                    .setScoreThreshold(0.3f)
+                    .setCategoryAllowlist(listOf("person"))
+                    .setMaxResults(-1)
+                    .build()
+                ObjectDetector.createFromOptions(context, options)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "EfficientDet no disponible: $e")
             null
         }
     }
 
-    private fun multiclassOrNull(): ImageSegmenter? {
+    /** EfficientDet caliente; se invalida si su detect() falla. */
+    private fun objectsTask(): ObjectDetector? {
+        objectsTaskCache?.let { return it }
+        return createObjects()?.also { objectsTaskCache = it }
+    }
+
+    private fun dropObjectsCache() {
+        runCatching { objectsTaskCache?.close() }
+        objectsTaskCache = null
+    }
+
+    private fun createMulticlass(): ImageSegmenter? {
         if (multiclassFailed) return null
         return try {
-            val options = ImageSegmenter.ImageSegmenterOptions.builder()
-                .setBaseOptions(base(MULTICLASS_MODEL))
-                .setRunningMode(RunningMode.IMAGE)
-                .setOutputCategoryMask(true)
-                .setOutputConfidenceMasks(false)
-                .build()
-            ImageSegmenter.createFromOptions(context, options)
+            createWithFallback(MULTICLASS_MODEL) { delegate ->
+                val options = ImageSegmenter.ImageSegmenterOptions.builder()
+                    .setBaseOptions(base(MULTICLASS_MODEL, delegate))
+                    .setRunningMode(RunningMode.IMAGE)
+                    .setOutputCategoryMask(true)
+                    .setOutputConfidenceMasks(false)
+                    .build()
+                ImageSegmenter.createFromOptions(context, options)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "SelfieMulticlass no disponible: $e")
             multiclassFailed = true
             null
         }
+    }
+
+    /** SelfieMulticlass caliente; se invalida si su segment() falla. */
+    private fun multiclassTask(): ImageSegmenter? {
+        multiclassTaskCache?.let { return it }
+        return createMulticlass()?.also { multiclassTaskCache = it }
+    }
+
+    private fun dropMulticlassCache() {
+        runCatching { multiclassTaskCache?.close() }
+        multiclassTaskCache = null
     }
 
     // Los grafos de MediaPipe no conviven en paralelo (SIGBUS nativo
@@ -138,16 +260,9 @@ class MediaPipePersonDetector(
     override suspend fun detectDetailed(image: EngineImage): PeopleDetectionResult =
         detectMutex.withLock { withContext(Dispatchers.Default) { detectSync(image) } }
 
-    private fun detectSync(image: EngineImage): PeopleDetectionResult {
-        val toClose = ArrayList<AutoCloseable>()
-        try {
-            return detectSyncBody(image, toClose)
-        } finally {
-            for (c in toClose) runCatching { c.close() }
-        }
-    }
+    private fun detectSync(image: EngineImage): PeopleDetectionResult = detectSyncBody(image)
 
-    private fun detectSyncBody(image: EngineImage, toClose: MutableList<AutoCloseable>): PeopleDetectionResult {
+    private fun detectSyncBody(image: EngineImage): PeopleDetectionResult {
         val width = image.width
         val height = image.height
         val timings = LinkedHashMap<String, Double>()
@@ -158,7 +273,20 @@ class MediaPipePersonDetector(
             return r
         }
         val bitmap: Bitmap = timed("vision.raster") { SubjectRaster.bitmapFrom(image) }
-        val mpImage = BitmapImageBuilder(bitmap).build()
+        // Bitmap de detección (≤ detectMaxSide): lo único que cambia para
+        // la cadena es la resolución a la que corren los modelos; poses
+        // (normalizadas) y máscaras (reescaladas abajo) vuelven al raster.
+        val (dw, dh) = if (detectMaxSide > 0) {
+            SubjectRaster.targetSize(width, height, detectMaxSide)
+        } else {
+            width to height
+        }
+        val detectBitmap: Bitmap = if (dw == width && dh == height) {
+            bitmap
+        } else {
+            timed("vision.raster") { SubjectRaster.scaleTo(bitmap, dw, dh) }
+        }
+        val mpImage = BitmapImageBuilder(detectBitmap).build()
 
         // 1) Pose Landmarker Full @0,3 con máscaras por pose. En algunos
         // tamaños de raster, tasks-visión 1.1.1 muere al empaquetar la
@@ -166,16 +294,51 @@ class MediaPipePersonDetector(
         // getSegmentationMasks, comprobado en el AVD con 02/03/05): se
         // reintenta sin máscaras de pose y la instancia sale solo de
         // MagicTouch (la fuente preferida del informe igualmente).
-        var poseMasksAvailable = true
-        val poseResult = try {
-            val poseTask = timed("vision.pose") { pose(withMasks = true).also { toClose.add(it) } }
-            timed("vision.pose") { poseTask.detect(mpImage) }
+        // El fallo al empaquetar la máscara float es determinista por
+        // tamaño de raster (comprobado: una tarea recién creada muere
+        // igual en 02/03/05), NO es la reutilización; pero la excepción
+        // deja la tarea caliente tocada (las fotos siguientes fallaban
+        // también): se descarta y se recrea, y el tamaño queda
+        // memorizado para ir directo a la variante sin máscaras en las
+        // siguientes fotos del mismo tamaño.
+        fun detectPoseNoMasks() = try {
+            timed("vision.pose") { poseTask(withMasks = false).detect(mpImage) }
         } catch (e: Exception) {
-            Log.w(TAG, "pose con máscaras falló ($e); reintento sin máscaras")
-            poseMasksAvailable = false
+            // Aquí sí pudo morir la tarea reutilizada: una fresca y listo.
+            Log.w(TAG, "pose sin máscaras falló ($e); reintento con tarea fresca")
+            gpuBlacklist.add(POSE_MODEL)
+            dropPoseCache(withMasks = false)
+            timings["warmReuseFailed"] = 1.0
+            timed("vision.pose") { poseTask(withMasks = false).detect(mpImage) }
+        }
+        val sizeKey = (dw.toLong() shl 32) or dh.toLong()
+        var poseMasksAvailable = sizeKey !in poseMasksBadSizes
+        val poseResult = if (poseMasksAvailable) {
+            try {
+                timed("vision.pose") { poseTask(withMasks = true).detect(mpImage) }
+            } catch (e: Exception) {
+                // Dos causas conviven tras la misma excepción (visto en
+                // logcat): el empaquetado de la máscara float en algunos
+                // tamaños y el "Packet timestamp mismatch" transitorio al
+                // reutilizar la tarea. Se reintenta UNA vez con tarea
+                // fresca: si va, era transitorio; si muere también, el
+                // tamaño queda memorizado y se sigue sin máscaras.
+                Log.w(TAG, "pose con máscaras falló ($e); reintento con tarea fresca")
+                dropPoseCache(withMasks = true)
+                try {
+                    timed("vision.pose") { poseTask(withMasks = true).detect(mpImage) }
+                } catch (e2: Exception) {
+                    Log.w(TAG, "pose con máscaras falló también en fresco ($e2); sin máscaras")
+                    dropPoseCache(withMasks = true)
+                    poseMasksBadSizes.add(sizeKey)
+                    poseMasksAvailable = false
+                    timings["poseMaskUnavailable"] = 1.0
+                    detectPoseNoMasks()
+                }
+            }
+        } else {
             timings["poseMaskUnavailable"] = 1.0
-            val poseTask = timed("vision.pose") { pose(withMasks = false).also { toClose.add(it) } }
-            timed("vision.pose") { poseTask.detect(mpImage) }
+            detectPoseNoMasks()
         }
         val poses = ArrayList<com.andreseloy.colorsapp.engine.Pose>()
         val poseMasks = ArrayList<ByteArray>()
@@ -194,46 +357,91 @@ class MediaPipePersonDetector(
             )
         }
 
-        // 2) Caras YuNet y 3) cajas de persona EfficientDet.
+        // 2) Caras YuNet. EfficientDet y SelfieMulticlass quedan como
+        // funciones perezosas (carril W6): solo corren cuando la cadena
+        // los necesita de verdad, que es el papel que el informe les daba
+        // (EfficientDet: evidencia/rescate; multiclass: respaldo de piel y
+        // último rescate). Antes corrían SIEMPRE (~1,1 s + ~1,2 s en el
+        // A14) aunque su salida no cambiara ninguna decisión posterior.
+        // YuNet en serie tras la pose, como el código original: correrlo
+        // en paralelo a la pose se midió PEOR en el A14 (2 núcleos
+        // grandes; MediaPipe/XNNPACK ya satura la CPU y el hilo extra
+        // solo roba ciclos a pose y máscaras).
         val faces: List<FaceLandmarkPoints> = timed("vision.face") {
             runCatching { yuNet.detect(bitmap).map { it.toFaceLandmarks() } }
                 .onFailure { Log.w(TAG, "YuNet falló: $it") }
                 .getOrDefault(emptyList())
         }
-        val humanBoxes: List<RectD> = timed("vision.humanRectangles") {
-            val det = objects()?.also { toClose.add(it) }
-            if (det == null) {
-                emptyList()
-            } else {
-                runCatching {
-                    det.detect(mpImage).detections()
-                        .filter {
-                            it.categories().firstOrNull()?.categoryName() == "person" &&
-                                (it.categories().firstOrNull()?.score() ?: 0f) >= phantomOptions.minHumanConfidence
-                        }
-                        .map {
-                            val r = it.boundingBox()
-                            RectD(
-                                r.left.toDouble(), r.top.toDouble(),
-                                (r.right - r.left).toDouble(), (r.bottom - r.top).toDouble(),
-                            )
-                        }
-                }.onFailure { Log.w(TAG, "EfficientDet falló: $it") }.getOrDefault(emptyList())
-            }
+        if (poses.isEmpty() && faces.isEmpty()) {
+            // Sin poses ni caras no hay instancias que rescatar ni
+            // fantasmas que juzgar: el resto de la cadena devolvería
+            // exactamente "sin personas" (caso mayoritario del carrete).
+            return PeopleDetectionResult(emptyList(), emptyList(), timings)
         }
-        // 4) Multiclass (solo respaldo de piel y rescate).
-        val multiclassRaw: ByteArray? = timed("vision.multiclass") {
-            val seg = multiclassOrNull()?.also { toClose.add(it) }
-            if (seg == null) {
-                null
-            } else {
-                runCatching {
-                    seg.segment(mpImage).categoryMask().orElse(null)
-                        ?.let { categoryMaskBytes(it, width, height) }
-                }.onFailure { Log.w(TAG, "Multiclass falló: $it") }.getOrNull()
+
+        var humanBoxesCache: List<RectD>? = null
+        fun humanBoxes(): List<RectD> {
+            humanBoxesCache?.let { return it }
+            val boxes: List<RectD> = timed("vision.humanRectangles") {
+                val det = objectsTask()
+                if (det == null) {
+                    emptyList()
+                } else {
+                    runCatching {
+                        det.detect(mpImage).detections()
+                            .filter {
+                                it.categories().firstOrNull()?.categoryName() == "person" &&
+                                    (it.categories().firstOrNull()?.score() ?: 0f) >= phantomOptions.minHumanConfidence
+                            }
+                            .map {
+                                val r = it.boundingBox()
+                                // Cajas en píxeles del bitmap de detección
+                                // (dw×dh): al raster del motor.
+                                val sx = width.toDouble() / dw
+                                val sy = height.toDouble() / dh
+                                RectD(
+                                    r.left * sx, r.top * sy,
+                                    (r.right - r.left) * sx, (r.bottom - r.top) * sy,
+                                )
+                            }
+                    }.onFailure {
+                        Log.w(TAG, "EfficientDet falló: $it")
+                        gpuBlacklist.add(EFFICIENTDET_MODEL)
+                        dropObjectsCache()
+                    }.getOrDefault(emptyList())
+                }
             }
+            humanBoxesCache = boxes
+            return boxes
         }
-        val semanticMap = multiclassRaw?.let { raw ->
+
+        var multiclassTried = false
+        var multiclassCache: ByteArray? = null
+        fun multiclassRaw(): ByteArray? {
+            if (multiclassTried) return multiclassCache
+            multiclassTried = true
+            multiclassCache = timed("vision.multiclass") {
+                val seg = multiclassTask()
+                if (seg == null) {
+                    null
+                } else {
+                    runCatching {
+                        seg.segment(mpImage).categoryMask().orElse(null)
+                            ?.let { categoryMaskBytes(it, width, height) }
+                    }.onFailure {
+                        Log.w(TAG, "Multiclass falló: $it")
+                        gpuBlacklist.add(MULTICLASS_MODEL)
+                        dropMulticlassCache()
+                    }.getOrNull()
+                }
+            }
+            return multiclassCache
+        }
+
+        var semanticCache: MaskBuffer? = null
+        fun semanticMap(): MaskBuffer? {
+            semanticCache?.let { return it }
+            val raw = multiclassCache ?: return null
             val mapped = ByteArray(raw.size)
             for (i in raw.indices) {
                 mapped[i] = when (MaskOps.u(raw[i])) {
@@ -245,43 +453,80 @@ class MediaPipePersonDetector(
                     else -> 0
                 }
             }
-            MaskBuffer(width, height, mapped)
+            return MaskBuffer(width, height, mapped).also { semanticCache = it }
         }
 
-        // 5) Máscaras de instancia: MagicTouch por pose, con rescate por la
+        // 3) Máscaras de instancia: MagicTouch por pose, con rescate por la
         // máscara de la pose si el interactivo falla o es absurdo (IoU < 0,3).
         val instances = ArrayList<PersonDetection>()
         val floorPx = max(1, kotlin.math.ceil(RegionPlanning.MIN_PERSON_COVERAGE * width * height).toInt())
         var nextId = 1
-        val interactiveSeg = timed("vision.interactiveInit") {
-            interactiveOrNull()?.also { toClose.add(it) }
+        var interactiveSeg = if (poses.isNotEmpty() || faces.isNotEmpty()) {
+            timed("vision.interactiveInit") { interactiveOrNull() }
+        } else {
+            null
         }
         if (interactiveSeg == null) timings["interactiveUnavailable"] = 1.0
+        var interactiveRecreated = false
+
+        fun segmentOnce(seg: InteractiveSegmenter, nx: Double, ny: Double): ByteArray? {
+            // OJO (medido en el AVD): aunque la clase se llama
+            // NormalizedKeypoint, el grafo Android del segmentador
+            // interactivo legacy interpreta el punto en PÍXELES del
+            // raster: con valores 0..1 el segmento sale siempre en la
+            // esquina (0,0), idéntico para cualquier punto. En Python
+            // el mismo modelo sí va normalizado (proto2 del carril B).
+            val roi = InteractiveSegmenter.RegionOfInterest.create(
+                NormalizedKeypoint.create(
+                    (nx * dw).toFloat().coerceIn(0f, (dw - 1).toFloat()),
+                    (ny * dh).toFloat().coerceIn(0f, (dh - 1).toFloat()),
+                ),
+            )
+            // MPImage nueva por punto, como el código original de W2:
+            // compartir la del raster no ahorró nada medible en el A14
+            // (la copia cara ocurre dentro del grafo, no en el builder).
+            val result = seg.segment(BitmapImageBuilder(detectBitmap).build(), roi)
+            val mask = result.categoryMask().orElse(null) ?: return null
+            val raw = categoryMaskBytes(mask, width, height)
+            // Polaridad del modelo legacy: 0 = objeto señalado, 255 = fondo.
+            return ByteArray(raw.size) { if (raw[it] == 0.toByte()) -1 else 0 }
+        }
 
         fun interactiveMask(nx: Double, ny: Double): ByteArray? {
             val seg = interactiveSeg ?: return null
             return try {
-                // OJO (medido en el AVD): aunque la clase se llama
-                // NormalizedKeypoint, el grafo Android del segmentador
-                // interactivo legacy interpreta el punto en PÍXELES del
-                // raster: con valores 0..1 el segmento sale siempre en la
-                // esquina (0,0), idéntico para cualquier punto. En Python
-                // el mismo modelo sí va normalizado (proto2 del carril B).
-                val roi = InteractiveSegmenter.RegionOfInterest.create(
-                    NormalizedKeypoint.create(
-                        (nx * width).toFloat().coerceIn(0f, (width - 1).toFloat()),
-                        (ny * height).toFloat().coerceIn(0f, (height - 1).toFloat()),
-                    ),
-                )
-                val result = seg.segment(BitmapImageBuilder(bitmap).build(), roi)
-                val mask = result.categoryMask().orElse(null) ?: return null
-                val raw = categoryMaskBytes(mask, width, height)
-                // Polaridad del modelo legacy: 0 = objeto señalado, 255 = fondo.
-                ByteArray(raw.size) { if (raw[it] == 0.toByte()) -1 else 0 }
+                segmentOnce(seg, nx, ny)
             } catch (e: Exception) {
                 Log.w(TAG, "MagicTouch falló en un punto: $e")
-                interactiveFailed = true
-                null
+                // La tarea caliente pudo morir al reutilizarse (o la GPU
+                // al ejecutarla): se recrea UNA vez — en CPU si iba en
+                // GPU — y se reintenta el punto; solo si la fresca
+                // también muere se marca el fallo permanente de antes.
+                gpuBlacklist.add(MAGIC_TOUCH_MODEL)
+                dropInteractiveCache()
+                if (interactiveRecreated) {
+                    interactiveFailed = true
+                    interactiveSeg = null
+                    null
+                } else {
+                    interactiveRecreated = true
+                    timings["warmReuseFailed"] = 1.0
+                    val fresh = interactiveOrNull()
+                    interactiveSeg = fresh
+                    if (fresh == null) {
+                        null
+                    } else {
+                        try {
+                            segmentOnce(fresh, nx, ny)
+                        } catch (e2: Exception) {
+                            Log.w(TAG, "MagicTouch falló también recién creado: $e2")
+                            dropInteractiveCache()
+                            interactiveFailed = true
+                            interactiveSeg = null
+                            null
+                        }
+                    }
+                }
             }
         }
 
@@ -307,21 +552,53 @@ class MediaPipePersonDetector(
                 PersonDetection(
                     instanceMask = MaskBuffer(width, height, maskBytes),
                     pose = cePose,
-                    semanticMap = semanticMap,
+                    // El mapa semántico se adjunta al final solo si el
+                    // multiclass llegó a correr (respaldo/rescate).
+                    semanticMap = null,
                     id = nextId++,
                 ),
             )
         }
 
-        // 6) Semillas y rescate: caras con cuerpo y sin pose cuya instancia no
+        // 4) Semillas y rescate: caras con cuerpo y sin pose cuya instancia no
         // existe aún crean una (punto interactivo bajo la cara o multiclass
         // dentro de su caja de persona). Es el cierre medible para grupos.
         val seeds = timed("associate") { PersonSplitter.seeds(poses, faces) }
         val poseSeedFaces = seeds.mapNotNull { if (it.kind == SeedKind.POSE) it.faceIndex else null }.toSet()
+
+        // ¿Necesita alguien las cajas de EfficientDet? Solo dos decisiones
+        // las leen antes de la separación, y ambas se pueden prejuzgar sin
+        // cajas (carril W6):
+        //  - una semilla de cara sin evidencia corporal por articulaciones:
+        //    screenFaceSeeds la descartaría sin su rectángulo de cuerpo;
+        //  - el rescate de una cara huérfana, que exige su caja de cuerpo.
+        // Si ninguna ocurre, pasar la lista vacía a la separación da
+        // exactamente el mismo resultado (con cajas, bodyEvidence podría
+        // etiquetar HUMAN_RECTANGLE donde ya había POSE_JOINTS, pero la
+        // semilla se conserva igualmente y la etiqueta no decide nada más).
+        val hasOrphanFace = faces.indices.any { fi ->
+            fi !in poseSeedFaces &&
+                PersonSplitter.box(faces[fi]) != null &&
+                instances.none {
+                    MaskOps.value(it.instanceMask.bytes, width, height, faces[fi].center.x, faces[fi].center.y) >= 128
+                }
+        }
+        val seedPoseIdx = seeds.mapNotNull { if (it.kind == SeedKind.POSE) it.poseIndex else null }.toSet()
+        val otherPoses = poses.filterIndexed { i, _ -> i !in seedPoseIdx }
+        val faceSeedNeedsBoxes = splitOptions.requireBodyForFaceSeeds && seeds.any {
+            it.kind == SeedKind.FACE &&
+                PersonSplitter.bodyEvidence(it, emptyList(), otherPoses, splitOptions) == SeedBodyEvidence.NONE
+        }
+        val boxesForSplit: List<RectD> = if (hasOrphanFace || faceSeedNeedsBoxes) {
+            humanBoxes()
+        } else {
+            timings["humanBoxesSkipped"] = 1.0
+            emptyList()
+        }
         for ((fi, face) in faces.withIndex()) {
             if (fi in poseSeedFaces) continue
             val fb = PersonSplitter.box(face) ?: continue
-            val body = humanBoxes.firstOrNull { PersonSplitter.rectangleIsBody(fb, it, splitOptions) }
+            val body = boxesForSplit.firstOrNull { PersonSplitter.rectangleIsBody(fb, it, splitOptions) }
                 ?: continue
             val insideAny = instances.any {
                 MaskOps.value(it.instanceMask.bytes, width, height, face.center.x, face.center.y) >= 128
@@ -334,31 +611,37 @@ class MediaPipePersonDetector(
                 rescue = timed("vision.masks") { interactiveMask(px, py) }
                     ?.takeIf { MaskOps.nonZero(it) >= floorPx }
             }
-            if (rescue == null && multiclassRaw != null) {
-                val m = ByteArray(width * height)
-                val x0 = max(0, body.minX.roundToInt())
-                val x1 = min(width - 1, body.maxX.roundToInt())
-                val y0 = max(0, body.minY.roundToInt())
-                val y1 = min(height - 1, body.maxY.roundToInt())
-                for (y in y0..y1) {
-                    val row = y * width
-                    for (x in x0..x1) if (multiclassRaw[row + x] != 0.toByte()) m[row + x] = -1
+            if (rescue == null) {
+                // Último recurso del rescate: el multiclass dentro de la
+                // caja de cuerpo. Solo aquí (y en el respaldo de piel de
+                // abajo) corre el modelo (carril W6).
+                val mc = multiclassRaw()
+                if (mc != null) {
+                    val m = ByteArray(width * height)
+                    val x0 = max(0, body.minX.roundToInt())
+                    val x1 = min(width - 1, body.maxX.roundToInt())
+                    val y0 = max(0, body.minY.roundToInt())
+                    val y1 = min(height - 1, body.maxY.roundToInt())
+                    for (y in y0..y1) {
+                        val row = y * width
+                        for (x in x0..x1) if (mc[row + x] != 0.toByte()) m[row + x] = -1
+                    }
+                    if (MaskOps.nonZero(m) >= floorPx) rescue = m
                 }
-                if (MaskOps.nonZero(m) >= floorPx) rescue = m
             }
             val resc = rescue ?: continue
             instances.add(
                 PersonDetection(
                     instanceMask = MaskBuffer(width, height, resc),
                     face = PersonSplitter.detectedFaceOf(face),
-                    semanticMap = semanticMap,
+                    semanticMap = semanticMap(),
                     id = nextId++,
                     faceLandmarks = face,
                 ),
             )
         }
 
-        // 7) Separación de fusionadas + asociación (PersonSplit de iOS).
+        // 5) Separación de fusionadas + asociación (PersonSplit de iOS).
         val outcome: SplitOutcome = timed("associate") {
             if (instances.isEmpty()) {
                 SplitOutcome(
@@ -366,36 +649,69 @@ class MediaPipePersonDetector(
                     List(seeds.size) { null }, emptyList(), poses.size, faces.size, emptyList(),
                 )
             } else {
-                PersonSplitter.apply(instances, poses, faces, seeds, width, height, humanBoxes, splitOptions)
+                PersonSplitter.apply(instances, poses, faces, seeds, width, height, boxesForSplit, splitOptions)
             }
         }
 
-        // 8) Muestra de piel de respaldo (multiclass clase 3) si FaceSample no dio.
-        val withSamples = outcome.people.map { p ->
+        // 6) Muestra de piel de respaldo (multiclass clase 3) si FaceSample
+        // no dio. El modelo solo corre si alguna persona lo necesita; si
+        // no corrió en toda la foto se anota multiclassSkipped.
+        val anyNeedsBackup = outcome.people.any {
+            SubjectChain.samplePixels(it.faceSampleMask?.bytes) < SubjectChain.MIN_SKIN_SAMPLES &&
+                it.faceBox != null
+        }
+        val mcRaw = if (anyNeedsBackup) multiclassRaw() else multiclassCache
+        if (!multiclassTried) timings["multiclassSkipped"] = 1.0
+        val semMap = semanticMap()
+        val withSamples = outcome.people.map { p0 ->
+            var p = p0
             val own = p.faceSampleMask?.bytes
             val have = SubjectChain.samplePixels(own)
             val fb = p.faceBox
-            if (have >= SubjectChain.MIN_SKIN_SAMPLES || multiclassRaw == null || fb == null) {
-                p
-            } else {
-                val backup = skinBackup(multiclassRaw, fb, p.instanceMask.bytes, width, height)
+            if (have < SubjectChain.MIN_SKIN_SAMPLES && mcRaw != null && fb != null) {
+                val backup = skinBackup(mcRaw, fb, p.instanceMask.bytes, width, height)
                 if (SubjectChain.samplePixels(backup) > have) {
-                    PersonDetection(
+                    timings["skinBackupUsed"] = 1.0
+                    p = PersonDetection(
                         instanceMask = p.instanceMask, pose = p.pose, face = p.face,
                         semanticMap = p.semanticMap, confidence = p.confidence, id = p.id,
                         faceSampleMask = MaskBuffer(width, height, backup),
                         faceLandmarks = p.faceLandmarks, splitFrom = p.splitFrom,
                     )
-                } else {
-                    p
+                }
+            }
+            if (semMap != null && p.semanticMap == null) {
+                p = PersonDetection(
+                    instanceMask = p.instanceMask, pose = p.pose, face = p.face,
+                    semanticMap = semMap, confidence = p.confidence, id = p.id,
+                    faceSampleMask = p.faceSampleMask,
+                    faceLandmarks = p.faceLandmarks, splitFrom = p.splitFrom,
+                )
+            }
+            p
+        }
+
+        // 7) Evidencia corporal anti-fantasmas. Con los umbrales por
+        // defecto, pose con torso o cara ya son evidencia sin cajas; una
+        // caja de persona solo puede AÑADIR evidencia (rescatar un NONE),
+        // nunca quitarla. Por eso, si EfficientDet no ha corrido aún, se
+        // juzga primero sin cajas y solo se le llama si alguien quedó
+        // rechazado y una caja podría salvarlo: mismo resultado final.
+        var phantom = timed("associate") {
+            PersonEvidenceOps.rejectPhantoms(withSamples, width, height, phantomOptions, boxesForSplit)
+        }
+        if (phantom.second.isNotEmpty() && humanBoxesCache == null &&
+            phantomOptions.enabled && phantomOptions.humanRectangles
+        ) {
+            val boxes = humanBoxes()
+            timings["humanBoxesForPhantom"] = 1.0
+            if (boxes.isNotEmpty()) {
+                phantom = timed("associate") {
+                    PersonEvidenceOps.rejectPhantoms(withSamples, width, height, phantomOptions, boxes)
                 }
             }
         }
-
-        // 9) Evidencia corporal anti-fantasmas.
-        val (kept, rejected) = timed("associate") {
-            PersonEvidenceOps.rejectPhantoms(withSamples, width, height, phantomOptions, humanBoxes)
-        }
+        val (kept, rejected) = phantom
         return PeopleDetectionResult(
             people = kept,
             rejectedPhantoms = rejected.map { it.instance },
@@ -518,7 +834,12 @@ class MediaPipePersonDetector(
     }
 
     fun close() {
-        // Las tareas MediaPipe se crean y cierran por foto; solo queda YuNet.
+        // Se cierran las tareas calientes reutilizadas y la sesión YuNet.
+        dropPoseCache(withMasks = true)
+        dropPoseCache(withMasks = false)
+        dropInteractiveCache()
+        dropObjectsCache()
+        dropMulticlassCache()
         runCatching { yuNet.close() }
     }
 
