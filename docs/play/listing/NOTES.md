@@ -36,32 +36,31 @@ ninguna. El comprobador (`tools/check_limits.py`) falla si aparece «iPhone»,
 «iOS», «iCloud», «App Store», «Apple Vision», «carrete», «Fotomediathek» o
 «photo library» en cualquier fichero de la ficha.
 
-## Líneas que dependen de funciones de Android aún no construidas
+## Verificación contra la build de Android (carril W7, 2026-10-28)
 
-Estado al escribir esto: la app de Android la está construyendo el carril A y la
-segmentación de personas (equivalente a Vision en iOS) la investiga el carril B.
-Las líneas siguientes describen el comportamiento de la versión de iOS ya
-publicada y el objetivo del port, pero **todavía no están verificadas en
-Android**. Antes de enviar a revisión hay que confirmar cada una contra el
-AAB final; las que no se cumplan se borran de los tres `full_description.txt`.
+Todas las líneas que este fichero marcaba «pendientes de confirmar» se
+comprobaron en la app real (emulador `chromasol-w7`, API 37, APK debug de
+esta rama; permisos sobre el APK release) con las 8 fotos CC0 de
+`harness/people` escaneadas. Resultado: **ningún texto de
+`full_description.txt`/`short_description.txt` hubo que cambiar**; la
+evidencia, línea a línea:
 
-| Línea de `full_description.txt` (es; equivalentes de/en) | Depende de | Si no entra en la 1.0 de Android |
-|---|---|---|
-| «aísla a las personas, deja fuera la piel y reduce la ropa a sus colores reales: un color por prenda» | Segmentación de personas + exclusión de piel + paleta por prenda del motor C vía NDK (carriles A y B) | Reescribir el párrafo inicial sin aislamiento de personas ni piel |
-| «Fotos con varias personas: reconoce a cada una y analiza su ropa por separado» | Separación por persona (instancias) en Android | Borrar la viñeta |
-| «Extraer: inspecciona paso a paso cómo se llegó al resultado (recorte, piel, prendas y paleta)» | Pestaña de inspección por capas portada a Android | Borrar la viñeta |
-| «…o a tu galería si se lo permites, y funciona también con un acceso limitado a unas fotos concretas» | Permiso de medios de Android y/o selector de fotos del sistema; escaneo de la galería si el port lo incluye | Dejar solo «las fotos que tú eliges» si solo hay selector |
-| «Rejilla: … con las que ya has llevado marcadas; la combinación del día…» | Pestaña Rejilla y combinación del día portadas | Borrar o recortar la viñeta |
-| «Jardín: tu colección de combinaciones desbloqueadas y guardadas» | Pestaña Jardín y persistencia local portadas | Borrar la viñeta |
-| «Tarjeta compartible con tu paleta y el número de combinación» | Compartir imagen (hoja de compartir de Android) portado | Borrar la viñeta |
-| «Los mismos resultados en cada teléfono, siempre» | Paridad del motor C compilado con el NDK (`-ffp-contract=off`, sin fast-math) verificada por el carril A | Suavizar a «los mismos criterios de cálculo» si la paridad bit a bit no está demostrada |
-| «la app funciona sin conexión… no usa la red» | Manifiesto fusionado final sin `android.permission.INTERNET` y sin SDK que descarguen modelos (verificable solo con el AAB del carril A) | No publicar hasta que sea cierto: es también la base de `data_safety.md` |
-| «Español, alemán e inglés, según el idioma del sistema» | Recursos `values-es` / `values-de` / `values` completos en el AAB | Publicar solo los idiomas realmente incluidos |
+| Línea | Evidencia en Android |
+|---|---|
+| aísla personas, piel fuera, un color por prenda | Resultado: «Solo ropa · piel excluida · un color por prenda»; Ajustes con «Solo ropa» y «Excluir piel» |
+| varias personas por separado | Ajustes: Todas / principal / elegida; selector de persona en el resultado |
+| Extraer paso a paso | «Ver capas» abre la pantalla de capas (raster, máscara, peso, imagen reducida…) |
+| galería y acceso limitado | Escaneo día 0 del carrete + `READ_MEDIA_VISUAL_USER_SELECTED`; selector `PickVisualMedia` sin permiso |
+| foto nueva | Botón de cámara en Extraer (`TakePicture`, sin permiso `CAMERA`) |
+| Rejilla y combinación del día | Pestaña Rejilla con las 348 y tarjeta «Combinación del día» en el Feed |
+| Jardín | Pestaña Jardín: cosechas del escaneo y guardadas |
+| tarjeta compartible | Compartir en feed y resultado (hoja del sistema) |
+| mismos resultados en cada teléfono | Motor C compartido; «Acerca de» lo afirma (musl: mismos bits iOS/Android/WASM) |
+| sin conexión / no usa la red | `aapt2 dump permissions` del APK release: solo permisos de medios; sin `INTERNET` (ver `data_safety.md`) |
+| es/de/en según el sistema | Recursos `values`/`values-de`/`values-en`; capturas generadas en los tres idiomas |
 
-Lo que **no** depende de funciones pendientes y puede quedarse tal cual: las
-348 combinaciones y los nombres originales de Wada (van en el diccionario del
-motor), el cálculo CIELAB/CIEDE2000 (motor C compartido), el pago único sin
-anuncios ni compras integradas y los créditos.
+Las capturas de esta verificación son las de la ficha:
+`docs/play/screenshots/<locale>/` (script `tools/store/capture_play.py`).
 
 ## Decisiones de redacción para Play
 

@@ -20,13 +20,17 @@ respuestas de formularios se leen a la vez que se rellena cada pantalla.
 | `content_rating.md` | Respuestas del cuestionario IARC de clasificación de contenido (todo «No») | Contenido de la app > Clasificación de contenido |
 | `app_content.md` | Resto de declaraciones (anuncios, público objetivo, noticias, gobierno, finanzas, salud, eliminación de cuenta), categoría recomendada, contacto, precio y URL de privacidad | Contenido de la app + Configuración de la ficha |
 | `site_changes.md` | Cambios exactos (es/de/en) para que la página pública de privacidad, hoy solo de iOS, cubra también Android | Se aplica en `docs/site/` del repo principal y se publica en el repo `colorsApp_public` antes de enviar |
+| `screenshots/es-ES|de-DE|en-US/` | 6 capturas de teléfono por idioma (1440×2560) | Ficha principal > Capturas de pantalla del teléfono, en orden 01–06 |
 | `tools/check_limits.py` | Comprueba límites de caracteres, términos de iOS prohibidos, menciones obligatorias y tamaño/modo de los PNG | Se ejecuta tras cada cambio de textos |
 | `tools/make_graphics.py` | Regenera `icon_512.png`, `icon_exports/` y `feature_graphic.png` | Se ejecuta al cambiar el icono maestro o el gráfico |
 
-**No incluye capturas de pantalla de Android** (Play exige al menos 2 de
-teléfono por ficha): las tiene que producir el carril A desde la build real
-de Android. Las capturas de iPhone de `fastlane/screenshots/` no se deben
-reutilizar para Android.
+**Capturas de teléfono incluidas** (carril W7): 6 por idioma en
+`screenshots/<locale>/NN_<nombre>.png`, 1440×2560 RGB sin alfa (≤ 8 MB),
+misma historia y titulares que el set de la App Store pero con la app de
+Android y sus barras de sistema. Se regeneran desde la app real en un
+emulador con `python3 tools/store/capture_play.py --serial <serial> --frame`
+(fotos CC0 de `harness/people`; ver la cabecera del script). Las capturas
+de iPhone de `fastlane/screenshots/` no se reutilizan.
 
 ## El icono: marcador de posición y cómo cambiarlo
 
@@ -69,9 +73,11 @@ consola bloquee pantallas por dependencias entre formularios:
 
 1. **Crear la app** en Play Console: nombre ChromaSol, idioma
    predeterminado **español (es-ES)**, app (no juego), de pago.
-2. **Subir el AAB** del carril A a una pista de prueba interna. Sin una
-   build subida no se pueden cerrar varias declaraciones, y así se
-   comprueba el `applicationId` (`com.andreseloy.colorsapp`).
+2. **Subir el AAB** firmado a una pista de prueba interna. Sin una build
+   subida no se pueden cerrar varias declaraciones, y así se comprueba el
+   `applicationId` (`com.andreseloy.colorsapp`). Al subirlo, Play pedirá
+   la **declaración de permisos de fotos y vídeos** por
+   `READ_MEDIA_IMAGES`: el texto (es/en) está en `app_content.md`.
 3. **Política de privacidad publicada**: aplicar primero los cambios de
    `site_changes.md` y verificar que
    `https://andreseloysv.github.io/colorsApp_public/privacy.en.html`
@@ -96,9 +102,9 @@ consola bloquee pantallas por dependencias entre formularios:
 6. **Ficha principal, por idioma** (es-ES, de-DE, en-US): pegar
    `title.txt`, `short_description.txt` y `full_description.txt` de
    `listing/<idioma>/`; subir el mismo `icon_512.png` y
-   `feature_graphic.png` en los tres; añadir las capturas de Android del
-   carril A. Antes de pegar, revisar `listing/NOTES.md` y borrar las
-   líneas de funciones que la build final no tenga.
+   `feature_graphic.png` en los tres; subir las 6 capturas de
+   `screenshots/<idioma>/` en orden. (`listing/NOTES.md` ya está verificado
+   contra la build por W7; solo hay que repasarlo si la build cambia.)
 7. **Precio y países**: precio base 2,99 USD (revisar los importes
    convertidos país a país) y disponibilidad en todos los países, salvo
    decisión contraria del propietario.
@@ -110,12 +116,13 @@ consola bloquee pantallas por dependencias entre formularios:
 ## Antes de enviar (comprobación final)
 
 - [ ] `python3 docs/play/tools/check_limits.py` termina en `RESULT: PASS`.
-- [ ] Las líneas «pendientes de confirmar» de `listing/NOTES.md`
-      contrastadas con el AAB final; borradas las que no se cumplan.
+- [ ] `listing/NOTES.md` verificado contra la build (hecho por W7 el
+      2026-10-28; repetir si cambia alguna función) y declaración de
+      fotos de `app_content.md` preparada.
 - [ ] Manifiesto fusionado del AAB sin `android.permission.INTERNET`
       (base de `data_safety.md` y de varios textos de la ficha).
 - [ ] Página de privacidad actualizada según `site_changes.md` y en
       línea en la URL dada a la consola.
-- [ ] Capturas de Android reales (carril A) subidas en los tres idiomas.
+- [ ] Capturas de `screenshots/<locale>/` subidas en los tres idiomas (regenerar con `tools/store/` si la UI cambia).
 - [ ] Icono: o se acepta el provisional de iOS, o está el maestro nuevo
       en `icon_master.png` y se regeneraron los PNG.

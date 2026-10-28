@@ -1,0 +1,27 @@
+{
+  "_comment": "Titulares Play por idioma (misma historia que App Store; el 06 ya no dice iPhone). Clave = nombre crudo sin extensión.",
+  "es-ES": {
+    "01-feed": "Los colores de tu ropa, según Sanzo Wada",
+    "02-resultado": "Un color por prenda, sin que la luz la parta",
+    "03-extraer": "Cada capa del análisis, a la vista",
+    "04-rejilla": "Las 348 combinaciones del diccionario",
+    "05-jardin": "Tu jardín de combinaciones",
+    "06-ajustes": "Sin cuentas, sin red: todo en tu teléfono"
+  },
+  "en-US": {
+    "01-feed": "Your outfit's colors, by Sanzo Wada",
+    "02-resultado": "One color per garment, whatever the light",
+    "03-extraer": "Every layer of the analysis, in view",
+    "04-rejilla": "All 348 combinations of the dictionary",
+    "05-jardin": "Your garden of combinations",
+    "06-ajustes": "No account, no network: all on your phone"
+  },
+  "de-DE": {
+    "01-feed": "Die Farben deiner Kleidung, nach Sanzo Wada",
+    "02-resultado": "Eine Farbe pro Kleidungsstück, ohne dass Licht sie teilt",
+    "03-extraer": "Jede Ebene der Analyse, sichtbar",
+    "04-rejilla": "Die 348 Kombinationen des Wörterbuchs",
+    "05-jardin": "Dein Garten der Kombinationen",
+    "06-ajustes": "Kein Konto, kein Netz: alles auf deinem Telefon"
+  }
+}

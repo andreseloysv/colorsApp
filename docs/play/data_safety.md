@@ -10,20 +10,36 @@ se comparten datos» ("No data shared with third parties" / "No data
 collected"). Es la misma declaración que en iOS («Data Not Collected», ver
 `docs/APPSTORE.md` §7 y `docs/PRIVACY.md`).
 
-## Antes de responder: condiciones que deben ser ciertas en el AAB final
+## Verificación sobre la build final (carril W7, 2026-10-28)
 
-Estas respuestas solo son verdaderas si la build de Android (carril A)
-cumple lo siguiente. Hay que comprobarlo sobre el AAB que se vaya a subir,
-no sobre la intención:
+Comprobado sobre el APK release de esta rama
+(`aapt2 dump permissions app-release-unsigned.apk`); repetir sobre el AAB
+que se suba:
 
-1. El **manifiesto fusionado** no contiene `android.permission.INTERNET`
-   (ni `ACCESS_NETWORK_STATE` para telemetría). Ojo: una biblioteca puede
-   añadir el permiso por fusión aunque el manifiesto de la app no lo pida.
-2. Sin SDK de analíticas, publicidad, informes de fallos ni atribución.
-3. Sin modelos que se descarguen en tiempo de ejecución (p. ej. modelos de
-   Play Services que bajan ficheros tras la instalación): la segmentación y
-   el diccionario van incluidos en el paquete.
-4. Sin cuentas, sin inicio de sesión y sin identificación del dispositivo.
+```
+uses-permission: android.permission.READ_MEDIA_IMAGES
+uses-permission: android.permission.READ_MEDIA_VISUAL_USER_SELECTED
+uses-permission: android.permission.READ_EXTERNAL_STORAGE maxSdkVersion=32
+(permiso propio de firma …DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, de AndroidX)
+```
+
+1. Sin `android.permission.INTERNET` ni `ACCESS_NETWORK_STATE`: el
+   manifiesto de la app los elimina en la fusión (`tools:node="remove"`)
+   precisamente porque una dependencia los pedía.
+2. Sin SDK de analíticas, publicidad, informes de fallos ni atribución;
+   sin permiso `CAMERA` (la foto se hace con el intent de la cámara del
+   sistema) y sin cuentas ni identificadores.
+3. El modelo de segmentación (MediaPipe) y el diccionario van **incluidos
+   en el paquete**; nada se descarga en tiempo de ejecución.
+4. **Matiz datatransport:** el dex de release contiene clases de
+   `com.google.android.datatransport` (arrastradas por MediaPipe
+   tasks-vision; se ven `CctBackendFactory` y el programador de tareas).
+   Esas clases **no pueden transmitir nada**: sin permiso de red en el
+   manifiesto fusionado cualquier intento de conexión falla en el sistema,
+   y la app no registra eventos en esa biblioteca. Por tanto la respuesta
+   del formulario sigue siendo «No se recoge ni se comparte ningún dato»;
+   si Play preguntara en revisión, la explicación es esta (clases inertes
+   de una dependencia, sin permiso de red).
 
 Si alguna condición cambiara (por ejemplo, un informe de fallos), este
 formulario habría que rehacerlo y ya no se podría declarar «No data

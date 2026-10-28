@@ -40,18 +40,51 @@ Los textos por idioma están en `listing/`; la seguridad de los datos en
   contrario, la consola ofrecería añadir la advertencia «no dirigida a
   niños»; se aceptaría tal cual.
 
-### Permisos: punto a confirmar con la build (carril A)
+### Permisos de la build final (verificado por W7 en el APK release)
 
-Las declaraciones anteriores presuponen la build final. En concreto:
+| Permiso | Para qué |
+|---|---|
+| `READ_MEDIA_IMAGES` | Escaneo día 0 del carrete (función principal, ver declaración abajo); pedido en contexto, nunca al arrancar |
+| `READ_MEDIA_VISUAL_USER_SELECTED` | Acceso limitado a las fotos que el usuario elige (Android 14+) |
+| `READ_EXTERNAL_STORAGE` (≤ API 32) | Equivalente en Android 12 y anteriores |
 
-- Si el port lee la galería con un permiso amplio de fotos en lugar del
-  selector de fotos del sistema, Play puede pedir la **declaración del
-  permiso de fotos y vídeos** justificando que el acceso amplio es una
-  función principal (analizar los colores de la ropa en las fotos del
-  usuario). Eso se rellena cuando se sepa qué permisos trae el AAB.
-- El manifiesto fusionado **no** debe contener
-  `android.permission.INTERNET`; si lo contuviera, las declaraciones de
-  datos y varios textos de la ficha dejarían de ser ciertos.
+Sin `INTERNET`, sin `ACCESS_NETWORK_STATE`, sin `CAMERA` (intent de la
+cámara del sistema), sin ubicación ni identificadores. Las fotos sueltas
+se eligen además con el selector de fotos del sistema, que no necesita
+permiso.
+
+### Declaración «Photo and video permissions» (la pide Play por READ_MEDIA_IMAGES)
+
+Uso principal (core use) a declarar: el escaneo inicial de la galería.
+Texto para el formulario, en inglés y español:
+
+> **EN:** ChromaSol's core feature is finding, in the clothes people wear
+> in your photos, the closest of Sanzo Wada's 348 colour combinations.
+> On day 0 the app offers to scan your most recent 200 photos on the
+> device to build your initial collection (which combinations you have
+> already worn). This requires broad photo access: the system photo
+> picker alone is not enough because the user would have to hand-pick
+> hundreds of photos one by one for a bulk, on-device scan, and the
+> picker gives no durable access to re-scan later (Ajustes offers
+> "Redo photo library scan"). All analysis happens on the device (the
+> app requests no INTERNET permission); only derived colours are stored,
+> never the photos. Limited access (selected photos) is fully supported,
+> and single photos can also be analyzed through the system photo
+> picker with no permission at all.
+
+> **ES:** La función principal de ChromaSol es buscar, en la ropa de las
+> personas de tus fotos, la combinación más parecida de las 348 de Sanzo
+> Wada. El día 0 la app ofrece escanear en el dispositivo tus últimas
+> 200 fotos para crear tu colección inicial (qué combinaciones ya has
+> llevado). Eso exige acceso amplio a las fotos: el selector de fotos
+> del sistema por sí solo no basta, porque el usuario tendría que elegir
+> a mano cientos de fotos una a una para un escaneo masivo en el
+> dispositivo, y el selector no da acceso duradero para reescanear
+> después (Ajustes ofrece «Rehacer escaneo del carrete»). Todo el
+> análisis ocurre en el teléfono (la app no pide permiso de INTERNET);
+> solo se guardan los colores derivados, nunca las fotos. El acceso
+> limitado (fotos seleccionadas) funciona por completo, y las fotos
+> sueltas también se analizan con el selector del sistema, sin permiso.
 
 ## Categoría y etiquetas de la ficha
 
