@@ -8,6 +8,14 @@
      Solo vertical, como iOS (UISupportedInterfaceOrientations = Portrait). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- W3: visibilidad del intent de camara del sistema (sin permiso CAMERA:
+         la foto la hace la app de camara via TakePicture). -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".app.ColorsApp"
         android:allowBackup="true"
@@ -29,7 +37,8 @@
             </intent-filter>
         </activity>
 
-        <!-- W4: compartir tarjetas/capas/diagnósticos por Intent (sin red). -->
+        <!-- Un único FileProvider: cámara (cache/captures), tarjetas y capas (cache/share)
+             y diagnósticos (files/diagnostics). No exportado, sin red. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -37,7 +46,7 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/w4_file_paths" />
+                android:resource="@xml/file_paths" />
         </provider>
     </application>
 </manifest>

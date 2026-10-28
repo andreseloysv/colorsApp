@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Rutas compartibles de W4 (tarjetas, capas y diagnósticos): solo cacheDir/share. -->
-<paths>
-    <cache-path name="w4_share" path="share/" />
-    <files-path name="w4_diag" path="diagnostics/" />
-</paths>

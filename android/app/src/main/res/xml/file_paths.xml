@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rutas del FileProvider único: la cámara del sistema escribe en cache/captures; tarjetas
+     y capas se comparten desde cache/share; el zip de diagnóstico, desde files/diagnostics. -->
+<paths>
+    <cache-path name="captures" path="captures/" />
+    <cache-path name="share" path="share/" />
+    <files-path name="diagnostics" path="diagnostics/" />
+</paths>
