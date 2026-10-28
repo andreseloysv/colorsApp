@@ -1,0 +1,1 @@
+Erste Version für Android. Die App analysiert die Farben deiner Kleidung auf Fotos und sucht die ähnlichste der 348 Kombinationen von Sanzo Wada. Funktioniert offline, ohne Konto und ohne Werbung.

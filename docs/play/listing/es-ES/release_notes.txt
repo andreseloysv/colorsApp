@@ -1,0 +1,1 @@
+Primera versión para Android. Analiza los colores de la ropa en tus fotos y busca la combinación más parecida entre las 348 de Sanzo Wada. Funciona sin conexión, sin cuenta y sin anuncios.

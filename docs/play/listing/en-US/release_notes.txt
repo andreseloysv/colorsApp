@@ -1,0 +1,1 @@
+First release for Android. ChromaSol analyzes the colors of the clothes in your photos and finds the closest of Sanzo Wada's 348 combinations. Works offline, with no account and no ads.
