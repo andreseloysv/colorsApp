@@ -6,7 +6,7 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-RelWithDebInfo-f5ebdc15457944623624.json",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.10.0"
@@ -19,7 +19,7 @@
 					]
 				}
 			],
-			"name" : "RelWithDebInfo",
+			"name" : "Debug",
 			"projects" : 
 			[
 				{
@@ -39,7 +39,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "colorengine::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-colorengine-RelWithDebInfo-97ef5ef33f4cd1a843bc.json",
+					"jsonFile" : "target-colorengine-Debug-1231c638eba43ce99e20.json",
 					"name" : "colorengine",
 					"projectIndex" : 0
 				}
@@ -49,8 +49,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/RelWithDebInfo/2r5o4v4e/x86_64",
-		"source" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp"
+		"build" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/.cxx/Debug/cv714m6d/x86_64",
+		"source" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/src/main/cpp"
 	},
 	"version" : 
 	{

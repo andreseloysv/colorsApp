@@ -1,13 +1,13 @@
 # ninja log v5
-0	51	1793187362612396870	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_math.c.o	67cd12dbc9541b66
-1	55	1793187362618373085	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_libm.c.o	cd77e999981ea63d
-1	56	1793187362619366045	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_dict.c.o	e899450e993c25fd
-1	61	1793187362628174472	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_palette.c.o	4de274a5f15f89b8
-2	62	1793187362631980269	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_match.c.o	b658f5081954d3dd
-2	64	1793187362632525895	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_mask.c.o	cb6ddebc765a8fd0
-1	64	1793187362634569439	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_image.c.o	adb4b1cf466c5257
-2	67	1793187362636758816	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_debug.c.o	65c138b2c4884263
-1	67	1793187362637986943	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_ctx.c.o	f4cf67698c613672
-2	68	1793187362637221192	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/engine/Sources/CColorEngine/ce_garment.c.o	ce912f5089a17c
-2	93	1793187362663351641	CMakeFiles/colorengine.dir/ce_jni.c.o	51086679fdc844ba
-94	146	1793187362717835834	/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64/libcolorengine.so	dd6b32689695fad7
+1	59	1793195647110288353	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_dict.c.o	d4c2d776c69750f4
+0	61	1793195647113306489	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_math.c.o	9836469e58c38ac6
+1	67	1793195647119017593	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_libm.c.o	4f6eb0c755e2605c
+1	68	1793195647111180648	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_ctx.c.o	cf4380bd8f89f37
+2	68	1793195647125480576	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_image.c.o	3dd953b1dd9afc56
+2	71	1793195647128175252	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_match.c.o	19d0322ed6bdb93e
+3	74	1793195647133983107	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_debug.c.o	4087430e592e6b18
+2	78	1793195647138513999	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_palette.c.o	f3d510c6ebe2fe92
+2	84	1793195647144391812	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_garment.c.o	6b1d9f4cd35a9f69
+2	89	1793195647147819575	CMakeFiles/colorengine.dir/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/engine/Sources/CColorEngine/ce_mask.c.o	5e9040abd01efcda
+3	91	1793195647149207914	CMakeFiles/colorengine.dir/ce_jni.c.o	146043b56c4916a0
+91	142	1793195647202508111	/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64/libcolorengine.so	2f507af25f09b99e

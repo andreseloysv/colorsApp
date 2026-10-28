@@ -11,7 +11,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "x86_64"
+			"value" : "arm64-v8a"
 		},
 		{
 			"name" : "ANDROID_NDK",
@@ -75,7 +75,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "x86_64"
+			"value" : "arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_ANDROID_NDK",
@@ -163,7 +163,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/.cxx/Debug/cv714m6d/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -603,7 +603,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/src/main/cpp"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -639,7 +639,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_LINKER",
@@ -911,7 +911,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/x86_64"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/build/intermediates/cxx/Debug/cv714m6d/obj/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1195,7 +1195,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/.cxx/Debug/cv714m6d/x86_64"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/.cxx/Debug/cv714m6d/arm64-v8a"
 		},
 		{
 			"name" : "colorengine_android_IS_TOP_LEVEL",
@@ -1219,7 +1219,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/foundation/android/engine/src/main/cpp"
+			"value" : "/Users/andreseloyasanchezva/DEVELOP/colorsApp-lanes/w2-subject/android/engine/src/main/cpp"
 		}
 	],
 	"kind" : "cache",

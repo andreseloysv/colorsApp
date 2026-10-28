@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W2: traducciones EXACTAS de Localizable.xcstrings (de). -->
+<resources>
+    <string name="w2_no_photos_access">Kein Zugriff auf Fotos</string>
+    <string name="w2_limited_photos_access">Eingeschränkter Zugriff auf Fotos: das Scannen der Mediathek braucht vollen Zugriff.</string>
+    <string name="w2_requesting_photos_access">Fordere Zugriff auf Fotos an…</string>
+    <string name="w2_scanning_library">Mediathek wird gescannt</string>
+    <string name="w2_library_scan">Mediathek-Scan</string>
+    <string name="w2_scan_library">Mediathek scannen</string>
+    <string name="w2_analyzing_library_photos">%1$d/%2$d Fotos der Mediathek werden analysiert</string>
+    <string name="w2_allow_photos_in_settings">Um die Mediathek zu scannen, erlaube den Zugriff auf Fotos unter Einstellungen &gt; %1$s. Die Fotos werden nur auf dem Handy analysiert.</string>
+</resources>
