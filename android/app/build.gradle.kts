@@ -17,7 +17,9 @@ plugins {
 val keystorePath: String? = System.getenv("CHROMASOL_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
 val keystoreAlias: String? = System.getenv("CHROMASOL_KEYSTORE_ALIAS")?.takeIf { it.isNotBlank() }
 val keystorePassword: String? = System.getenv("CHROMASOL_KEYSTORE_PASSWORD")
-val keyPassword: String? = System.getenv("CHROMASOL_KEY_PASSWORD") ?: keystorePassword
+// Nombre distinto de la propiedad `keyPassword` del bloque de firma: con el mismo nombre,
+// `keyPassword = keyPassword` se asignaba a sí misma (null) y la firma fallaba.
+val releaseKeyPassword: String? = System.getenv("CHROMASOL_KEY_PASSWORD") ?: keystorePassword
 val hasReleaseSigning = keystorePath != null && keystoreAlias != null && keystorePassword != null
 
 // Diccionario de Wada como assets generados (docs/ANDROID.md §4, carril W1):
@@ -116,7 +118,7 @@ android {
                 storeFile = file(keystorePath!!)
                 storePassword = keystorePassword
                 keyAlias = keystoreAlias
-                keyPassword = keyPassword
+                keyPassword = releaseKeyPassword
             }
         }
     }

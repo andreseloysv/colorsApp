@@ -144,6 +144,8 @@ fun ExtractScreen(
                 pendingBitmap = null
                 resultModel = model
             }.onFailure {
+                // Sin este registro un fallo sin mensaje solo se ve como «imagen ilegible».
+                android.util.Log.w("ChromaSolExtract", "análisis fallido", it)
                 capture = ExtractCaptureState.Failed(ErrorText.describe(resources, it))
             }
         }
@@ -156,7 +158,9 @@ fun ExtractScreen(
         capture = ExtractCaptureState.Working(resources.getString(R.string.w3_loading_photo))
         scope.launch {
             val bitmap = withContext(Dispatchers.IO) {
-                runCatching { PhotoLoading.loadUpright(context, uri) }.getOrNull()
+                runCatching { PhotoLoading.loadUpright(context, uri) }
+                    .onFailure { android.util.Log.w("ChromaSolExtract", "carga de la foto fallida", it) }
+                    .getOrNull()
             }
             if (bitmap == null) {
                 capture = ExtractCaptureState.Failed(

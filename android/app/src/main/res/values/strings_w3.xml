@@ -110,7 +110,7 @@
     <string name="w3_no_skin">sin piel</string>
     <string name="w3_what_analysis_does">Qué hace el análisis</string>
     <string name="w3_step1_title">Recorta a la persona</string>
-    <string name="w3_step1_body">Vision separa a cada persona; el motor se queda con su ropa y quita la piel.</string>
+    <string name="w3_step1_body">El teléfono separa a cada persona; el motor se queda con su ropa y quita la piel.</string>
     <string name="w3_step2_title">Extrae los colores</string>
     <string name="w3_step2_body">Hasta 5 colores con su peso y el nombre del color de Wada más cercano.</string>
     <string name="w3_step3_title">Busca la combinación</string>

@@ -310,3 +310,14 @@ make android-test-device   # paridad 20+50+20 y humo de pestañas en el AVD
 make android-screenshots   # harness/out/android/tab-feed|extract|grid|garden.png
 # al terminar: adb emu kill
 ```
+
+## Release: R8 y MediaPipe (2026-10-28)
+
+La versión de release (R8 con ofuscación) rompía el detector de personas sin ningún fallo
+visible: MediaPipe lee sus mensajes protobuf-lite por reflexión y Flogger busca a quien le
+llama en la pila por nombre de clase, así que el detector fallaba y la app analizaba la foto
+completa. Las reglas de `android/app/proguard-rules.pro` conservan MediaPipe, protobuf,
+Guava/Flogger y datatransport. Antes de cada subida: instalar el AAB firmado en un teléfono
+(`bundletool build-apks --connected-device` + `install-apks`), analizar una foto con personas
+y comprobar que el resultado dice «Persona principal de N» y no «foto completa». Los fallos
+del análisis en Extraer se registran con la etiqueta `ChromaSolExtract`.
