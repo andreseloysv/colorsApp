@@ -160,7 +160,9 @@ class SubjectPeopleDeviceTest {
                     }
                     b
                 }
-                ious = best.joinToString(",", "[", "]") { String.format("%.3f", it) }
+                // Locale.US siempre: el informe es JSON y con la lengua del
+                // dispositivo salían comas decimales (JSON inválido).
+                ious = best.joinToString(",", "[", "]") { String.format(java.util.Locale.US, "%.3f", it) }
                 if (ref.file.substring(0, 2) in setOf("01", "02", "03", "04") && pw == bitmap.width) {
                     if (best.isNotEmpty() && best.average() < 0.5) {
                         problems.add("${ref.file}: IoU medio ${best.average()} < 0.5 (IoU=$best)")
@@ -173,8 +175,8 @@ class SubjectPeopleDeviceTest {
             Log.i(
                 "W2Report",
                 "${ref.file} people=${subject.people.size}/${ref.peopleIos} top=$top steps=${subject.steps} " +
-                    "maskCov=${String.format("%.3f", subject.maskCoverage)} instBBox=${instStats?.bbox} iou=$ious " +
-                    "garments=${analysis.garments.map { it.swatch.hex to it.region }} totalMs=${String.format("%.0f", totalMs)}",
+                    "maskCov=${String.format(java.util.Locale.US, "%.3f", subject.maskCoverage)} instBBox=${instStats?.bbox} iou=$ious " +
+                    "garments=${analysis.garments.map { it.swatch.hex to it.region }} totalMs=${String.format(java.util.Locale.US, "%.0f", totalMs)}",
             )
             report.append(if (first) "  " else "  ,")
             first = false
@@ -184,8 +186,8 @@ class SubjectPeopleDeviceTest {
                     "\"top\":${top},\"top1Ios\":${ref.top1Ios},\"garments\":[" +
                     analysis.garments.joinToString(",") { "{\"hex\":\"${it.swatch.hex}\",\"region\":${it.region.code}}" } +
                     "],\"iou\":${ious.ifEmpty { "null" }}," +
-                    "\"timings\":{${subject.timingsMs.entries.joinToString(",") { "\"${it.key}\":${String.format("%.1f", it.value)}" }}}," +
-                    "\"totalMs\":${String.format("%.1f", totalMs)}}\n",
+                    "\"timings\":{${subject.timingsMs.entries.joinToString(",") { "\"${it.key}\":${String.format(java.util.Locale.US, "%.1f", it.value)}" }}}," +
+                    "\"totalMs\":${String.format(java.util.Locale.US, "%.1f", totalMs)}}\n",
             )
             // Afirmaciones por foto (la vara del carril B sin la cadena era
             // top-1 en 01-04; con la cadena entera debe mantenerse).
