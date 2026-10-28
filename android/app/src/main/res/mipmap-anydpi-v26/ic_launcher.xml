@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icono adaptativo: el máster (android/icon/icon_master.png, hoy el icono
-     de iOS como marcador) a sangre completa en el foreground; el fondo es un
-     color sólido muestreado de sus esquinas para los bordes con máscara.
-     Regenerar con `make android-icon`. -->
+<!-- Icono adaptativo: el máster (android/icon/icon_master.png) reducido a la zona
+     segura en el foreground, el degradado verde en el background y la silueta de la C
+     en la monocroma. Regenerar con `make android-icon`. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
+    <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

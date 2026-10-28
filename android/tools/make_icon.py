@@ -10,13 +10,11 @@ Dónde dejar el icono nuevo: sustituye `android/icon/icon_master.png`
   - mipmap-*/ic_launcher.png y ic_launcher_round.png (legado pre-API 26 se
     sirve con el redondo a partir del adaptativo; estos cubren launchers
     antiguos dentro de minSdk 26 sin soporte adaptativo completo)
-  - values/ic_launcher_background.xml     (color de esquina del máster)
+  - mipmap-*/ic_launcher_background.png  (degradado del máster sin la C)
 
-El máster actual es el icono de iOS como marcador de posición: el dueño está
-haciendo uno 3D nuevo. La capa "background" del adaptativo es el color
-sólido muestreado de la esquina del máster (solo se ve en los bordes con
-máscaras agresivas) y la monocroma es una silueta derivada por distancia al
-fondo: al cambiar el máster conviene revisar ambas.
+El máster es la C de cristal sobre degradado verde (docs/play/icon_master.png es la
+misma imagen). El foreground lleva el máster reducido a la zona segura con el borde
+fundido; el background continúa el degradado; la monocroma es la silueta de la C.
 """
 from pathlib import Path
 
@@ -36,28 +34,69 @@ DENSITIES = {
 }
 
 
-def corner_color(im: Image.Image) -> tuple[int, int, int]:
-    """Media de las cuatro esquinas (fondo del adaptativo)."""
-    w, h = im.size
-    px = [im.getpixel(p) for p in [(4, 4), (w - 5, 4), (4, h - 5), (w - 5, h - 5)]]
-    return tuple(sum(c[i] for c in px) // len(px) for i in range(3))
+# Fracción de la capa adaptativa (108 dp) que ocupa el máster: la parte visible es el
+# cuadrado central de 72 dp (0,667) y la zona segura un círculo de 66 dp. Con 0,70 el borde
+# del máster queda fuera de lo visible y la C entera dentro de la zona segura.
+FOREGROUND_FRACTION = 0.70
 
 
-def monochrome(im: Image.Image, bg: tuple[int, int, int]) -> Image.Image:
-    """Silueta monocroma: alfa según distancia al color de fondo, relleno negro.
+def edge_gradient(im: Image.Image) -> Image.Image:
+    """Fondo del adaptativo: el degradado vertical del máster sin la C.
 
-    Android tiñe esta capa con el color del tema; solo importa el alfa.
+    Cada fila toma la media de las columnas de los bordes izquierdo y derecho, que en el
+    máster son solo fondo; así la capa de fondo continúa el degradado más allá del máster.
     """
-    small = im.resize((432, 432), Image.LANCZOS)
-    out = Image.new("RGBA", small.size, (0, 0, 0, 0))
-    src = small.load()
-    dst = out.load()
+    w, h = im.size
+    src = im.load()
+    out = Image.new("RGB", (1, h))
+    for y in range(h):
+        cols = [src[x, y] for x in list(range(0, 24)) + list(range(w - 24, w))]
+        out.putpixel((0, y), tuple(sum(c[i] for c in cols) // len(cols) for i in range(3)))
+    return out.resize((w, h), Image.BILINEAR)
+
+
+def foreground(im: Image.Image, size: int) -> Image.Image:
+    """Máster reducido al centro de la capa, con el borde fundido en transparente."""
+    from PIL import ImageDraw, ImageFilter
+
+    inner = round(size * FOREGROUND_FRACTION)
+    art = im.resize((inner, inner), Image.LANCZOS).convert("RGBA")
+    feather = max(2, inner // 16)
+    mask = Image.new("L", (inner, inner), 0)
+    ImageDraw.Draw(mask).rectangle((feather, feather, inner - feather - 1, inner - feather - 1), fill=255)
+    art.putalpha(mask.filter(ImageFilter.GaussianBlur(feather / 2)))
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    off = (size - inner) // 2
+    out.alpha_composite(art, (off, off))
+    return out
+
+
+def monochrome(im: Image.Image, size: int) -> Image.Image:
+    """Silueta monocroma de la C (cristal claro sobre fondo verde) a la escala del foreground.
+
+    Android tiñe esta capa con el color del tema; solo importa el alfa. El cristal es casi
+    blanco (canal mínimo alto) y el fondo verde tiene el rojo bajo: el alfa sale del canal
+    mínimo, y las partículas pequeñas desaparecen con un leve desenfoque y el umbral.
+    """
+    from PIL import ImageFilter
+
+    small = im.resize((512, 512), Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.2))
+    alpha = Image.new("L", small.size, 0)
+    src = small.load(); dst = alpha.load()
     for y in range(small.height):
         for x in range(small.width):
-            r, g, b = src[x, y]
-            d = max(abs(r - bg[0]), abs(g - bg[1]), abs(b - bg[2]))
-            a = 0 if d < 24 else min(255, (d - 24) * 4)
-            dst[x, y] = (0, 0, 0, a)
+            m = min(src[x, y])
+            dst[x, y] = 255 if m > 95 else 0
+    # Desenfoque y umbral: rellena los huecos del cristal facetado con un contorno suave,
+    # sin cerrar el hueco de la C ni dejar las partículas.
+    alpha = alpha.filter(ImageFilter.GaussianBlur(7)).point(lambda v: 255 if v > 60 else 0)
+    alpha = alpha.filter(ImageFilter.GaussianBlur(4)).point(lambda v: 255 if v > 128 else 0)
+    alpha = alpha.filter(ImageFilter.GaussianBlur(1.2))
+    sil = Image.new("RGBA", small.size, (0, 0, 0, 0)); sil.putalpha(alpha)
+    inner = round(size * FOREGROUND_FRACTION)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    off = (size - inner) // 2
+    out.alpha_composite(sil.resize((inner, inner), Image.LANCZOS), (off, off))
     return out
 
 
@@ -81,25 +120,19 @@ def main() -> int:
     if im.size != (1024, 1024):
         print(f"el máster debe ser 1024x1024, es {im.size}")
         return 2
-    bg = corner_color(im)
-    bg_hex = "#%02X%02X%02X" % bg
-    mono = monochrome(im, bg)
+    grad = edge_gradient(im)
     for density, (fg, legacy) in DENSITIES.items():
         d = RES / f"mipmap-{density}"
         d.mkdir(parents=True, exist_ok=True)
-        im.resize((fg, fg), Image.LANCZOS).save(d / "ic_launcher_foreground.png")
-        mono.resize((fg, fg), Image.LANCZOS).save(d / "ic_launcher_monochrome.png")
+        foreground(im, fg).save(d / "ic_launcher_foreground.png")
+        grad.resize((fg, fg), Image.LANCZOS).save(d / "ic_launcher_background.png")
+        monochrome(im, fg).save(d / "ic_launcher_monochrome.png")
         im.resize((legacy, legacy), Image.LANCZOS).save(d / "ic_launcher.png")
         round_icon(im, legacy).save(d / "ic_launcher_round.png")
         print(f"{density}: fg {fg}px, legado {legacy}px")
-    (RES / "values" / "ic_launcher_background.xml").write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        "<!-- Generado por android/tools/make_icon.py desde icon/icon_master.png.\n"
-        "     Color medio de las esquinas del máster: fondo del icono adaptativo. -->\n"
-        f'<resources>\n    <color name="ic_launcher_background">{bg_hex}</color>\n</resources>\n',
-        encoding="utf-8",
-    )
-    print(f"fondo adaptativo: {bg_hex}")
+    old = RES / "values" / "ic_launcher_background.xml"
+    if old.exists():
+        old.unlink()
     return 0
 
 

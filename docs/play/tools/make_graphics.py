@@ -135,53 +135,62 @@ def swatch_row(img: Image.Image, box, colors, radius: int = 8) -> None:
 
 
 def make_feature_graphic() -> None:
+    """Gráfico destacado con la identidad del icono: degradado verde, C de cristal y marca.
+
+    El fondo continúa el degradado del máster (media de sus columnas de borde, fila a fila);
+    la C se recorta del máster y se funde con ese fondo; a la derecha, la marca y una tira
+    de colores de Wada en pocillo oscuro translúcido.
+    """
+    from PIL import ImageFilter
+
     combos = wada_colors()
     w, h = 1024, 500
-    # Fondo: degradado vertical crema muy suave.
-    img = Image.new("RGB", (w, h), CREAM)
+    master = Image.open(MASTER).convert("RGB")
+    mw, mh = master.size
+    src = master.load()
+    rows = []
+    for y in range(mh):
+        cols = [src[x, y] for x in list(range(0, 24)) + list(range(mw - 24, mw))]
+        rows.append(tuple(sum(c[i] for c in cols) // len(cols) for i in range(3)))
+    img = Image.new("RGB", (w, h))
     draw = ImageDraw.Draw(img)
     for y in range(h):
-        t = y / (h - 1)
-        draw.line(
-            (0, y, w, y),
-            fill=tuple(int(CREAM[i] + (CREAM_DEEP[i] - CREAM[i]) * t) for i in range(3)),
-        )
-    # Sol ámbar suave recortado en la esquina superior derecha.
-    sun = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    ImageDraw.Draw(sun).ellipse((700, -220, 1180, 260), fill=AMBER + (46,))
-    img.paste(Image.alpha_composite(img.convert("RGBA"), sun).convert("RGB"), (0, 0))
+        draw.line((0, y, w, y), fill=rows[min(mh - 1, round(y * (mh - 1) / (h - 1)))])
+
+    # C de cristal: recorte del máster con borde fundido sobre el fondo.
+    crop = master.crop((round(mw * 0.13), round(mh * 0.10), round(mw * 0.87), round(mh * 0.90)))
+    ch = 470
+    cw = round(crop.width * ch / crop.height)
+    crop = crop.resize((cw, ch), Image.LANCZOS).convert("RGBA")
+    feather = 46
+    mask = Image.new("L", crop.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((feather, feather, cw - feather, ch - feather), radius=60, fill=255)
+    crop.putalpha(mask.filter(ImageFilter.GaussianBlur(feather / 2)))
+    base = img.convert("RGBA")
+    base.alpha_composite(crop, (40, (h - ch) // 2))
+    img = base.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Marca (izquierda). El tamaño se ajusta para que «ChromaSol» quepa
-    # entera en su columna y no quede bajo las tarjetas.
-    label_font = ui_font(25)
-    draw.text((66, 146), "SANZO  WADA  ·  1933", font=label_font, fill=MOSS)
-    size = 104
+    # Marca (derecha).
+    gold = (240, 214, 150)
+    x0 = 520
+    draw.text((x0 + 4, 150), "SANZO  WADA  ·  1933", font=ui_font(24), fill=gold)
+    size = 108
     title_font = brand_font(size)
-    while draw.textlength("ChromaSol", font=title_font) > 490 and size > 40:
+    while draw.textlength("ChromaSol", font=title_font) > 460 and size > 40:
         size -= 4
         title_font = brand_font(size)
-    draw.text((62, 176), "ChromaSol", font=title_font, fill=MOSS)
-    # Tira de colores bajo la marca, en pocillo blanco.
+    draw.text((x0, 178), "ChromaSol", font=title_font, fill=(250, 250, 244))
+    # Tira de colores de Wada en pocillo oscuro translúcido.
     strip_colors = combos[BRAND_STRIP_IDS[0]] + combos[BRAND_STRIP_IDS[1]][:1] + [AMBER]
-    draw.rounded_rectangle((66, 316, 506, 372), radius=12, fill=WELL, outline=WELL_EDGE, width=2)
-    swatch_row(img, (78, 327, 494, 361), strip_colors)
-    draw = ImageDraw.Draw(img)
+    well = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(well).rounded_rectangle((x0 + 4, 322, x0 + 444, 378), radius=14, fill=(255, 255, 255, 40),
+                                           outline=(255, 255, 255, 90), width=2)
+    img = Image.alpha_composite(img.convert("RGBA"), well).convert("RGB")
+    swatch_row(img, (x0 + 16, 333, x0 + 432, 367), strip_colors)
 
-    # Tarjetas de combinación (derecha), como fichas del libro.
-    number_font = ui_font(21)
-    card_x0, card_x1 = 616, 962
-    for i, combo_id in enumerate(FEATURE_COMBO_IDS):
-        y0 = 62 + i * 138
-        y1 = y0 + 112
-        draw.rounded_rectangle((card_x0, y0, card_x1, y1), radius=12, fill=WELL, outline=WELL_EDGE, width=2)
-        swatch_row(img, (card_x0 + 16, y0 + 16, card_x1 - 16, y0 + 66), combos[combo_id])
-        draw = ImageDraw.Draw(img)
-        draw.text((card_x0 + 16, y0 + 78), f"Nº {combo_id:03d}", font=number_font, fill=WELL_TEXT)
-
-    out = img.convert("RGB")
-    out.save(PLAY_DIR / "feature_graphic.png", optimize=True)
-    print(f"OK feature_graphic.png 1024x500 RGB (combinaciones {', '.join(map(str, FEATURE_COMBO_IDS))})")
+    img.save(PLAY_DIR / "feature_graphic.png", optimize=True)
+    print("OK feature_graphic.png 1024x500 RGB (degradado y C del icono, marca y tira de Wada)")
 
 
 def verify() -> None:
