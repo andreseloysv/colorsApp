@@ -32,9 +32,9 @@ import com.andreseloy.colorsapp.design.SolarIconSun
 import com.andreseloy.colorsapp.design.SolarTabBar
 import com.andreseloy.colorsapp.design.SolarTabItem
 import com.andreseloy.colorsapp.design.SolarTheme
-import com.andreseloy.colorsapp.feature.ExtractScreen
-import com.andreseloy.colorsapp.feature.FeedScreen
 import com.andreseloy.colorsapp.feature.GardenScreen
+import com.andreseloy.colorsapp.feature.extract.ExtractScreen
+import com.andreseloy.colorsapp.feature.feed.FeedScreen
 import com.andreseloy.colorsapp.feature.GridScreen
 import com.andreseloy.colorsapp.feature.SettingsScreen
 import com.andreseloy.colorsapp.scan.ScanProgress
@@ -110,14 +110,23 @@ fun ChromaSolApp(
                 .background(colors.surface),
         ) {
             composable(Routes.FEED) {
+                // W3: Feed real. Ajustes cuelga del Jardin como en iOS (W4 pone
+                // su boton; la ruta SETTINGS queda registrada abajo).
                 FeedScreen(
                     container = container,
                     onAnalyzePhoto = { selectTab(Routes.EXTRACT) },
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenGarden = { selectTab(Routes.GARDEN) },
+                    onShowGridFromScan = { selectTab(Routes.GRID) },
                 )
             }
             composable(Routes.EXTRACT) {
-                ExtractScreen(container = container)
+                // W3: Extraer real; onOpenLayers lo cablea W4 con su ruta.
+                ExtractScreen(
+                    container = container,
+                    onOpenGarden = { selectTab(Routes.GARDEN) },
+                    onShowGridFromScan = { selectTab(Routes.GRID) },
+                    onOpenLayers = null,
+                )
             }
             composable(Routes.GRID) {
                 GridScreen(container = container)

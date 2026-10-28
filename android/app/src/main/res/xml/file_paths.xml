@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider de W3: la camara del sistema escribe en cache/captures y la
+     tarjeta para compartir se sirve desde cache/share. Sin red. -->
+<paths>
+    <cache-path name="captures" path="captures/" />
+    <cache-path name="share" path="share/" />
+</paths>
