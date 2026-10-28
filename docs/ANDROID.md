@@ -112,9 +112,13 @@ la app — igual que iOS. El respaldo para cualquier otro idioma es el
 `Localizable.xcstrings`); en Android es automático porque `res/values/`
 (español) es la carpeta por defecto que se usa cuando ningún
 `values-<idioma>` coincide. Traducciones de/en de los textos del esqueleto
-copiadas de `Localizable.xcstrings`. La ola 2 necesita un script de volcado
-xcstrings → `strings.xml` con nombres de recurso estables (683 claves hoy:
-la clave de iOS es el propio texto español; ver §4, carril de datos).
+copiadas de `Localizable.xcstrings`. Cada carril pone sus textos en
+`values*/strings_<carril>.xml` copiados del catálogo (la clave de iOS es el
+propio texto español) y la fidelidad la vigila `make android-strings-check`
+(`android/tools/check_strings.py`, W1): falla si falta una traducción de/en
+o si un texto que corresponde a una clave de iOS difiere del catálogo en
+de/en. La cabecera del script dice cómo reusar textos y cómo declarar una
+divergencia deliberada (`android/tools/strings_allowlist.json`).
 
 ## 2. Reglas que hereda todo el que toque `android/`
 

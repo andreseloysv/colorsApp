@@ -148,8 +148,12 @@ fun FeedScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
+                                    // Nombre curado como en iOS; sin él, el
+                                    // número, nunca la lista de colores en inglés.
                                     dictionary.curatedName(combo.id)
-                                        ?: comboColors.joinToString(" + ") { it.name },
+                                        ?: stringResource(
+                                            R.string.w1_combo_number, "%03d".format(combo.id),
+                                        ),
                                     style = type.headlineSm, color = colors.onSurface,
                                     modifier = Modifier.weight(1f),
                                 )

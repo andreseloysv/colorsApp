@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W1 (datos), alemán: textos de ios/ColorsApp/Localizable.xcstrings.
+     Lo verifica `make android-strings-check`. -->
+<resources>
+    <string name="w1_combo_number">Nr. %1$s</string>
+    <string name="w1_collection_by_size">Kombinationen mit %1$d Farben</string>
+
+    <string name="w1_garment_region_upper">Oberteil</string>
+    <string name="w1_garment_region_lower">Unterteil</string>
+    <string name="w1_garment_region_whole">Ganzes Kleidungsstück</string>
+    <string name="w1_garment_region_other">Kleidungsstück</string>
+    <string name="w1_garment_short_upper">Oben</string>
+    <string name="w1_garment_short_lower">Unten</string>
+    <string name="w1_garment_grouping_single">Nur ein Ton: Das Kleidungsstück hatte keine Schatten zum Gruppieren.</string>
+    <string name="w1_garment_grouping_merged">%1$d Töne desselben Kleidungsstücks (Licht, Schatten und Falten) zu einer Farbe zusammengefasst; gezeigt wird der BELEUCHTETE TON, nicht der Durchschnitt.</string>
+</resources>

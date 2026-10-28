@@ -32,7 +32,7 @@
     <string name="stub_unlocked_count">%1$d von %2$d Kombinationen</string>
 
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_about">Über die App</string>
+    <string name="settings_about">Info</string>
     <string name="settings_licenses">Lizenzen</string>
     <string name="settings_engine_version">Farb-Engine %1$s</string>
     <string name="settings_dict_version">Wörterbuch %1$s · %2$d Kombinationen · %3$d Farben</string>

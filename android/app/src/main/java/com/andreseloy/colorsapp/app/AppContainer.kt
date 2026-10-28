@@ -1,8 +1,8 @@
 // Contenedor de dependencias manual: espejo de
 // ios/ColorsApp/App/AppEnvironment.swift. Se crea una vez en ColorsApp y se
 // pasa a la UI por constructor (sin framework de DI, como en iOS sin
-// librerías de inyección). La ola 2 sustituye las implementaciones en
-// memoria por Room/MediaStore/modelo de sujeto sin tocar las vistas.
+// librerías de inyección). Datos (W1): Room + diccionario JSON; carrete,
+// sujeto y escaneo siguen con los sustitutos de la fundación hasta W2.
 package com.andreseloy.colorsapp.app
 
 import android.content.Context
@@ -13,7 +13,14 @@ import com.andreseloy.colorsapp.data.InMemoryFeedbackRepository
 import com.andreseloy.colorsapp.data.InMemoryScanRepository
 import com.andreseloy.colorsapp.data.InMemorySettingsRepository
 import com.andreseloy.colorsapp.data.InMemoryUnlockRepository
+import com.andreseloy.colorsapp.data.JsonWadaDictionary
 import com.andreseloy.colorsapp.data.PhotoLibrarySource
+import com.andreseloy.colorsapp.data.db.ColorsDatabase
+import com.andreseloy.colorsapp.data.db.EngineVersions
+import com.andreseloy.colorsapp.data.db.RoomFeedbackRepository
+import com.andreseloy.colorsapp.data.db.RoomScanRepository
+import com.andreseloy.colorsapp.data.db.RoomSettingsRepository
+import com.andreseloy.colorsapp.data.db.RoomUnlockRepository
 import com.andreseloy.colorsapp.data.ScanRepository
 import com.andreseloy.colorsapp.data.SettingsRepository
 import com.andreseloy.colorsapp.data.UnlockRepository
@@ -85,20 +92,24 @@ class AppContainer(
     }
 
     companion object {
-        /** Arranque real: diccionario del motor, repos en memoria (fundación),
-         *  contador de lanzamientos y runner inerte. No pide ningún permiso. */
+        /** Arranque real: diccionario JSON de los assets (con los nombres
+         *  curados del idioma y el chequeo dict_version contra el motor),
+         *  repositorios Room sobre colors.sqlite, contador de lanzamientos
+         *  y runner inerte. No pide ningún permiso. */
         fun bootstrap(context: Context): AppContainer {
             val launches = LaunchCounter.increment(context)
-            val dictionary = EngineWadaDictionary()
+            val dictionary = JsonWadaDictionary.load(context)
             check(dictionary.matchesEngine) {
                 "dict_version ${dictionary.dictVersion} != motor $dictionaryVersion"
             }
+            val database = ColorsDatabase.open(context)
+            val versions = EngineVersions.fromEngine()
             return AppContainer(
                 dictionary = dictionary,
-                scans = InMemoryScanRepository(),
-                unlocks = InMemoryUnlockRepository(),
-                feedback = InMemoryFeedbackRepository(),
-                settings = InMemorySettingsRepository(),
+                scans = RoomScanRepository(database, versions),
+                unlocks = RoomUnlockRepository(database),
+                feedback = RoomFeedbackRepository(database),
+                settings = RoomSettingsRepository(database),
                 photoLibrary = EmptyPhotoLibrarySource(),
                 subjectSegmenter = WholePhotoSubjectSegmenter(),
                 scanRunner = NoopScanRunner(),

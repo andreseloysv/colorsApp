@@ -20,9 +20,16 @@
 #   make android-run            install + lanzar MainActivity
 #   make android-screenshots    capturas de las 4 pestañas en harness/out/android
 #   make android-wasm-expected  regenera wasm_expected.json con el `ce` de host
+#   make android-strings-check  textos es/de/en contra Localizable.xcstrings
+#                               de iOS (tools/check_strings.py, carril W1):
+#                               falla si falta una traducción de/en o si un
+#                               texto que corresponde a una clave de iOS
+#                               difiere del catálogo
 #
 # Variables:
 #   ANDROID_DIR   proyecto Gradle (defecto $(ROOT)/android)
+#   XCSTRINGS     Localizable.xcstrings de iOS (defecto: búsqueda automática
+#                 en el checkout principal hermano o en este repo)
 #   ANDROID_AVD   AVD por defecto (defecto Medium_Phone_API_37.0)
 #   ADB           adb (defecto el del SDK en ~/Library/Android/sdk)
 #   JAVA_HOME     JDK 17 (defecto el de Homebrew openjdk@17)
@@ -48,7 +55,8 @@ GRADLEW := cd $(ANDROID_DIR) && JAVA_HOME=$(ANDROID_JDK) ANDROID_HOME=$(ANDROID_
 
 .PHONY: android-build android-test android-test-device android-lint android-bundle \
         android-icon android-emulator android-install android-run android-screenshots \
-        android-wasm-expected android-local-properties android-check-no-network
+        android-wasm-expected android-local-properties android-check-no-network \
+        android-strings-check
 
 android-local-properties:
 	@if [ ! -f $(ANDROID_DIR)/local.properties ]; then \
@@ -125,3 +133,8 @@ android-wasm-expected:
 	cmake -S $(ENGINE) -B $(ROOT)/build-android/host-ce -DCMAKE_BUILD_TYPE=Release
 	cmake --build $(ROOT)/build-android/host-ce --parallel --target ce
 	python3 $(ANDROID_DIR)/tools/gen_wasm_expected.py $(ROOT)/build-android/host-ce/tools/ce
+
+# Cada carril pone sus textos en strings_<carril>.xml (es/de/en) copiados del
+# catálogo de iOS y pasa este chequeo; ver la cabecera del script.
+android-strings-check:
+	python3 $(ANDROID_DIR)/tools/check_strings.py $(if $(XCSTRINGS),--xcstrings $(XCSTRINGS),)

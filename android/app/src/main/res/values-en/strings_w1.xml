@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W1 (datos), inglés: textos de ios/ColorsApp/Localizable.xcstrings.
+     Lo verifica `make android-strings-check`. -->
+<resources>
+    <string name="w1_combo_number">No. %1$s</string>
+    <string name="w1_collection_by_size">%1$d-color combinations</string>
+
+    <string name="w1_garment_region_upper">Top</string>
+    <string name="w1_garment_region_lower">Bottom</string>
+    <string name="w1_garment_region_whole">Whole garment</string>
+    <string name="w1_garment_region_other">Garment</string>
+    <string name="w1_garment_short_upper">Top</string>
+    <string name="w1_garment_short_lower">Bottom</string>
+    <string name="w1_garment_grouping_single">A single tone: the garment had no shadows to group.</string>
+    <string name="w1_garment_grouping_merged">%1$d tones of the same garment (light, shadow and folds) grouped into one color; the color shown is the LIT TONE, not the average.</string>
+</resources>

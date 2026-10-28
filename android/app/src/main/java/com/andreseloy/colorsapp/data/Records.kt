@@ -6,6 +6,8 @@
 // plataformas y el contrato es de columnas y semántica, no de fichero).
 package com.andreseloy.colorsapp.data
 
+import com.andreseloy.colorsapp.subject.MaskStep
+
 /** Origen de un scan (ScanSource; valor guardado en scans.source). */
 enum class ScanSource(val raw: String) {
     CAMERA("camera"), PICKER("picker"), LIBRARY("library"), MANUAL("manual");
@@ -75,7 +77,35 @@ data class ScanRecord(
     val enginePolicyVersion: Int? = null,
 ) {
     val topIds: List<Int> get() = listOfNotNull(top1, top2, top3)
+
+    /** Scores decodificados (vacío si el JSON no es válido). */
+    val scoreValues: List<Double> get() = JsonCoding.decodeScores(scoresJson)
+
+    /** Paleta decodificada (vacía si el JSON no es válido). */
+    val palette: List<PaletteEntry> get() = JsonCoding.decodePalette(paletteJson)
+
+    /** Colores por prenda decodificados (vacío en el camino clásico o antes de v4). */
+    val garmentColors: List<GarmentEntry> get() = JsonCoding.decodeGarments(garmentsJson)
+
+    /** Pasos del recorte decodificados (vacío en scans anteriores a v2). */
+    val maskStepValues: List<MaskStep>
+        get() = maskStepsJson?.let { raw ->
+            JsonCoding.decodeStrings(raw).mapNotNull(MaskStep::fromRaw)
+        } ?: emptyList()
 }
+
+/** Marca el registro como modificado localmente (rev + 1, dirty), como `touch` en iOS. */
+fun ScanRecord.touched(nowMs: Long = System.currentTimeMillis()): ScanRecord =
+    copy(updatedAtMs = nowMs, rev = rev + 1, dirty = true)
+
+fun UnlockRecord.touched(nowMs: Long = System.currentTimeMillis()): UnlockRecord =
+    copy(updatedAtMs = nowMs, rev = rev + 1, dirty = true)
+
+fun FeedbackRecord.touched(nowMs: Long = System.currentTimeMillis()): FeedbackRecord =
+    copy(updatedAtMs = nowMs, rev = rev + 1, dirty = true)
+
+fun SettingRecord.touched(nowMs: Long = System.currentTimeMillis()): SettingRecord =
+    copy(updatedAtMs = nowMs, rev = rev + 1, dirty = true)
 
 /** Fila de `unlocks` (clave primaria combo_id). */
 data class UnlockRecord(

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 val keystorePath: String? = System.getenv("CHROMASOL_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
@@ -14,6 +15,73 @@ val keystoreAlias: String? = System.getenv("CHROMASOL_KEYSTORE_ALIAS")?.takeIf {
 val keystorePassword: String? = System.getenv("CHROMASOL_KEYSTORE_PASSWORD")
 val keyPassword: String? = System.getenv("CHROMASOL_KEY_PASSWORD") ?: keystorePassword
 val hasReleaseSigning = keystorePath != null && keystoreAlias != null && keystorePassword != null
+
+// Diccionario de Wada como assets generados (docs/ANDROID.md §4, carril W1):
+// dictionary.json sale siempre de data/wada del repo; los nombres curados
+// (names.es.json es ruta protegida y names.de.json puede no estar aún en el
+// HEAD de esta rama) se leen de un directorio configurable y se copian a
+// build/: nunca se duplica un fichero protegido en una ruta versionada.
+// Configuración, en orden: -PwadaNamesDir=<dir>, variable de entorno
+// COLORSAPP_WADA_NAMES_DIR, el checkout principal hermano
+// (../../colorsApp/data/wada desde un carril en colorsApp-lanes/<carril>)
+// y, si ninguno trae names.de.json, data/wada del propio repo (en tiempo de
+// ejecución el alemán cae entonces a los nombres en español, como en iOS).
+val repoRoot = rootProject.projectDir.parentFile
+val wadaRepoDir = File(repoRoot, "data/wada")
+val wadaNamesCandidates = listOfNotNull(
+    providers.gradleProperty("wadaNamesDir").orNull?.takeIf { it.isNotBlank() }?.let { File(it) },
+    System.getenv("COLORSAPP_WADA_NAMES_DIR")?.takeIf { it.isNotBlank() }?.let { File(it) },
+    File(repoRoot, "../../colorsApp/data/wada").canonicalFile,
+    wadaRepoDir,
+)
+val wadaNamesDir = wadaNamesCandidates.firstOrNull { File(it, "names.de.json").isFile }
+    ?: wadaNamesCandidates.first()
+
+/** Copia el diccionario y los nombres curados a `<salida>/wada/`. */
+abstract class SyncWadaAssetsTask : DefaultTask() {
+    @get:InputFile
+    abstract val dictionaryJson: RegularFileProperty
+
+    @get:InputFile
+    abstract val namesEsJson: RegularFileProperty
+
+    @get:InputFile
+    @get:Optional
+    abstract val namesDeJson: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDir.get().dir("wada").asFile
+        target.mkdirs()
+        dictionaryJson.get().asFile.copyTo(File(target, "dictionary.json"), overwrite = true)
+        namesEsJson.get().asFile.copyTo(File(target, "names.es.json"), overwrite = true)
+        if (namesDeJson.isPresent) {
+            namesDeJson.get().asFile.copyTo(File(target, "names.de.json"), overwrite = true)
+        }
+    }
+}
+
+val syncWadaAssets by tasks.registering(SyncWadaAssetsTask::class) {
+    description = "Copia dictionary.json y los nombres curados a los assets generados"
+    dictionaryJson.set(File(wadaRepoDir, "dictionary.json"))
+    namesEsJson.set(File(wadaNamesDir, "names.es.json"))
+    if (File(wadaNamesDir, "names.de.json").isFile) {
+        namesDeJson.set(File(wadaNamesDir, "names.de.json"))
+    }
+    doFirst {
+        check(File(wadaRepoDir, "dictionary.json").isFile) {
+            "falta data/wada/dictionary.json en $wadaRepoDir"
+        }
+        check(File(wadaNamesDir, "names.es.json").isFile) {
+            "falta names.es.json en el directorio de nombres $wadaNamesDir " +
+                "(configúralo con -PwadaNamesDir o COLORSAPP_WADA_NAMES_DIR)"
+        }
+        logger.lifecycle("Wada: dictionary.json de $wadaRepoDir; nombres curados de $wadaNamesDir")
+    }
+}
 
 android {
     namespace = "com.andreseloy.colorsapp"
@@ -97,6 +165,21 @@ android {
         // La puerta "sin Internet" tiene su propio destino (make android-lint).
         abortOnError = true
     }
+
+}
+
+// Assets del diccionario generados por syncWadaAssets (en build/): se
+// registran por variante para que merge, lint y empaquetado declaren la
+// dependencia con la tarea que los copia.
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(syncWadaAssets) { it.outputDir }
+    }
+}
+
+ksp {
+    // Esquemas Room versionados junto al módulo (los usan las migraciones).
+    arg("room.schemaLocation", layout.projectDirectory.dir("schemas").asFile.absolutePath)
 }
 
 dependencies {
@@ -112,6 +195,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.kotlinx.serialization.json)
+    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

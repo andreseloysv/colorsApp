@@ -76,24 +76,38 @@ interface SettingsRepository {
 
     suspend fun get(key: Key): String?
     suspend fun set(key: Key, value: String?, nowMs: Long = System.currentTimeMillis())
-    suspend fun bool(key: Key, defaultValue: Boolean = false): Boolean =
-        get(key)?.toBooleanStrictOrNull() ?: defaultValue
+    // Como en iOS: "true" y "1" son verdadero; cualquier otro valor presente, falso.
+    suspend fun bool(key: Key, defaultValue: Boolean = false): Boolean {
+        val raw = get(key) ?: return defaultValue
+        return raw == "true" || raw == "1"
+    }
 
-    suspend fun setBool(key: Key, value: Boolean) = set(key, value.toString())
+    suspend fun setBool(key: Key, value: Boolean) = set(key, if (value) "true" else "false")
     suspend fun int(key: Key, defaultValue: Int = 0): Int =
         get(key)?.toIntOrNull() ?: defaultValue
 
     suspend fun setInt(key: Key, value: Int) = set(key, value.toString())
+
+    // Como en iOS: un Double no finito ("nan", "inf") cuenta como ausente.
     suspend fun double(key: Key, defaultValue: Double): Double =
-        get(key)?.toDoubleOrNull() ?: defaultValue
+        get(key)?.toDoubleOrNull()?.takeIf { it.isFinite() } ?: defaultValue
 
     suspend fun setDouble(key: Key, value: Double) = set(key, value.toString())
 
+    /**
+     * Ajustes del recorte con sus valores por defecto, como en iOS: un valor
+     * ilegible, o `selectedPerson` (que no es un ajuste), cuenta como ausente.
+     */
     suspend fun subjectSettings(): SubjectSettings {
         val defaults = SubjectSettings()
+        val rawMode = get(Key.SUBJECT_MODE)
+        val mode = SubjectMode.entries.firstOrNull { it.raw == rawMode }
+            ?.takeIf { it != SubjectMode.SELECTED_PERSON } ?: defaults.mode
+        val rawRegion = get(Key.REGION_MODE)
+        val region = RegionMode.entries.firstOrNull { it.raw == rawRegion } ?: defaults.region
         return SubjectSettings(
-            mode = SubjectMode.fromRaw(get(Key.SUBJECT_MODE)),
-            region = RegionMode.fromRaw(get(Key.REGION_MODE)),
+            mode = mode,
+            region = region,
             adaptiveSkin = bool(Key.ADAPTIVE_SKIN, defaults.adaptiveSkin),
             unlockMaxScore = double(Key.UNLOCK_MAX_SCORE, defaults.unlockMaxScore),
         )
@@ -112,8 +126,9 @@ class InMemoryScanRepository : ScanRepository {
     private val rows = MutableStateFlow<List<ScanRecord>>(emptyList())
     private fun liveRows() = rows.value.filter { it.deletedAtMs == null }
 
+    // Como `save` de GRDB: inserta o reemplaza por id.
     override suspend fun insert(scan: ScanRecord) {
-        rows.value = rows.value + scan
+        rows.value = rows.value.filterNot { it.id == scan.id } + scan
     }
 
     override suspend fun fetch(id: String) = rows.value.firstOrNull { it.id == id }
@@ -133,23 +148,21 @@ class InMemoryScanRepository : ScanRepository {
         }
     }
 
+    // Borrado físico, como el deleteAll de GRDB ("Rehacer escaneo").
     override suspend fun deleteAll(source: ScanSource) {
-        val now = System.currentTimeMillis()
-        rows.value = rows.value.map {
-            if (it.source == source && it.deletedAtMs == null) {
-                it.copy(deletedAtMs = now, updatedAtMs = now, rev = it.rev + 1, dirty = true)
-            } else {
-                it
-            }
-        }
+        rows.value = rows.value.filterNot { it.source == source }
     }
 
     override suspend fun update(scan: ScanRecord) {
         rows.value = rows.value.map { if (it.id == scan.id) scan else it }
     }
 
+    // Sin versiones del motor inyectadas solo se puede aplicar el criterio
+    // de la columna ausente y la exención manual; la versión Room sí compara
+    // motor y diccionario (AnalysisPolicy completo).
     override suspend fun needingReanalysis(limit: Int) =
-        liveRows().filter { it.enginePolicyVersion == null }.take(limit)
+        liveRows().filter { it.source != ScanSource.MANUAL && it.enginePolicyVersion == null }
+            .sortedByDescending { it.scannedAtMs }.take(limit)
 
     override fun observeRecent(limit: Int): Flow<List<ScanRecord>> =
         rows.map { all ->
@@ -165,11 +178,26 @@ class InMemoryUnlockRepository : UnlockRepository {
     override suspend fun unlock(
         comboId: Int, source: ScanSource, assetId: String?, scanId: String?, nowMs: Long,
     ): Boolean {
-        if (liveRows().any { it.comboId == comboId }) return false
-        rows.value = rows.value + UnlockRecord(
-            comboId = comboId, firstSeenAtMs = nowMs, source = source,
-            assetId = assetId, scanId = scanId, updatedAtMs = nowMs,
-        )
+        val existing = rows.value.firstOrNull { it.comboId == comboId }
+        if (existing != null && existing.deletedAtMs == null) return false
+        rows.value = if (existing != null) {
+            // Restaurar un desbloqueo borrado, como en iOS.
+            rows.value.map {
+                if (it.comboId == comboId) {
+                    it.copy(
+                        firstSeenAtMs = nowMs, source = source, assetId = assetId,
+                        scanId = scanId, deletedAtMs = null,
+                    ).touched(nowMs)
+                } else {
+                    it
+                }
+            }
+        } else {
+            rows.value + UnlockRecord(
+                comboId = comboId, firstSeenAtMs = nowMs, source = source,
+                assetId = assetId, scanId = scanId, updatedAtMs = nowMs,
+            )
+        }
         return true
     }
 
@@ -177,21 +205,17 @@ class InMemoryUnlockRepository : UnlockRepository {
         comboIds: List<Int>, source: ScanSource, assetId: String?, scanId: String?, nowMs: Long,
     ): List<Int> = comboIds.filter { unlock(it, source, assetId, scanId, nowMs) }
 
-    override suspend fun record(comboId: Int) = rows.value.firstOrNull { it.comboId == comboId }
+    // Solo desbloqueos vivos, como en iOS.
+    override suspend fun record(comboId: Int) =
+        rows.value.firstOrNull { it.comboId == comboId && it.deletedAtMs == null }
     override suspend fun isUnlocked(comboId: Int) = liveRows().any { it.comboId == comboId }
     override suspend fun all() = liveRows().sortedBy { it.comboId }
     override suspend fun unlockedIds() = liveRows().map { it.comboId }.toSet()
     override suspend fun count() = liveRows().size
 
+    // Borrado físico, como en iOS.
     override suspend fun deleteAll(source: ScanSource?) {
-        val now = System.currentTimeMillis()
-        rows.value = rows.value.map {
-            if ((source == null || it.source == source) && it.deletedAtMs == null) {
-                it.copy(deletedAtMs = now, updatedAtMs = now, rev = it.rev + 1, dirty = true)
-            } else {
-                it
-            }
-        }
+        rows.value = rows.value.filterNot { source == null || it.source == source }
     }
 
     override fun observeAll(): Flow<List<UnlockRecord>> =
@@ -214,18 +238,19 @@ class InMemoryFeedbackRepository : FeedbackRepository {
 
     override suspend fun record(scanId: String, verdict: FeedbackVerdict, nowMs: Long): FeedbackRecord {
         val record = FeedbackRecord(
-            id = java.util.UUID.randomUUID().toString(), scanId = scanId, verdict = verdict,
+            id = UuidV7.string(nowMs), scanId = scanId, verdict = verdict,
             createdAtMs = nowMs, updatedAtMs = nowMs,
         )
         rows.value = rows.value + record
         return record
     }
 
+    // Más reciente primero, como en iOS.
     override suspend fun forScan(id: String) =
-        liveRows().filter { it.scanId == id }.sortedBy { it.createdAtMs }
+        liveRows().filter { it.scanId == id }.sortedByDescending { it.createdAtMs }
 
-    override suspend fun latest(forScanId: String) = forScan(forScanId).lastOrNull()
-    override suspend fun all() = liveRows().sortedBy { it.createdAtMs }
+    override suspend fun latest(forScanId: String) = forScan(forScanId).firstOrNull()
+    override suspend fun all() = liveRows().sortedByDescending { it.createdAtMs }
     override suspend fun counts(): Pair<Int, Int> {
         val all = liveRows()
         return all.count { it.verdict == FeedbackVerdict.YES } to all.count { it.verdict == FeedbackVerdict.NO }

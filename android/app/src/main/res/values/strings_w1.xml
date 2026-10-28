@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carril W1 (datos): textos del diccionario y de las prendas copiados de
+     ios/ColorsApp/Localizable.xcstrings (la clave de iOS es el texto en
+     español). Lo verifica `make android-strings-check`. -->
+<resources>
+    <!-- Nº %@ : número de combinación a tres cifras ya formateado por la vista -->
+    <string name="w1_combo_number">Nº %1$s</string>
+    <!-- Combinaciones de %lld colores -->
+    <string name="w1_collection_by_size">Combinaciones de %1$d colores</string>
+
+    <!-- Regiones de prenda (GarmentText) -->
+    <string name="w1_garment_region_upper">Parte de arriba</string>
+    <string name="w1_garment_region_lower">Parte de abajo</string>
+    <string name="w1_garment_region_whole">Prenda entera</string>
+    <string name="w1_garment_region_other">Prenda</string>
+    <string name="w1_garment_short_upper">Arriba</string>
+    <string name="w1_garment_short_lower">Abajo</string>
+    <string name="w1_garment_grouping_single">Un solo tono: la prenda no tenía sombras que agrupar.</string>
+    <string name="w1_garment_grouping_merged">%1$d tonos de la misma prenda (luz, sombra y pliegues) agrupados en un color; el color que se muestra es el TONO ILUMINADO, no la media.</string>
+</resources>

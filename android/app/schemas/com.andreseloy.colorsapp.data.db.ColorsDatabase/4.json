@@ -1,0 +1,377 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "f3e61779fb417c2f153373dbe250569c",
+    "entities": [
+      {
+        "tableName": "scans",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `asset_local_id` TEXT, `source` TEXT NOT NULL, `top1` INTEGER, `top2` INTEGER, `top3` INTEGER, `scores` TEXT NOT NULL DEFAULT '[]', `palette_json` TEXT NOT NULL DEFAULT '[]', `ambiguous` INTEGER NOT NULL DEFAULT 0, `engine_version` TEXT NOT NULL, `dict_version` TEXT NOT NULL, `scanned_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `rev` INTEGER NOT NULL DEFAULT 1, `dirty` INTEGER NOT NULL DEFAULT 1, `subject_mode` TEXT, `region_mode` TEXT, `adaptive_skin` INTEGER, `people_count` INTEGER, `person_index` INTEGER, `mask_steps` TEXT, `mask_coverage` REAL, `garments_json` TEXT, `garment_regions` INTEGER, `engine_policy_version` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assetLocalId",
+            "columnName": "asset_local_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "top1",
+            "columnName": "top1",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "top2",
+            "columnName": "top2",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "top3",
+            "columnName": "top3",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "scores",
+            "columnName": "scores",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "paletteJson",
+            "columnName": "palette_json",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "ambiguous",
+            "columnName": "ambiguous",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "engineVersion",
+            "columnName": "engine_version",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dictVersion",
+            "columnName": "dict_version",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scannedAt",
+            "columnName": "scanned_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deleted_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rev",
+            "columnName": "rev",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "dirty",
+            "columnName": "dirty",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "subjectMode",
+            "columnName": "subject_mode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "regionMode",
+            "columnName": "region_mode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "adaptiveSkin",
+            "columnName": "adaptive_skin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "peopleCount",
+            "columnName": "people_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "personIndex",
+            "columnName": "person_index",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maskSteps",
+            "columnName": "mask_steps",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "maskCoverage",
+            "columnName": "mask_coverage",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "garmentsJson",
+            "columnName": "garments_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "garmentRegions",
+            "columnName": "garment_regions",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "enginePolicyVersion",
+            "columnName": "engine_policy_version",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_scans_scanned_at",
+            "unique": false,
+            "columnNames": [
+              "scanned_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_scans_scanned_at` ON `${TABLE_NAME}` (`scanned_at`)"
+          },
+          {
+            "name": "index_scans_asset_local_id",
+            "unique": false,
+            "columnNames": [
+              "asset_local_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_scans_asset_local_id` ON `${TABLE_NAME}` (`asset_local_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "unlocks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`combo_id` INTEGER NOT NULL, `first_seen_at` INTEGER NOT NULL, `source` TEXT NOT NULL, `asset_local_id` TEXT, `scan_id` TEXT, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `rev` INTEGER NOT NULL DEFAULT 1, `dirty` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`combo_id`))",
+        "fields": [
+          {
+            "fieldPath": "comboId",
+            "columnName": "combo_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeenAt",
+            "columnName": "first_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assetLocalId",
+            "columnName": "asset_local_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scanId",
+            "columnName": "scan_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deleted_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rev",
+            "columnName": "rev",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "dirty",
+            "columnName": "dirty",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "combo_id"
+          ]
+        }
+      },
+      {
+        "tableName": "feedback",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `scan_id` TEXT NOT NULL, `verdict` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `rev` INTEGER NOT NULL DEFAULT 1, `dirty` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scanId",
+            "columnName": "scan_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verdict",
+            "columnName": "verdict",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deleted_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rev",
+            "columnName": "rev",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "dirty",
+            "columnName": "dirty",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_feedback_scan_id",
+            "unique": false,
+            "columnNames": [
+              "scan_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_feedback_scan_id` ON `${TABLE_NAME}` (`scan_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `rev` INTEGER NOT NULL DEFAULT 1, `dirty` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deleted_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rev",
+            "columnName": "rev",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "dirty",
+            "columnName": "dirty",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f3e61779fb417c2f153373dbe250569c')"
+    ]
+  }
+}
